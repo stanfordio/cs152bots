@@ -4,17 +4,19 @@ import re
 import requests
 import json
 from slackclient import SlackClient
+import util
 
-# instantiate Slack client
-bot_slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
-api_slack_client = SlackClient(os.environ.get('SLACK_API_TOKEN'))
-# starterbot's user ID in Slack: value is assigned after the bot starts up
+# These are personalized tokens - you should have configured them yourself
+# using the 'export' keyword in your terminal.
+SLACK_BOT_TOKEN = os.environ.get('SLACK_BOT_TOKEN')
+SLACK_API_TOKEN = os.environ.get('SLACK_API_TOKEN')
+PERSPECTIVE_KEY = os.environ.get('PERSPECTIVE_KEY')
+
+# Instantiate Slack client
+bot_slack_client = SlackClient(SLACK_BOT_TOKEN)
+api_slack_client = SlackClient(SLACK_API_TOKEN)
+# Starterbot's user ID in Slack: value is assigned after the bot starts up
 starterbot_id = None
-
-# get Perspective API Key
-PERSPECTIVE_KEY = os.environ['PERSPECTIVE_KEY']
-# perspective url
-PERSPECTIVE_URL = 'https://commentanalyzer.googleapis.com/v1alpha1/comments:analyze'
 
 # constants
 RTM_READ_DELAY = 1 # 1 second delay between reading from RTM
@@ -22,22 +24,44 @@ REPORT_COMMAND = "report"
 CANCEL_COMMAND = "cancel"
 HELP_COMMAND = "help"
 
-# Currently reports reporting flows
+# Currently managed reports
 reports = {}
 
-# functionality
-def handle_bot_interactions(slack_events):
+def main():
+	if bot_slack_client.rtm_connect(with_team_state=False):
+		print("Report Bot connected and running! Press Ctrl-C to quit.")
+		# Read bot's user ID by calling Web API method `auth.test`
+		starterbot_id = bot_slack_client.api_call("auth.test")["user"]
+		while True:
+			handle_slack_events(bot_slack_client.rtm_read())
+			time.sleep(RTM_READ_DELAY)
+	else:
+		print("Connection failed. Exception traceback printed above.")
+
+
+def handle_slack_events(slack_events):
+	'''
+	Given the list of all slack events that happened in the past RTM_READ_DELAY,
+	this function decides how to handle each of them.
+
+	DMs - potential report
+	Public IM - post Perspective score in the same channel
+	'''
 	for event in slack_events:
-		# ignore other events like typing or reactions
+		# Ignore other events like typing or reactions
 		if event["type"] == "message" and not "subtype" in event:
-			# distinguish between DMs and other messages
 			if (is_dm(event["channel"])):
+				# May or may not be part of a report, but we need to check
 				replies = handle_report(event)
 			else:
 				# Send all public messages to perspective for review
-				replies = ["```" + json.dumps(eval_text(event["text"]), indent=2) + "```"]
+				scores = eval_text(event["text"], PERSPECTIVE_KEY)
 
-			# Send the queue of messages back to the same channel.
+				# STUDENT TODO: currently this always prints out the scores.
+				# You probably want to change this behavior!
+				replies = ["```" + json.dumps(scores, indent=2) + "```"]
+
+			# Send bot's response(s) to the same channel the event came from.
 			for reply in replies:
 				# Send the slackbot's reply.
 				bot_slack_client.api_call(
@@ -45,20 +69,6 @@ def handle_bot_interactions(slack_events):
 				    channel=event["channel"],
 				    text=reply
 				)
-
-
-def is_dm(channel):
-	response = bot_slack_client.api_call(
-		"conversations.info",
-		channel=channel,
-		include_num_members="true"
-	)
-	channel_info = response["channel"]
-
-	# If this is an IM with only two people, necessarily it is someone DMing us.
-	if channel_info["is_im"] and channel_info["num_members"] == 2:
-		return True
-	return False
 
 
 def handle_report(message):
@@ -81,7 +91,7 @@ def handle_report(message):
 		reply =  "Thank you for starting the reporting process. "
 		reply += "Say `help` at any time for more information."
 		replies.append(reply)
-		reply =  "Please copy pase the link to the message you want to report.\n"
+		reply =  "Please copy paste the link to the message you want to report.\n"
 		reply += "You can obtain this link by clicking on the three dots in the" \
 			  +  " corner of the message and clicking `Copy link`."
 		replies.append(reply)
@@ -110,13 +120,14 @@ def handle_report(message):
 			reply += " (" + report["author_name"] + ").\n\n"
 			replies.append(reply)
 
-			reply = "Next up, my programmers will give you some further options. Hang tight!"
+			reply = "This is as far as the bot knows how to go - it will be up to students to build the rest of this process.\n"
+			reply += "Use the `cancel` keyword to cancel this report."
 			replies.append(reply)
 
 			report["progress"] += 1
 
 		elif progress == 1:
-			# TODO: add in further steps!
+			# STUDENT TODO: add in further steps!
 			reply =  "I'm sorry, I haven't been programmed this far. "
 			reply += "Give me more functionality and I'll know what to do. "
 			reply += "Or, use the `cancel` keyword to cancel this report."
@@ -158,8 +169,36 @@ def populate_report(report, message):
 	report["author_name"] = author_info["user"]["name"]
 	report["author_full"] = author_info["user"]["real_name"]
 
-# returns ts and channel
+
+
+###############################################################################
+# UTILITY FUNCTIONS - you probably don't need to read/edit these, but you can #
+# if you're curious!														  #
+###############################################################################
+
+
+def is_dm(channel):
+	'''
+	Returns whether or not this channel is a private message between
+	the bot and a user.
+	'''
+	response = bot_slack_client.api_call(
+		"conversations.info",
+		channel=channel,
+		include_num_members="true"
+	)
+	channel_info = response["channel"]
+
+	# If this is an IM with only two people, necessarily it is someone DMing us.
+	if channel_info["is_im"] and channel_info["num_members"] == 2:
+		return True
+	return False
+
+
 def parse_message_from_link(link):
+	'''
+	Parse and return the timestamp and channel name from a message link.
+	'''
 	parts = link.strip('>').strip('<').split('/') # break link into meaningful chunks
 	# invalid link
 	if len(parts) < 2:
@@ -170,34 +209,33 @@ def parse_message_from_link(link):
 	return ts, channel
 
 
-def eval_text(message):
-    url = PERSPECTIVE_URL + '?key=' + PERSPECTIVE_KEY
-    data_dict = {
-        'comment': {'text': message},
-        'languages': ['en'],
-        'requestedAttributes': {'SEVERE_TOXICITY': {}, 'PROFANITY': {},
-                                'IDENTITY_ATTACK': {}, 'THREAT': {},
-                                'TOXICITY': {}, 'FLIRTATION': {}
-                               },
-        'doNotStore': True
-    }
-    response = requests.post(url, data=json.dumps(data_dict))
-    response_dict = json.loads(response.content)
+def eval_text(message, key):
+	'''
+	Given a message and a perspective key, forwards the message to Perspective
+	and returns a dictionary of scores.
+	'''
+	PERSPECTIVE_URL = 'https://commentanalyzer.googleapis.com/v1alpha1/comments:analyze'
 
-    scores = {}
-    for attr in response_dict["attributeScores"]:
-        scores[attr] = response_dict["attributeScores"][attr]["summaryScore"]["value"]
+	url = PERSPECTIVE_URL + '?key=' + key
+	data_dict = {
+		'comment': {'text': message},
+		'languages': ['en'],
+		'requestedAttributes': {'SEVERE_TOXICITY': {}, 'PROFANITY': {},
+								'IDENTITY_ATTACK': {}, 'THREAT': {},
+								'TOXICITY': {}, 'FLIRTATION': {}
+							   },
+		'doNotStore': True
+	}
+	response = requests.post(url, data=json.dumps(data_dict))
+	response_dict = json.loads(response.content)
 
-    return scores
+	scores = {}
+	for attr in response_dict["attributeScores"]:
+		scores[attr] = response_dict["attributeScores"][attr]["summaryScore"]["value"]
+
+	return scores
 
 
+# Main loop
 if __name__ == "__main__":
-    if bot_slack_client.rtm_connect(with_team_state=False):
-        print("Report Bot connected and running!")
-        # Read bot's user ID by calling Web API method `auth.test`
-        starterbot_id = bot_slack_client.api_call("auth.test")["user"]
-        while True:
-            handle_bot_interactions(bot_slack_client.rtm_read())
-            time.sleep(RTM_READ_DELAY)
-    else:
-        print("Connection failed. Exception traceback printed above.")
+    main()
