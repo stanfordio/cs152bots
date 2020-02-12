@@ -1,10 +1,9 @@
 import os
 import time
 import re
-import requests
+import requests # *
 import json
-from slackclient import SlackClient
-import util
+from slackclient import SlackClient # *
 
 # These are personalized tokens - you should have configured them yourself
 # using the 'export' keyword in your terminal.
@@ -12,31 +11,30 @@ SLACK_BOT_TOKEN = os.environ.get('SLACK_BOT_TOKEN')
 SLACK_API_TOKEN = os.environ.get('SLACK_API_TOKEN')
 PERSPECTIVE_KEY = os.environ.get('PERSPECTIVE_KEY')
 
-# Instantiate Slack client
+if (SLACK_BOT_TOKEN == None or SLACK_API_TOKEN == None): #or PERSPECTIVE_KEY == None):
+	print("Error: Unable to find environment keys. Exiting.")
+	exit()
+
+# Instantiate Slack clients
 bot_slack_client = SlackClient(SLACK_BOT_TOKEN)
 api_slack_client = SlackClient(SLACK_API_TOKEN)
-# Starterbot's user ID in Slack: value is assigned after the bot starts up
-starterbot_id = None
+# Reportbot's user ID in Slack: value is assigned after the bot starts up
+reportbot_id = None
 
-# constants
+# Constants
 RTM_READ_DELAY = 1 # 1 second delay between reading from RTM
 REPORT_COMMAND = "report"
 CANCEL_COMMAND = "cancel"
 HELP_COMMAND = "help"
 
-# Currently managed reports
-reports = {}
+# Possible report states - saved as strings for easier debugging.
+STATE_REPORT_START 		 = "report received" 	# 1
+STATE_MESSAGE_IDENTIFIED = "message identified" # 2
 
-def main():
-	if bot_slack_client.rtm_connect(with_team_state=False):
-		print("Report Bot connected and running! Press Ctrl-C to quit.")
-		# Read bot's user ID by calling Web API method `auth.test`
-		starterbot_id = bot_slack_client.api_call("auth.test")["user"]
-		while True:
-			handle_slack_events(bot_slack_client.rtm_read())
-			time.sleep(RTM_READ_DELAY)
-	else:
-		print("Connection failed. Exception traceback printed above.")
+
+# Currently managed reports. Keys are users, values are report state info.
+# Each report corresponds to a single message.
+reports = {}
 
 
 def handle_slack_events(slack_events):
@@ -57,13 +55,14 @@ def handle_slack_events(slack_events):
 				# Send all public messages to perspective for review
 				scores = eval_text(event["text"], PERSPECTIVE_KEY)
 
-				# STUDENT TODO: currently this always prints out the scores.
-				# You probably want to change this behavior!
-				replies = ["```" + json.dumps(scores, indent=2) + "```"]
+				#############################################################
+				# STUDENT TODO: currently this always prints out the scores.#
+				# You probably want to change this behavior!                #
+				#############################################################
+				replies = [format_code(json.dumps(scores, indent=2))]
 
 			# Send bot's response(s) to the same channel the event came from.
 			for reply in replies:
-				# Send the slackbot's reply.
 				bot_slack_client.api_call(
 				    "chat.postMessage",
 				    channel=event["channel"],
@@ -72,79 +71,121 @@ def handle_slack_events(slack_events):
 
 
 def handle_report(message):
-	replies = []
+	'''
+	Given a DM sent to the bot, decide how to respond based on where the user
+	currently is in the reporting flow and progress them to the next state
+	of the reporting flow.
+	'''
 	user = message["user"]
 
 	if HELP_COMMAND in message["text"]:
-		reply =  "Use the `report` command to begin the reporting process.\n"
-		reply += "Use the `cancel` command to cancel the report process.\n"
-		replies.append(reply)
-		return replies
+		return response_help()
 
-	# If the user isn't in the middle of a reporting conversation,
-	# check if we should initiate one.
+	# If the user isn't in the middle of a report, check if this message has the keyword "report."
 	if user not in reports:
-		# Ignore messages that don't contain the keyword "report"
 		if not REPORT_COMMAND in message["text"]:
 			return []
 
-		reply =  "Thank you for starting the reporting process. "
-		reply += "Say `help` at any time for more information."
-		replies.append(reply)
-		reply =  "Please copy paste the link to the message you want to report.\n"
-		reply += "You can obtain this link by clicking on the three dots in the" \
-			  +  " corner of the message and clicking `Copy link`."
-		replies.append(reply)
-
-		reports[user] = {"progress" : 0}
+		# Add report with initial state.
+		reports[user] = {"state" : STATE_REPORT_START}
+		return response_report_instructions()
 
 	# Otherwise, we already have an ongoing conversation with them.
 	else:
 		if CANCEL_COMMAND in message["text"]:
-			reports.pop(user)
-			replies.append("Report cancelled.")
-			return replies
+			reports.pop(user) # Remove this report from the map of active reports.
+			return ["Report cancelled."]
 
 		report = reports[user]
-		progress = report["progress"]
-		if progress == 0:
+
+		####################################################################
+		# STUDENT TODO:                                                    #
+		# Here's where you should expand on the reporting flow and build   #
+		# in a progression. You're welcome to add branching options and    #
+		# the like. Get creative!                                          #
+		####################################################################
+		if report["state"] == STATE_REPORT_START:
+			# Fill in the report with reported message info.
 			result = populate_report(report, message)
+
 			# If we received anything other than None, it was an error.
 			if result:
 				reports.pop(user)
-				return [result]
+				return result
 
-			reply =  "I found the message "
-			reply += "```" + report["text"] + "``` "
-			reply += "from user " + report["author_full"]
-			reply += " (" + report["author_name"] + ").\n\n"
-			replies.append(reply)
+			# Progress to the next state.
+			report["state"] = STATE_MESSAGE_IDENTIFIED
+			return response_identify_message(user)
 
-			reply = "This is as far as the bot knows how to go - it will be up to students to build the rest of this process.\n"
-			reply += "Use the `cancel` keyword to cancel this report."
-			replies.append(reply)
+		elif report["state"] == STATE_MESSAGE_IDENTIFIED:
+			return response_what_next()
 
-			report["progress"] += 1
 
-		elif progress == 1:
-			# STUDENT TODO: add in further steps!
-			reply =  "I'm sorry, I haven't been programmed this far. "
-			reply += "Give me more functionality and I'll know what to do. "
-			reply += "Or, use the `cancel` keyword to cancel this report."
-			replies.append(reply)
+def response_help():
+	reply =  "Use the `report` command to begin the reporting process.\n"
+	reply += "Use the `cancel` command to cancel the report process.\n"
+	return [reply]
+
+
+def response_report_instructions():
+	reply =  "Thank you for starting the reporting process. "
+	reply += "Say `help` at any time for more information.\n\n"
+	reply +=  "Please copy paste the link to the message you want to report.\n"
+	reply += "You can obtain this link by clicking on the three dots in the" \
+		  +  " corner of the message and clicking `Copy link`."
+	return [reply]
+
+
+def response_identify_message(user):
+	replies = []
+	report = reports[user]
+
+	reply =  "I found the message "
+	reply += format_code(report["text"])
+	reply += " from user " + report["author_full"]
+	reply += " (" + report["author_name"] + ").\n\n"
+	replies.append(reply)
+
+	reply =  "_This is as far as the bot knows how to go - " \
+		  +  "it will be up to students to build the rest of this process._\n"
+	reply += "Use the `cancel` keyword to cancel this report."
+	replies.append(reply)
 
 	return replies
 
 
+def response_what_next():
+	reply =  "_This is as far as the bot knows how to go._\n"
+	reply += "Use the `cancel` keyword to cancel this report."
+	return [reply]
+
+
+
+###############################################################################
+# UTILITY FUNCTIONS - you probably don't need to read/edit these, but you can #
+# if you're curious!														  #
+###############################################################################
+
+
 def populate_report(report, message):
+	'''
+	Given a URL of some message, parse/lookup:
+	- ts (timestamp)
+	- channel
+	- author_id (unique user id)
+	- author_name
+	- author_full ("real name")
+	- text
+	and save all of this info in the report.
+	'''
 	report["ts"],     \
 	report["channel"] \
 	= parse_message_from_link(message["text"])
 
 	if not report["ts"]:
-		return "I'm sorry, that link was invalid."
+		return ["I'm sorry, that link was invalid. Report cancelled."]
 
-	# specifically have to use api slack client
+	# Specifically have to use api slack client
 	found = api_slack_client.api_call(
 		"conversations.history",
 		channel=report["channel"],
@@ -154,11 +195,11 @@ def populate_report(report, message):
 	)
 
 	if len(found["messages"]) < 1:
-		return "I'm sorry, I couldn't find that message."
+		return ["I'm sorry, I couldn't find that message."]
 
 	reported_msg = found["messages"][0]
 	if "subtype" in reported_msg:
-		return "I'm sorry, you cannot report bot messages at this time."
+		return ["I'm sorry, you cannot report bot messages at this time."]
 	report["author_id"] = reported_msg["user"]
 	report["text"] = reported_msg["text"]
 
@@ -168,13 +209,6 @@ def populate_report(report, message):
 	)
 	report["author_name"] = author_info["user"]["name"]
 	report["author_full"] = author_info["user"]["real_name"]
-
-
-
-###############################################################################
-# UTILITY FUNCTIONS - you probably don't need to read/edit these, but you can #
-# if you're curious!														  #
-###############################################################################
 
 
 def is_dm(channel):
@@ -220,20 +254,42 @@ def eval_text(message, key):
 	data_dict = {
 		'comment': {'text': message},
 		'languages': ['en'],
-		'requestedAttributes': {'SEVERE_TOXICITY': {}, 'PROFANITY': {},
+		'requestedAttributes': {
+								'SEVERE_TOXICITY': {}, 'PROFANITY': {},
 								'IDENTITY_ATTACK': {}, 'THREAT': {},
 								'TOXICITY': {}, 'FLIRTATION': {}
 							   },
 		'doNotStore': True
 	}
 	response = requests.post(url, data=json.dumps(data_dict))
-	response_dict = json.loads(response.content)
+	response_dict = response.json()
 
 	scores = {}
 	for attr in response_dict["attributeScores"]:
 		scores[attr] = response_dict["attributeScores"][attr]["summaryScore"]["value"]
 
 	return scores
+
+
+def format_code(text):
+	'''
+	Code format messages for Slack.
+	'''
+	return '```' + text + '```'
+
+def main():
+	'''
+	Main loop; connect to slack workspace and handle events as they come in.
+	'''
+	if bot_slack_client.rtm_connect(with_team_state=False):
+		print("Report Bot connected and running! Press Ctrl-C to quit.")
+		# Read bot's user ID by calling Web API method `auth.test`
+		reportbot_id = bot_slack_client.api_call("auth.test")["user"]
+		while True:
+			handle_slack_events(bot_slack_client.rtm_read())
+			time.sleep(RTM_READ_DELAY)
+	else:
+		print("Connection failed. Exception traceback printed above.")
 
 
 # Main loop

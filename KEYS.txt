@@ -1,0 +1,3 @@
+export SLACK_BOT_TOKEN=<Bot User OAuth Access Token>
+export SLACK_API_TOKEN=<OAuth Access Token>
+export PERSPECTIVE_KEY=<Perspective API Key>
