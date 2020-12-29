@@ -1,2 +1,2 @@
-# cs152slackbot
-Starter code for a Slack Bot. 
+# cs152modbot
+Starter code for CS 152's milestone 3 content moderation bot. 
