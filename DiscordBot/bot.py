@@ -59,7 +59,7 @@ class ModBot(discord.Client):
         This function is called whenever a message is sent in a channel that the bot can see (including DMs). 
         Currently the bot is configured to only handle messages that are sent over DMs or in your group's "group-#" channel. 
         '''
-        # Ignore messages from us 
+        # Ignore messages from the bot 
         if message.author.id == self.user.id:
             return
         
