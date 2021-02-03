@@ -70,7 +70,14 @@ async def create_channels(ctx, cat):
     
     await ctx.send(f'Created channels for groups {m.group(1)}-{m.group(2)}.')
 
-@bot.command(name='join', help='Get the role for group x. Usage: `.join #`')
+@bot.command(name='clear', help='Clear all messages sent in this channel.')
+async def clear(ctx):
+    msgs = []
+    async for x in bot.logs_from(ctx.message.channel):
+        msgs.append(x)
+    await bot.delete_messages(mgs)
+
+@bot.command(name='join', help='Get the role for group x. Usage: .join #')
 async def join_group(ctx, num):
     for guild in bot.guilds:
         if not "CS 152" in guild.name:
@@ -84,7 +91,7 @@ async def join_group(ctx, num):
             else:
                 await ctx.send("I'm sorry, that group role doesn't exist.")
 
-@bot.command(name='leave', help='Remove the role for group x. Usage: `.leave #`')
+@bot.command(name='leave', help='Remove the role for group x. Usage: .leave #')
 async def leave_group(ctx, num):
     for guild in bot.guilds:
         if not "CS 152" in guild.name:
