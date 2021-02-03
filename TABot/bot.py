@@ -72,10 +72,10 @@ async def create_channels(ctx, cat):
 
 @bot.command(name='clear', help='Clear all messages sent in this channel.')
 async def clear(ctx):
-    msgs = []
-    async for x in bot.logs_from(ctx.message.channel):
-        msgs.append(x)
-    await bot.delete_messages(mgs)
+    check_func = lambda msg: not msg.pinned
+    await ctx.message.delete()
+    await ctx.channel.purge(limit=100, check=check_func)
+    await ctx.send(f'{num} messages deleted.', delete_after=5)
 
 @bot.command(name='join', help='Get the role for group x. Usage: .join #')
 async def join_group(ctx, num):
