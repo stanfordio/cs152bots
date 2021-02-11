@@ -5,6 +5,7 @@ import os
 import json
 import logging
 import re
+import time
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -72,8 +73,10 @@ async def create_channels(ctx, cat):
 
 @bot.command(name='clear', help='Clear up to 100 messages sent in this channel. Ignores pinned messages.')
 async def clear(ctx):
-    check_func = lambda msg: not msg.pinned
+    time.sleep(0.5) # add in some delays to avoid race conditions
     await ctx.message.delete()
+    time.sleep(0.5)
+    check_func = lambda msg: not msg.pinned
     await ctx.channel.purge(limit=100, check=check_func)
     await ctx.send(f'Messages deleted.', delete_after=5)
 
