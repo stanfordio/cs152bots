@@ -112,4 +112,8 @@ async def leave_group(ctx, num):
 async def ping_pong(ctx):
     await ctx.send("pong")
 
+@bot.command(name='🥺', help='pls')
+async def pleading(ctx):
+    await ctx.send("👉👈")
+
 bot.run(token)
