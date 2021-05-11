@@ -40,6 +40,10 @@ async def on_member_join(member):
             return
         await member.add_roles(group_role)
 
+@bot.event
+async def on_message(self, message):
+    if message.content == '🥺':
+        await message.channel.send('👉👈')
 
 # todo: require staff role
 @bot.command(name='roles', help='Create x group roles.')
@@ -111,9 +115,5 @@ async def leave_group(ctx, num):
 @bot.command(name='ping', help='pong')
 async def ping_pong(ctx):
     await ctx.send("pong")
-
-@bot.command(name='🥺', help='pls')
-async def pleading(ctx):
-    await ctx.send("👉👈")
 
 bot.run(token)
