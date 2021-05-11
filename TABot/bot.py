@@ -41,7 +41,7 @@ async def on_member_join(member):
         await member.add_roles(group_role)
 
 @bot.event
-async def on_message(self, message):
+async def on_message(message):
     if message.content == '🥺':
         await message.channel.send('👉👈')
 
