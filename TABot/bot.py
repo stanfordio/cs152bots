@@ -40,12 +40,11 @@ async def on_member_join(member):
             return
         await member.add_roles(group_role)
 
-@bot.event
+@bot.listen()
 async def on_message(message):
     if message.content == '🥺':
         await message.channel.send('👉👈')
 
-# todo: require staff role
 @bot.command(name='roles', help='Create x group roles.')
 @commands.has_any_role('@staff')
 async def create_roles(ctx, num):
