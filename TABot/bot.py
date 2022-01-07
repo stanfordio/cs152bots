@@ -46,7 +46,7 @@ async def on_message(message):
         await message.channel.send('👉👈')
 
 @bot.command(name='roles', help='Create x group roles.')
-@commands.has_any_role('@staff')
+@commands.has_any_role('Teaching Team')
 async def create_roles(ctx, num):
     guild = ctx.guild
     for i in range(1, int(num) + 1):
@@ -54,14 +54,14 @@ async def create_roles(ctx, num):
     await ctx.send(f'Created roles for groups 1-{num}.')
 
 @bot.command(name='channels', help='Create group and group-mod channels in the specified category.')
-@commands.has_any_role('@staff')
-async def create_channels(ctx, cat):
+@commands.has_any_role('Teaching Team')
+async def create_channels(ctx, cat, span):
     guild = ctx.guild
     for c in guild.categories:
         if c.name == cat:
             category = c
-    
-    m = re.search("Group Channels (\d+)-(\d+)", cat)
+
+    m = re.search("(\d+)-(\d+)", span)
     for i in range(int(m.group(1)), int(m.group(2)) + 1):
         group_role = discord.utils.get(guild.roles, name="Group "+str(i))
         overwrites = {
@@ -71,7 +71,7 @@ async def create_channels(ctx, cat):
         }
         await guild.create_text_channel(f'group-{i}', category=category, overwrites=overwrites)
         await guild.create_text_channel(f'group-{i}-mod', category=category, overwrites=overwrites)
-    
+
     await ctx.send(f'Created channels for groups {m.group(1)}-{m.group(2)}.')
 
 @bot.command(name='clear', help='Clear up to 100 messages sent in this channel. Ignores pinned messages.')
@@ -86,7 +86,7 @@ async def clear(ctx):
 @bot.command(name='join', help='Get the role for group x. Usage: .join #')
 async def join_group(ctx, num):
     for guild in bot.guilds:
-        if not "CS 152" in guild.name:
+        if not "CS152" in guild.name:
             continue
         if guild.get_member(ctx.author.id):
             member = guild.get_member(ctx.author.id)
