@@ -57,9 +57,14 @@ async def create_roles(ctx, num):
 @commands.has_any_role('Teaching Team')
 async def create_channels(ctx, cat, span):
     guild = ctx.guild
+    category = None
     for c in guild.categories:
         if c.name == cat:
             category = c
+
+    if not category:
+        await ctx.send(f'Could not find category "{cat}"')
+        return
 
     m = re.search("(\d+)-(\d+)", span)
     for i in range(int(m.group(1)), int(m.group(2)) + 1):
@@ -73,6 +78,32 @@ async def create_channels(ctx, cat, span):
         await guild.create_text_channel(f'group-{i}-mod', category=category, overwrites=overwrites)
 
     await ctx.send(f'Created channels for groups {m.group(1)}-{m.group(2)}.')
+
+@bot.command(name='delete_channels', help='Delete group and group-mod channels in the specified category')
+@commands.has_any_role('Teaching Team')
+async def delete_channels(ctx, cat, span):
+    guild = ctx.guild
+    category = None
+    if cat != "":
+        for c in guild.categories:
+            if c.name == cat:
+                category = c
+
+    if cat and not category:
+        await ctx.send(f'Could not find category "{cat}"')
+        return
+
+    m = re.search("(\d+)-(\d+)", span)
+    channels = guild.channels
+    for i in range(int(m.group(1)), int(m.group(2)) + 1):
+        name = f"group-{i}"
+        name_mod = f"group-{i}-mod"
+        for channel in channels:
+            if (category and channel.category == category) or not category:
+                if channel.name == name or channel.name == name_mod:
+                    await channel.delete()
+                    break
+    await ctx.send("Successfully deleted channels")
 
 @bot.command(name='clear', help='Clear up to 100 messages sent in this channel. Ignores pinned messages.')
 async def clear(ctx):
@@ -100,7 +131,7 @@ async def join_group(ctx, num):
 @bot.command(name='leave', help='Remove the role for group x. Usage: .leave #')
 async def leave_group(ctx, num):
     for guild in bot.guilds:
-        if not "CS 152" in guild.name:
+        if not "CS152" in guild.name:
             continue
         if guild.get_member(ctx.author.id):
             member = guild.get_member(ctx.author.id)
