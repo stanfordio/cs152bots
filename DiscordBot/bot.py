@@ -7,6 +7,7 @@ import logging
 import re
 import requests
 from report import Report
+import pdb
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -15,7 +16,7 @@ handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w'
 handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
 logger.addHandler(handler)
 
-# There should be a file called 'token.json' inside the same folder as this file
+# There should be a file called 'tokens.json' inside the same folder as this file
 token_path = 'tokens.json'
 if not os.path.isfile(token_path):
     raise Exception(f"{token_path} not found!")
@@ -23,18 +24,16 @@ with open(token_path) as f:
     # If you get an error here, it means your token is formatted incorrectly. Did you put it in quotes?
     tokens = json.load(f)
     discord_token = tokens['discord']
-    perspective_key = tokens['perspective']
 
 
 class ModBot(discord.Client):
-    def __init__(self, key):
+    def __init__(self): 
         intents = discord.Intents.default()
         intents.message_content = True
         super().__init__(command_prefix='.', intents=intents)
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
-        self.perspective_key = key
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -54,6 +53,7 @@ class ModBot(discord.Client):
             for channel in guild.text_channels:
                 if channel.name == f'group-{self.group_num}-mod':
                     self.mod_channels[guild.id] = channel
+        
 
     async def on_message(self, message):
         '''
@@ -106,39 +106,26 @@ class ModBot(discord.Client):
         # Forward the message to the mod channel
         mod_channel = self.mod_channels[message.guild.id]
         await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
+        scores = self.eval_text(message.content)
+        await mod_channel.send(self.code_format(scores))
 
-        scores = self.eval_text(message)
-        await mod_channel.send(self.code_format(json.dumps(scores, indent=2)))
-
+    
     def eval_text(self, message):
+        ''''
+        TODO: Once you know how you want to evaluate messages in your channel, 
+        insert your code here! This will primarily be used in Milestone 3. 
         '''
-        Given a message, forwards the message to Perspective and returns a dictionary of scores.
-        '''
-        PERSPECTIVE_URL = 'https://commentanalyzer.googleapis.com/v1alpha1/comments:analyze'
+        return message
 
-        url = PERSPECTIVE_URL + '?key=' + self.perspective_key
-        data_dict = {
-            'comment': {'text': message.content},
-            'languages': ['en'],
-            'requestedAttributes': {
-                                    'SEVERE_TOXICITY': {}, 'PROFANITY': {},
-                                    'IDENTITY_ATTACK': {}, 'THREAT': {},
-                                    'TOXICITY': {}, 'FLIRTATION': {}
-                                },
-            'doNotStore': True
-        }
-        response = requests.post(url, data=json.dumps(data_dict))
-        response_dict = response.json()
-
-        scores = {}
-        for attr in response_dict["attributeScores"]:
-            scores[attr] = response_dict["attributeScores"][attr]["summaryScore"]["value"]
-
-        return scores
-
+    
     def code_format(self, text):
-        return "```" + text + "```"
+        ''''
+        TODO: Once you know how you want to show that a message has been 
+        evaluated, insert your code here for formatting the string to be 
+        shown in the mod channel. 
+        '''
+        return "Evaluated: '" + text+ "'"
 
 
-client = ModBot(perspective_key)
+client = ModBot()
 client.run(discord_token)
