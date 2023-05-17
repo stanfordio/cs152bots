@@ -1,7 +1,7 @@
 from enum import Enum, auto
 import discord
-from discord import ui
 import re
+from user_report import StartView
 
 
 class State(Enum):
@@ -11,63 +11,10 @@ class State(Enum):
     REPORT_COMPLETE = auto()
 
 
-ABUSE_TYPES = ["Bullying or harassment", "Scam or fraud", "Suicide or self-injury",
-                   "Violence or dangerous organizations", "Hate speech or symbols", "Nudity or sexual activity", "Spam", "Other reason"]
-
-class VictimView(ui.View):
-    """View to handle who is being harassed."""
-    @discord.ui.button(label="Me", style=discord.ButtonStyle.primary)
-    async def me_button_callback(self, interaction, button):
-        self.disable_buttons()
-        button.style = discord.ButtonStyle.success
-        await interaction.response.edit_message(view=self)
-        await interaction.followup.send("You selected 'Me'.\n\nWhat kinds of harassment did you experience? Select all that apply.")
-
-    @discord.ui.button(label="Someone Else", style=discord.ButtonStyle.secondary)
-    async def other_button_callback(self, interaction, button):
-        self.disable_buttons()
-        button.style = discord.ButtonStyle.success
-        await interaction.response.edit_message(view=self)
-        await interaction.followup.send("You selected 'Someone Else'.\n\nWho is being bullied?")
-    
-    def disable_buttons(self):
-        """Disables all the buttons in the View and turns them grey."""
-        for button in self.children:
-            button.disabled = True
-            button.style = discord.ButtonStyle.grey
-
-
-class AbuseSelectView(ui.View):
-    """View to handle abuse type selection."""
-    @discord.ui.select(placeholder="Select abuse type...", options=[discord.SelectOption(label=abuse) for abuse in ABUSE_TYPES])
-    
-    async def select_callback(self, interaction, select):
-        # TODO: update values
-
-        # Disable Selection
-        select.disabled = True
-        select.placeholder = select.values[0]
-        await interaction.response.edit_message(view=self)
-
-        # Handle flows that are not 'bullying and harassment' differently.
-        selection_msg = "You selected " + interaction.data["values"][0].lower() + ".\n\n"
-        if (select.values[0] != ABUSE_TYPES[0]):
-            await interaction.followup.send(selection_msg + "This is not the flow we specialize in.")
-            return
-
-        # Create next view
-        next_view = VictimView()
-        await interaction.followup.send(selection_msg + "Who is being bullied or harassed?", view=next_view)
-
-
 class Report:
     START_KEYWORD = "report"
     CANCEL_KEYWORD = "cancel"
     HELP_KEYWORD = "help"
-
-    ABUSE_TYPES = ["Bullying or harassment", "Scam or fraud", "Suicide or self-injury",
-                   "Violence or dangerous organizations", "Hate speech or symbols", "Nudity or sexual activity", "Spam", "Other reason"]
-
 
     def __init__(self, client):
         self.state = State.REPORT_START
@@ -114,35 +61,12 @@ class Report:
             self.state = State.MESSAGE_IDENTIFIED
             found_msgs = ["I found this message:", "```" + message.author.name + ": " + message.content + "```"]
 
-            # Give options to report
-            # button = Button(label="Click me", style=discord.ButtonStyle.green)
-            # abuse_type_select = Select(
-            #     placeholder="Select abuse type...", options=[discord.SelectOption(label=abuse) for abuse in self.ABUSE_TYPES])
-
-            # async def select_callback(interaction):
-            #     self.abuse_type = interaction.data["values"][0]
-            #     await interaction.response.edit_message(view=None)
-            #     me_button = Button(label="Me", style=discord.ButtonStyle.primary)
-            #     other_button = Button(label="Someone Else", style=discord.ButtonStyle.secondary)
-            #     next_view = View()
-            #     next_view.add_item(me_button)
-            #     next_view.add_item(other_button)
-            #     next_msg = "Who is being bullied or harassed?"
-            #     if (self.abuse_type != self.ABUSE_TYPES[0]):
-            #         next_msg = "This is not the flow we specialize in."
-            #         await interaction.followup.send("You selected " + interaction.data["values"][0].lower() + ".\n\n" + next_msg)
-            #         return
-            #     await interaction.followup.send("You selected " + interaction.data["values"][0].lower() + ".\n\n" + next_msg, view=next_view)
-            
-            # abuse_type_select.callback = select_callback
-            # view = View()
-            # view.add_item(abuse_type_select)
-            view = AbuseSelectView()
-
+            # The report flow is handled as a series of views. No extra states needed for now.
+            view = StartView()
             return [*found_msgs, ("Why would you like to report this message?", view)]
 
         if self.state == State.MESSAGE_IDENTIFIED:
-            return ["<insert rest of reporting flow here>"]
+            return ["Sorry, you are in the middle of a report.\nContinue by selecting an option above or stop by typing `cancel`."]
 
         return []
 
