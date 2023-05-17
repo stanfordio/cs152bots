@@ -8,7 +8,9 @@ import re
 import requests
 from report import Report
 import pdb
+import selectmenu import SelectMenu
 
+const { EmbedBuilder } = require.('discord.js')
 # Set up logging to the console
 logger = logging.getLogger('discord')
 logger.setLevel(logging.DEBUG)
@@ -73,10 +75,14 @@ class ModBot(discord.Client):
     async def handle_dm(self, message):
         # Handle a help message
         if message.content == Report.HELP_KEYWORD:
-            reply =  "Use the `report` command to begin the reporting process.\n"
-            reply += "Use the `cancel` command to cancel the report process.\n"
-            await message.channel.send(reply)
-            return
+            view = SelectMenu()
+
+            await message.channel.send(view=view)
+
+            # reply =  "Use the `report` command to begin the reporting process.\n"
+            # reply += "Use the `cancel` command to cancel the report process.\n"
+            # await message.channel.send(reply)
+            # return
 
         author_id = message.author.id
         responses = []
