@@ -93,8 +93,11 @@ class ModBot(discord.Client):
 
         # Let the report class handle this message; forward all the messages it returns to uss
         responses = await self.reports[author_id].handle_message(message)
-        for r, view in responses:
-            await message.channel.send(r, view=view)
+        for r in responses:
+            if type(r) is tuple:
+                await message.channel.send(r[0], view=r[1])
+            else:
+                await message.channel.send(r)
 
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():
