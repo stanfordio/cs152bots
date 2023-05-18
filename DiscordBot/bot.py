@@ -8,7 +8,7 @@ import re
 import requests
 from report import Report
 import pdb
-from selectmenu import SelectMenu
+# from selectmenu import SelectMenu
 from myModal import MyModal
 
 # const { EmbedBuilder } = require.('discord.js')
