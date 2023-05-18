@@ -112,7 +112,7 @@ class ModBot(discord.Client):
 
         if message.content == "trigger":
             print("Tripped the message detector!")
-            await message.channel.send("Click this button to report the message above", view=ReportButton)
+            await message.channel.send("Click this button to report the message above", view=ReportButton())
             return
             # await interaction.response.send_modal(MyModal())
 
