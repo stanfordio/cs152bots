@@ -4,6 +4,55 @@ from discord import ui
 ABUSE_TYPES = ["Bullying or harassment", "Scam or fraud", "Suicide or self-injury",
                    "Violence or dangerous organizations", "Hate speech or symbols", "Nudity or sexual activity", "Spam", "Other reason"]
 HARASSMENT_TYPES = ["Impersonation", "Threat", "Hate speech", "Flaming", "Denigration", "Revealing Private Info", "Blackmailing", "Other"]
+SUBMIT_MSG = "Thank you for reporting. We take [issue] very seriously. Our content moderation team will review your report. Further action might include temporary or permanent account suspension."
+
+class MoreInfoView(ui.View):
+    """View to handle if you'd like to provide extra message IDs."""
+    @discord.ui.button(label="No", style=discord.ButtonStyle.primary)
+    async def submit_callback(self, interaction, button):
+        self.disable_buttons()
+        button.style = discord.ButtonStyle.success
+        await interaction.response.edit_message(view=self)
+        await interaction.followup.send("Is there anything else you would like us to know?")
+
+    @discord.ui.button(label="Yes", style=discord.ButtonStyle.secondary)
+    async def more_button_callback(self, interaction, button):
+        self.disable_buttons()
+        button.style = discord.ButtonStyle.success
+        await interaction.response.edit_message(view=self)
+        next_view = ui.View()
+        await interaction.followup.send("Please provide the message ID.", view=next_view)
+    
+    def disable_buttons(self):
+        """Disables all the buttons in the View and turns them grey."""
+        for button in self.children:
+            button.disabled = True
+            button.style = discord.ButtonStyle.grey
+
+
+class SubmitOrInfoView(ui.View):
+    """View to handle earliest submission."""
+    @discord.ui.button(label="Submit", style=discord.ButtonStyle.primary)
+    async def submit_callback(self, interaction, button):
+        self.disable_buttons()
+        button.style = discord.ButtonStyle.success
+        await interaction.response.edit_message(view=self)
+        await interaction.followup.send(SUBMIT_MSG)
+
+    @discord.ui.button(label="More Info", style=discord.ButtonStyle.secondary)
+    async def more_button_callback(self, interaction, button):
+        self.disable_buttons()
+        button.style = discord.ButtonStyle.success
+        await interaction.response.edit_message(view=self)
+        next_view = MoreInfoView()
+        await interaction.followup.send("Sure. Is there another message you would like to add to this report?", view=next_view)
+    
+    def disable_buttons(self):
+        """Disables all the buttons in the View and turns them grey."""
+        for button in self.children:
+            button.disabled = True
+            button.style = discord.ButtonStyle.grey
+
 
 class HarassmentTypesView(ui.View):
     """View to handle the selection of the harassment type."""
@@ -18,8 +67,9 @@ class HarassmentTypesView(ui.View):
         await interaction.response.edit_message(view=self)
 
         # Create next view
+        next_view = SubmitOrInfoView()
         selection_msg = "You selected the following: " + ", ".join(select.values) + ".\n\n"
-        await interaction.followup.send(selection_msg)
+        await interaction.followup.send(selection_msg + "Would you like to submit your report or provide more information?", view=next_view)
 
 
 class OtherVictimView(ui.View):
