@@ -8,7 +8,8 @@ import re
 import requests
 from report import Report
 import pdb
-import selectmenu import SelectMenu
+from selectmenu import SelectMenu
+from myModal import MyModal
 
 const { EmbedBuilder } = require.('discord.js')
 # Set up logging to the console
@@ -26,7 +27,6 @@ with open(token_path) as f:
     # If you get an error here, it means your token is formatted incorrectly. Did you put it in quotes?
     tokens = json.load(f)
     discord_token = tokens['discord']
-
 
 class ModBot(discord.Client):
     def __init__(self): 
@@ -108,6 +108,10 @@ class ModBot(discord.Client):
         # Only handle messages sent in the "group-#" channel
         if not message.channel.name == f'group-{self.group_num}':
             return
+
+        if message.content == "trigger":
+            print("Tripped the message detector!")
+            await interaction.response.send_modal(MyModal())
 
         # Forward the message to the mod channel
         mod_channel = self.mod_channels[message.guild.id]
