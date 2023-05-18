@@ -11,7 +11,7 @@ import pdb
 from selectmenu import SelectMenu
 from myModal import MyModal
 
-const { EmbedBuilder } = require.('discord.js')
+# const { EmbedBuilder } = require.('discord.js')
 # Set up logging to the console
 logger = logging.getLogger('discord')
 logger.setLevel(logging.DEBUG)
