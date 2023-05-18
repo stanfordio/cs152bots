@@ -111,7 +111,9 @@ class ModBot(discord.Client):
 
         if message.content == "trigger":
             print("Tripped the message detector!")
-            await interaction.response.send_modal(MyModal())
+            await message.channel.send("Click this button to report the message above", view=ReportButton)
+            return
+            # await interaction.response.send_modal(MyModal())
 
         # Forward the message to the mod channel
         mod_channel = self.mod_channels[message.guild.id]
