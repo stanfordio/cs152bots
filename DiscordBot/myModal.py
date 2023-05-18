@@ -8,7 +8,7 @@ import json
 import platform
 from discord import ui
 
-class MyModal(ui.Modal):
+class MyModal(ui.Modal, title="Reporting"):
 	question1 = ui.TextInput(label="This is a question with short text input", style=discord.TextStyle.short)
 	question2 = ui.TextInput(label="This is a question with long text input", style=discord.TextStyle.long)
 	@ui.button(label="It's a button")
