@@ -8,7 +8,7 @@ import re
 import requests
 from report import Report
 import pdb
-# from selectmenu import SelectMenu
+import mainMenu
 from myModal import MyModal
 from reportButton import ReportButton
 
@@ -75,10 +75,10 @@ class ModBot(discord.Client):
 
     async def handle_dm(self, message):
         # Handle a help message
-        if message.content == Report.HELP_KEYWORD:
-            view = SelectMenu()
+        # if message.content == Report.HELP_KEYWORD:
+        #     view = SelectMenu()
 
-            await message.channel.send(view=view)
+        #     await message.channel.send(view=view)
 
             # reply =  "Use the `report` command to begin the reporting process.\n"
             # reply += "Use the `cancel` command to cancel the report process.\n"
@@ -112,7 +112,11 @@ class ModBot(discord.Client):
 
         if message.content == "trigger":
             print("Tripped the message detector!")
-            await message.channel.send("Click this button to report the message above", view=ReportButton())
+            view = mainMenu.MainMenuButtons()
+            embed = mainMenu.MainMenuEmbed()
+
+            # await message.channel.send("Click this button to report the message above", view=ReportButton())
+            await message.channel.send(embed=embed, view=view)
             return
             # await interaction.response.send_modal(MyModal())
 
