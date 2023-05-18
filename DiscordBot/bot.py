@@ -10,6 +10,7 @@ from report import Report
 import pdb
 # from selectmenu import SelectMenu
 from myModal import MyModal
+from reportButton import ReportButton
 
 # const { EmbedBuilder } = require.('discord.js')
 # Set up logging to the console
