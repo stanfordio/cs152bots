@@ -13,11 +13,28 @@ class Report:
     CANCEL_KEYWORD = "cancel"
     HELP_KEYWORD = "help"
 
+class Category:
+    SPAM = 'spam'
+    VIOLENT= 'violent'
+    HARASSMENT = 'harassment'
+    NSFW = 'nsfw'
+    HATE_SPEECH = 'hate speech'
+    OTHER = 'other'
+
+class SpamType:
+    ADVERTISING = 'advertising'
+    INVITES = 'invites'
+    MALICIOUS_LINKS = 'malicious links'
+    OTHER = 'other'
+
     def __init__(self, client):
         self.state = State.REPORT_START
         self.client = client
         self.message = None
-    
+        self.repeat_offender = False
+        self.url_present = False
+        self.spam_type = None
+
     async def handle_message(self, message):
         '''
         This function makes up the meat of the user-side reporting flow. It defines how we transition between states and what 
@@ -55,11 +72,36 @@ class Report:
 
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.MESSAGE_IDENTIFIED
-            return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
-                    "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
-        
+            report = "I found this message:", "```" + message.author.name + ": " + message.content + "``` \n" + "Please reply with the options that closely match the reason for your report : \n"
+            report += "1. Spam; type 'spam' \n"
+            report += "2. Violent Content; type 'violent' \n"
+            report += "3. Bullying or Harassment; type 'harassment' \n"
+            report += "4. NSFW Content; type 'nsfw' \n"
+            report += "5. Hate Speech; type 'hate speech' \n"
+            report += "6. Other; type 'other' \n"
+            return [report]
+    
         if self.state == State.MESSAGE_IDENTIFIED:
-            return ["<insert rest of reporting flow here>"]
+            if message.content == Category.SPAM:
+                self.state = State.REPORT_COMPLETE
+                return ["Thank you for your report. I have notified the moderators."]
+            elif message.content == Category.VIOLENT:
+                self.state = State.REPORT_COMPLETE
+                return ["Thank you for your report. I have notified the moderators."]
+            elif message.content == Category.HARASSMENT:
+                self.state = State.REPORT_COMPLETE
+                return ["Thank you for your report. I have notified the moderators."]
+            elif message.content == Category.NSFW:
+                self.state = State.REPORT_COMPLETE
+                return ["Thank you for your report. I have notified the moderators."]
+            elif message.content == Category.HATE_SPEECH:
+                self.state = State.REPORT_COMPLETE
+                return ["Thank you for your report. I have notified the moderators."]
+            elif message.content == Category.OTHER:
+                self.state = State.REPORT_COMPLETE
+                return ["Thank you for your report. I have notified the moderators."]
+            else:
+                return ["I'm sorry, I didn't understand that. Please try again or say `cancel` to cancel."]
 
         return []
 
