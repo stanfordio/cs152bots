@@ -29,7 +29,7 @@ with open(token_path) as f:
     tokens = json.load(f)
     discord_token = tokens['discord']
 
-class ModBot(discord.Client):
+class ModBot(commands.Bot):
     def __init__(self): 
         intents = discord.Intents.default()
         intents.message_content = True
@@ -37,8 +37,8 @@ class ModBot(discord.Client):
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
-
-    async def on_ready(self):
+    
+    async def on_ready(self,):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
         for guild in self.guilds:
             print(f' - {guild.name}')
@@ -64,6 +64,9 @@ class ModBot(discord.Client):
         Currently the bot is configured to only handle messages that are sent over DMs or in your group's "group-#" channel. 
         '''
         # Ignore messages from the bot 
+        if message.content.startswith('.'):
+            await self.process_commands(message)
+
         if message.author.id == self.user.id:
             return
 
@@ -112,7 +115,7 @@ class ModBot(discord.Client):
 
         if message.content == "trigger":
             print("Tripped the message detector!")
-            view = mainMenu.MainMenuButtons()
+            view = mainMenu.MainMenuButtons(self.mod_channels[message.guild.id])
             embed = mainMenu.MainMenuEmbed()
 
             # await message.channel.send("Click this button to report the message above", view=ReportButton())
@@ -145,4 +148,11 @@ class ModBot(discord.Client):
 
 
 client = ModBot()
+
+@client.command()
+async def hello(ctx):
+    await ctx.reply("Hello!!!")
+
 client.run(discord_token)
+
+
