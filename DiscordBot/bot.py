@@ -6,7 +6,7 @@ import json
 import logging
 import re
 import requests
-from report import Report
+from report import Report, ModReport
 import pdb
 
 # Set up logging to the console
@@ -102,12 +102,24 @@ class ModBot(discord.Client):
         # Only handle messages sent in the "group-#" channel
         if not message.channel.name == f'group-{self.group_num}':
             return
-
+        responses = []
         # Forward the message to the mod channel
         mod_channel = self.mod_channels[message.guild.id]
         await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-        scores = self.eval_text(message.content)
-        await mod_channel.send(self.code_format(scores))
+        banned_user = message.author.name
+        # For now we are going to use this as a placeholder until Milestone 3. 
+        if ("CSAM" in message.content): # REPLACE in milestone 3 with image hashset or link list etc.
+            await message.delete()
+            await mod_channel.send(f"We have banned user {banned_user}, reported to NCMC and removed the content.")
+            return
+        # If we don't currently have an active report for this user, add one
+        if banned_user not in self.reports:
+            self.reports[banned_user] = ModReport(self)
+        responses = await self.reports[banned_user].handle_mod_message(message)
+        for r in responses:
+            await mod_channel.send(r)
+        # scores = self.eval_text(message.content)
+        # await mod_channel.send(self.code_format(scores))
 
     
     def eval_text(self, message):
