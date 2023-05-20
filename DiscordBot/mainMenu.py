@@ -1,9 +1,13 @@
 import discord
 from myModal import MyModal
 import uuid
+import asyncio
 
 tickets = {}
 
+"""
+Prompt: "Please select reason for reporting this content"
+"""
 class ReportSelection(discord.ui.View): 
     def __init__(self, tid):
         super().__init__()
@@ -20,7 +24,9 @@ class ReportSelection(discord.ui.View):
         tickets[self.tid] = {'reason': selection.values[0]}
         if selection.values[0] == 'Harassment':
             await interaction.followup.send(view=HarassmentSelection(self.tid),  ephemeral=True)
-
+"""
+Prompt: Harassment: Select Type
+"""
 class HarassmentSelection(discord.ui.View):
     def __init__(self, tid):
         super().__init__()
@@ -40,6 +46,9 @@ class HarassmentSelection(discord.ui.View):
         if selection.values[0] == 'Sextortion':
             await interaction.followup.send(view=SextortionTypeSelection(self.tid),  ephemeral=True)
 
+"""
+Prompt: Sextortion - Select Type of Content
+"""
 class SextortionTypeSelection(discord.ui.View):
     def __init__(self, tid):
         super().__init__()
@@ -54,6 +63,9 @@ class SextortionTypeSelection(discord.ui.View):
         await interaction.response.send_message(f'You chose {selection.values[0]}',  ephemeral=True)
         await interaction.followup.send('Are these images of you or someone else?', view=ImageOwnerSelection(self.tid),  ephemeral=True)
 
+"""
+Prompt: "Are these images of you or someone else?"
+"""
 class ImageOwnerSelection(discord.ui.View):
     def __init__(self, tid):
         super().__init__()
@@ -66,24 +78,73 @@ class ImageOwnerSelection(discord.ui.View):
     @discord.ui.button(label="Other", style=discord.ButtonStyle.red)
     async def OtherOwnerBtn(self, interaction: discord.Interaction, button:discord.ui.Button):
         tickets[self.tid]['image_owner'] = 'Other'
-        await interaction.response.send_message("You clicked the help button. We've sent your request to the mod-team", ephemeral=True)
+        await interaction.response.send_message("Do you know this other person?", 
+        view=KnowOtherSelection(self.tid), ephemeral=True)
 
+"""
+Prompt: "Do you know the user responsible?"
+"""
 class UserResponsibleSelection(discord.ui.View):
     def __init__(self, tid):
         super().__init__()
         self.tid = tid
 
-    async def owner_choice_callback(self, button:discord.ui.Button, interaction:discord.Interaction):
-        tickets[self.tid]['image_owner'] = button.custom_id
-
-    @discord.ui.button(label="Yes", style=discord.ButtonStyle.red, custom_id='Me')
+    async def owner_choice_callback(self, interaction:discord.Interaction, button:discord.ui.Button):
+        await interaction.response.send_message("You clicked the help button. We've sent your request to the mod-team", ephemeral=True)
+        tickets[self.tid]['know_responsible'] = button.label
+        for key, value in tickets.items():
+            print(key, value)
+    
+    @discord.ui.button(label="Yes", style=discord.ButtonStyle.red)
     async def MeOwnerBtn(self, interaction: discord.Interaction, button:discord.ui.Button):
-        tickets[self.tid]['know_responsible'] = 'Yes'
-        await interaction.response.send_message("You clicked the help button. We've sent your request to the mod-team", ephemeral=True)
-    @discord.ui.button(label="No", style=discord.ButtonStyle.red, custom_id='Other')
+        await self.owner_choice_callback(interaction, button)
+
+    @discord.ui.button(label="No", style=discord.ButtonStyle.red)
     async def OtherOwnerBtn(self, interaction: discord.Interaction, button:discord.ui.Button):
-        tickets[self.tid]['know_responsible'] = 'No'
-        await interaction.response.send_message("You clicked the help button. We've sent your request to the mod-team", ephemeral=True)
+        await self.owner_choice_callback(interaction, button)
+
+"""
+Prompt: "Do you know this other person?"
+"""
+class KnowOtherSelection(discord.ui.View):
+    def __init__(self, tid):
+        super().__init__()
+        self.tid = tid
+
+    async def know_other_choice_callback(self, interaction:discord.Interaction, button:discord.ui.Button):
+        await interaction.followup.send("You clicked the help button. We've sent your request to the mod-team", ephemeral=True)
+        for key, value in tickets.items():
+            print(key, value)
+        tickets[self.tid]['know_other'] = button.label
+
+    @discord.ui.button(label="Yes", style=discord.ButtonStyle.red)
+    async def KnowOtherBtn(self, interaction:discord.Interaction, button:discord.ui.Button):
+        UsernameModal = UsernameInputModal(self.tid)
+        await interaction.response.send_modal(UsernameModal)
+        await UsernameModal.wait()
+        await self.know_other_choice_callback(interaction, button)
+
+    @discord.ui.button(label="No", style=discord.ButtonStyle.red)
+    async def DKnowOtherBtn(self, interaction: discord.Interaction, button:discord.ui.Button):
+        await self.know_other_choice_callback(interaction, button)
+
+"""
+Prompt: "Do you know this other person?" > "Yes" > "Enter Username"
+"""
+class UsernameInputModal(discord.ui.Modal, title='Enter Username'):
+    def __init__(self, tid):
+        super().__init__()
+        self.tid = tid
+
+        self.value = None
+
+        self.add_item(discord.ui.TextInput(label="Username", style=discord.TextStyle.short))
+
+    async def on_submit(self, interaction: discord.Interaction):
+        tickets[self.tid]['other_username'] = self.children[0].value
+        await interaction.response.send_message("Thank you!")
+        self.stop()
+
 class MainMenuEmbed(discord.Embed):
     def __init__(self):
         super().__init__()
