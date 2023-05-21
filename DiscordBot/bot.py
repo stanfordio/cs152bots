@@ -1,6 +1,7 @@
 # bot.py
 import discord
 from discord.ext import commands
+from unidecode import unidecode
 import os
 import json
 import logging
@@ -25,6 +26,10 @@ with open(token_path) as f:
     tokens = json.load(f)
     discord_token = tokens['discord']
 
+def csam_detector(message):
+    if "CSAM_HASH" in unidecode(message):
+        return True
+    return False
 
 class ModBot(discord.Client):
     def __init__(self): 
@@ -53,7 +58,6 @@ class ModBot(discord.Client):
             for channel in guild.text_channels:
                 if channel.name == f'group-{self.group_num}-mod':
                     self.mod_channels[guild.id] = channel
-        
         
 
     async def on_message(self, message):
@@ -110,7 +114,7 @@ class ModBot(discord.Client):
             await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
         banned_user = message.author.name
         # For now we are going to use this as a placeholder until Milestone 3. 
-        if ("CSAM_HASH" in message.content): # REPLACE in milestone 3 with image hashset or link list etc.
+        if (csam_detector(message.content)): # REPLACE in milestone 3 with image hashset or link list etc.
             await message.delete()
             await mod_channel.send(f"We have banned user {banned_user}, reported to NCMEC and removed the content.")
             return
@@ -137,7 +141,7 @@ class ModBot(discord.Client):
 
     async def on_message_edit(self, before, after):
         if before.content != after.content:
-            if 'CSAM_HASH' in after.content:
+            if csam_detector(after.content):
                 await after.delete()
                 await self.mod_channels[after.guild.id].send(f"We have banned user {after.author.name}, reported to NCMEC and removed the content.")
                 return
