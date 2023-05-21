@@ -7,6 +7,7 @@ from typing import Union
 
 import discord
 from report import Report
+from unidecode import unidecode
 
 # Set up logging to the console
 logger = logging.getLogger("discord")
@@ -142,7 +143,8 @@ class ModBot(discord.Client):
         # Forward the message to the mod channel
         mod_channel = self.mod_channels[message.guild.id]
         await mod_channel.send(
-            f'Forwarded message:\n{message.author.name}: "{message.content}"'
+            f"Forwarded message:\n{message.author.name}:"
+            f" {self.clean_text(message.content)}"
         )
         scores = self.eval_text(message.content)
         await mod_channel.send(self.code_format(scores))
@@ -157,13 +159,22 @@ class ModBot(discord.Client):
         # Forward the message to the mod channel
         mod_channel = self.mod_channels[after.guild.id]
         await mod_channel.send(
-            f"Forwarded edited message by {after.author.name}:\n"
-            f"Before: {before.content if before else 'message not cached'}\n"
-            f"After: {after.content}"
+            self.clean_text(
+                f"Forwarded edited message by {after.author.name}:\nBefore:"
+                f" {self.clean_text(before.content) if before else 'message not cached'}\nAfter:"
+                f" {self.clean_text(after.content)}"
+            )
         )
         scores = self.eval_text(after.content)
         await mod_channel.send(self.code_format(scores))
 
+    def clean_text(self, text: str) -> str:
+        """
+        Removes special formatting from a text string so that it can be sent in a
+        human-readable format to the mod channel.
+        """
+        # TODO: maybe also include the raw message in the mod channel?
+        return unidecode(text)
 
     def eval_text(self, message):
         """'
