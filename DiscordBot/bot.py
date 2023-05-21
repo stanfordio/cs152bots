@@ -30,7 +30,7 @@ class ModBot(discord.Client):
     def __init__(self): 
         intents = discord.Intents.default()
         intents.message_content = True
-        super().__init__(command_prefix='.', intents=intents)
+        super().__init__(command_prefix='!', intents=intents)
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
@@ -53,6 +53,7 @@ class ModBot(discord.Client):
             for channel in guild.text_channels:
                 if channel.name == f'group-{self.group_num}-mod':
                     self.mod_channels[guild.id] = channel
+        
         
 
     async def on_message(self, message):
@@ -112,14 +113,26 @@ class ModBot(discord.Client):
             await message.delete()
             await mod_channel.send(f"We have banned user {banned_user}, reported to NCMC and removed the content.")
             return
-        # If we don't currently have an active report for this user, add one
-        if banned_user not in self.reports:
-            self.reports[banned_user] = ModReport(self)
-        responses = await self.reports[banned_user].handle_mod_message(message)
-        for r in responses:
-            await mod_channel.send(r)
-        # scores = self.eval_text(message.content)
-        # await mod_channel.send(self.code_format(scores))
+        
+        if (message.content.lower() == "report"):
+            # If we don't currently have an active report for this user, add one
+            if banned_user not in self.reports:
+                self.reports[banned_user] = Report(self)
+            elif self.reports[banned_user].report_complete():
+                self.reports.pop(banned_user)
+                self.reports[banned_user] = Report(self)
+
+            #User Report Flow
+            responses = await self.reports[banned_user].handle_message(message)
+            for r in responses:
+                await message.channel.send(r)
+
+            #Moderator Report Handling
+            responses = await self.reports[banned_user].handle_mod_message(message)
+            for r in responses:
+                await self.mod_channels[message.guild.id].send(r)
+            # scores = self.eval_text(message.content)
+            # await mod_channel.send(self.code_format(scores))
 
     
     def eval_text(self, message):
@@ -139,5 +152,5 @@ class ModBot(discord.Client):
         return "Evaluated: '" + text+ "'"
 
 
-client = ModBot()
-client.run(discord_token)
+bot = ModBot()
+bot.run(discord_token)
