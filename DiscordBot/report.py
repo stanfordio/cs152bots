@@ -75,11 +75,18 @@ class Report:
     HELP_KEYWORD = "help"
     YES_KEYWORDS = {"yes", "y"}
     NO_KEYWORDS = {"no", "n"}
+    SKIP_KEYWORD = "skip"
 
     REACT_STAGES = {
         State.AWAITING_REASON,
         State.AWAITING_ABUSE_TYPE,
         State.AWAITING_ABUSE_DESCRIPTION,
+    }
+
+    # keys are stages that can be skipped, values are the next stage to skip to
+    # this value is a placeholder - shouldn't actaully skip this stage was just testing it out
+    SKIP_STAGES = {
+        State.AWAITING_ABUSE_TYPE: State.AWAITING_ABUSE_DESCRIPTION
     }
 
     def __init__(self, client):
@@ -94,6 +101,11 @@ class Report:
         You're welcome to change anything you want; this skeleton is just here to get
         you started and give you a model for working with Discord.
         """
+        if message.content == self.SKIP_KEYWORD:
+            if self.state in self.SKIP_STAGES:
+                self.state = self.SKIP_STAGES[self.state]
+            else:
+                return ReportStartMessage.INVALID_SKIP
 
         if message.content == self.CANCEL_KEYWORD:
             self.state = State.REPORT_COMPLETE
@@ -173,6 +185,7 @@ class Report:
             return []
 
         if self.state == State.AWAITING_REASON:
+            # reaction was added to a different message
             if message.content != ReportDetailsMessage.REASON_FOR_REPORT:
                 return []
             
@@ -190,6 +203,7 @@ class Report:
                 return ReportDetailsMessage.ABUSE_TYPE
 
         if self.state == State.AWAITING_ABUSE_TYPE:
+            # reaction was added to a different message
             if message.content != ReportDetailsMessage.ABUSE_TYPE:
                 return []
             
@@ -207,6 +221,7 @@ class Report:
                 return ReportDetailsMessage.ABUSE_DESCRIPTION
 
         if self.state == State.AWAITING_ABUSE_DESCRIPTION:
+            # reaction was added to a different message
             if message.content != ReportDetailsMessage.ABUSE_DESCRIPTION:
                 return []
             

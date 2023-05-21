@@ -6,7 +6,7 @@ class GenericMessage:
     )
     INVALID_REACTION = (
         "I'm sorry, I didn't understand that reaction. Please try again or say `cancel`"
-        " to cancel."
+        " to cancel the report."
     )
     CANCELED = "Report canceled."
     REPORT_COMPLETE = (
@@ -34,15 +34,19 @@ class ReportStartMessage:
     )
     CHANNEL_DELETED = (
         "It seems this channel was deleted or never existed. Please try again or say"
-        " `cancel` to cancel."
+        " `cancel` to cancel the report."
     )
     MESSAGE_DELETED = (
         "It seems this message was deleted or never existed. Please try again or say"
-        " `cancel` to cancel."
+        " `cancel` to cancel the report."
     )
     MESSAGE_IDENTIFIED = (
         "I found this message:\n```{author}: {content}```\nIs"
         " this the message you want to report? Please say `yes` or `no`."
+    )
+    INVALID_SKIP = (
+        "I'm sorry. This question cannot be skipped. Please choose an option or say"
+         " `cancel` to cancel the report."
     )
 
 
