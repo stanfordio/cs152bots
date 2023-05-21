@@ -5,10 +5,14 @@ class GenericMessage:
         " cancel."
     )
     INVALID_REACTION = (
-        "I'm sorry, I didn't understand that reaction. Please try again or say `cancel` to cancel."
+        "I'm sorry, I didn't understand that reaction. Please try again or say `cancel`"
+        " to cancel."
     )
     CANCELED = "Report canceled."
-    UNSUPPORTED_REPORT = "Thank you for reporting."
+    REPORT_COMPLETE = (
+        "Thank you for reporting this activity. Our moderation team will review your"
+        " report and contact you if needed. No further action is required on your part."
+    )
 
 
 class ReportStartMessage:
@@ -61,7 +65,8 @@ class ReportDetailsMessage:
         " self-harm\n3️⃣ - Hate speech\n4️⃣ - Other"
     )
     ABUSE_DESCRIPTION = (
-        "Please select the description that best explains the situation. React to this message with"
-        " the corresponding emoji.\n1️⃣ - The reporting user is receiving sexually explicit content (images, text)\n"
-        "2️⃣ - The reporting user is receiving unwanted requests involving sexually explicit content"
+        "Please select the description that best explains the situation. React to this"
+        " message with the corresponding emoji.\n1️⃣ - The reporting user is receiving"
+        " sexually explicit content (images, text)\n2️⃣ - The reporting user is receiving"
+        " unwanted requests involving sexually explicit content"
     )

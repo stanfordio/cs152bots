@@ -76,7 +76,11 @@ class Report:
     YES_KEYWORDS = {"yes", "y"}
     NO_KEYWORDS = {"no", "n"}
 
-    REACT_STAGES = {State.AWAITING_REASON, State.AWAITING_ABUSE_TYPE, State.AWAITING_ABUSE_DESCRIPTION}
+    REACT_STAGES = {
+        State.AWAITING_REASON,
+        State.AWAITING_ABUSE_TYPE,
+        State.AWAITING_ABUSE_DESCRIPTION,
+    }
 
     def __init__(self, client):
         self.state = State.REPORT_START
@@ -119,7 +123,7 @@ class Report:
 
             # save the message for later
             self.message = message.author.name + ": " + message.content
-            
+
             return ReportStartMessage.MESSAGE_IDENTIFIED.format(
                 author=message.author.name, content=message.content
             )
@@ -154,7 +158,7 @@ class Report:
 
         if self.state == State.AWAITING_ABUSE_TYPE:
             return ReportDetailsMessage.ABUSE_TYPE
-        
+
         if self.state == State.AWAITING_ABUSE_DESCRIPTION:
             return ReportDetailsMessage.ABUSE_DESCRIPTION
 
@@ -176,7 +180,7 @@ class Report:
                 ]
             elif str(emoji.name) != "1️⃣":
                 self.state = State.REPORT_COMPLETE
-                return GenericMessage.UNSUPPORTED_REPORT
+                return GenericMessage.REPORT_COMPLETE
             else:
                 # TODO: save the reason for later
                 self.state = State.AWAITING_ABUSE_TYPE
@@ -190,12 +194,12 @@ class Report:
                 ]
             elif str(emoji.name) != "1️⃣":
                 self.state = State.REPORT_COMPLETE
-                return GenericMessage.UNSUPPORTED_REPORT
+                return GenericMessage.REPORT_COMPLETE
             else:
                 # TODO: save the abuse type for later
                 self.state = State.AWAITING_ABUSE_DESCRIPTION
                 return ReportDetailsMessage.ABUSE_DESCRIPTION
-            
+
         if self.state == State.AWAITING_ABUSE_DESCRIPTION:
             if str(emoji.name) not in {"1️⃣", "2️⃣"}:
                 return [
@@ -206,6 +210,8 @@ class Report:
                 # TODO: save the abuse description for later
                 self.state = State.AWAITING_UNWANTED_REQUESTS
                 # return ReportDetailsMessage.UNWANTED_REQUESTS
+
+        return []
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
