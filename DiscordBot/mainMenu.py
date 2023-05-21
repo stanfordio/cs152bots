@@ -3,10 +3,13 @@ from myModal import MyModal
 import uuid
 import time
 
-
 tickets = {}
 
-async def create_completionEmbed(bot, tid):
+def get_drop_down_options(elems : dict[str, str]) -> list[discord.SelectOption]:
+        return [discord.SelectOption(label=l, description=d) for l, d in elems.items()]
+
+# TODO: figure out what bot's type is
+async def create_completionEmbed(bot, tid : int):
     embed = CompletionEmbed(bot, tid)
 
     if 'message_link' in tickets[tid].keys():
@@ -23,12 +26,14 @@ async def create_completionEmbed(bot, tid):
     return embed
 
 class CompletionEmbed(discord.Embed):
-    def __init__(self, bot, tid):
+    def __init__(self, bot, tid : int):
         super().__init__()
         self.tid = tid
         self.bot = bot
         self.title = 'Summary of Report Request'
-        self.description = '"Thank you. We will investigate further. Please expect a response within the next 36 hours."'
+        self.description = \
+                '"Thank you. We will investigate further. \
+                Please expect a response within the next 36 hours."'
         self.add_field(name='Ticket ID', value=tid)
 
 """
@@ -39,14 +44,20 @@ class ReportSelection(discord.ui.View):
         super().__init__()
         self.bot = bot
         self.tid = tid
-    @discord.ui.select(placeholder='Please select reason for reporting this content', options=[
-            discord.SelectOption(label='Harassment', description='description1'),
-            discord.SelectOption(label='Spam', description='description2'),
-            discord.SelectOption(label='Offensive Content', description='description3'),
-            discord.SelectOption(label='Imminent Danger', description='description4'),
-            discord.SelectOption(label='Other', description='description5')
-        ])
-    async def selection_callback(self, interaction:discord.Interaction, selection:discord.ui.Select):
+
+    
+    @discord.ui.select(placeholder='Please select reason for reporting this content', \
+        options=get_drop_down_options({ \
+                'Harassment'         : 'description1', \
+                'Spam'               : 'description2', \
+                'Offensive Content'  : 'description3', \
+                'Imminent Danger'    : 'description4', \
+                'Other'              : 'description5'
+        }) \
+    )
+    async def selection_callback(self, \
+        interaction : discord.Interaction, \
+        selection : discord.ui.Select):
         # await interaction.response.send_message(f'You chose {selection.values[0]}',  ephemeral=True)
 
         tickets[self.tid] = {'reason': selection.values[0]}
@@ -87,13 +98,15 @@ class HarassmentSelection(discord.ui.View):
         self.tid = tid
         self.bot = bot
 
-    @discord.ui.select(placeholder='Select Type', options=[
-            discord.SelectOption(label='Sextortion', description='description1'),
-            discord.SelectOption(label='Hate Speech', description='description2'),
-            discord.SelectOption(label='Encouraging Self-harm', description='description3'),
-            discord.SelectOption(label='Threats', description='description4'),
-            discord.SelectOption(label='Other', description='description5')
-        ])
+    @discord.ui.select(placeholder='Select Type',
+         options=get_drop_down_options({
+            'Sextortion'                : 'description1',
+            'Hate Speech'               : 'description2',
+            'Encouraging Self-harm'     : 'description3',
+            'Threats'                   : 'description4',
+            'Other'                     : 'description5'
+        })
+    )
     async def selection_callback(self, interaction:discord.Interaction, selection:discord.ui.Select):
         tickets[self.tid]['harassment_type'] = selection.values[0]
 
