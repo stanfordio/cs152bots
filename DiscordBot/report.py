@@ -93,7 +93,7 @@ class Report:
 
         if message.content == self.CANCEL_KEYWORD:
             self.state = State.REPORT_COMPLETE
-            return GenericMessage.CANCELLED
+            return GenericMessage.CANCELED
 
         if self.state == State.REPORT_START:
             self.state = State.AWAITING_MESSAGE
@@ -116,6 +116,10 @@ class Report:
                 return ReportStartMessage.MESSAGE_DELETED
 
             self.state = State.MESSAGE_IDENTIFIED
+
+            # save the message for later
+            self.message = message.author.name + ": " + message.content
+            
             return ReportStartMessage.MESSAGE_IDENTIFIED.format(
                 author=message.author.name, content=message.content
             )
@@ -123,7 +127,6 @@ class Report:
         if self.state == State.MESSAGE_IDENTIFIED:
             if message.content.lower() in self.YES_KEYWORDS:
                 self.state = State.AWAITING_USER_DETAILS
-                # TODO: save the message for later
                 return UserDetailsMessage.ON_BEHALF_OF
             elif message.content.lower() in self.NO_KEYWORDS:
                 self.state = State.AWAITING_MESSAGE
@@ -171,6 +174,9 @@ class Report:
                     GenericMessage.INVALID_REACTION,
                     ReportDetailsMessage.REASON_FOR_REPORT,
                 ]
+            elif str(emoji.name) != "1️⃣":
+                self.state = State.REPORT_COMPLETE
+                return GenericMessage.UNSUPPORTED_REPORT
             else:
                 # TODO: save the reason for later
                 self.state = State.AWAITING_ABUSE_TYPE
@@ -182,6 +188,9 @@ class Report:
                     GenericMessage.INVALID_REACTION,
                     ReportDetailsMessage.ABUSE_TYPE,
                 ]
+            elif str(emoji.name) != "1️⃣":
+                self.state = State.REPORT_COMPLETE
+                return GenericMessage.UNSUPPORTED_REPORT
             else:
                 # TODO: save the abuse type for later
                 self.state = State.AWAITING_ABUSE_DESCRIPTION

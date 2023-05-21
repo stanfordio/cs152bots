@@ -5,9 +5,10 @@ class GenericMessage:
         " cancel."
     )
     INVALID_REACTION = (
-        "I'm sorry, I didn't that reaction. Please try again or say `cancel` to cancel."
+        "I'm sorry, I didn't understand that reaction. Please try again or say `cancel` to cancel."
     )
     CANCELED = "Report canceled."
+    UNSUPPORTED_REPORT = "Thank you for reporting."
 
 
 class ReportStartMessage:
