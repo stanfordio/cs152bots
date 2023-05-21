@@ -286,6 +286,13 @@ class ModReport:
             return [reply]
         
         if self.state == State.AWAITING_MESSAGE:
+            if m == "yes":
+                reply = "Please indicate which type of CSAM material this content is.\n"
+                reply += "1: Child grooming \n"
+                reply += "2: Offering to share CSAM content\n"
+                reply += "3: CSAM solicitiation\n"
+                reply += "4: Offering to sell CSAM\n"
+                return [reply]
             # Parse out the three ID strings from the message link
             m = re.search('/(\d+)/(\d+)/(\d+)', message.content)
             if not m:
