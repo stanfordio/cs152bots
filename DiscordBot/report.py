@@ -268,57 +268,91 @@ class ModReport:
         self.state = State.REPORT_START
         self.client = client
         self.message = None
-    
+        self.solicitation_flag = False
+        self.stage = 0
+        self.original_message = None
+
     async def handle_mod_message(self, message):
         '''
         This function makes up the meat of the user-side reporting flow. It defines how we transition between states and what 
         prompts to offer at each of those states. You're welcome to change anything you want; this skeleton is just here to
         get you started and give you a model for working with Discord. 
         '''
-
-        if message.content == self.CANCEL_KEYWORD:
+        if self.stage == -1:
             self.state = State.REPORT_COMPLETE
-            return ["Report cancelled."]
-        
-        if self.state == State.REPORT_START: 
+            return ["Your report has been completed."]
+        if self.stage == 0: 
+            self.original_message = message
             reply = "Is this content CSAM? Please reply 'yes' or 'no'."
-            self.state = State.AWAITING_MESSAGE
+            self.stage = 2
             return [reply]
-        
-        if self.state == State.AWAITING_MESSAGE:
-            if m == "yes":
+        if self.stage == 2:
+            if message.content == "yes" or message.content == "Yes":
                 reply = "Please indicate which type of CSAM material this content is.\n"
                 reply += "1: Child grooming \n"
                 reply += "2: Offering to share CSAM content\n"
                 reply += "3: CSAM solicitiation\n"
                 reply += "4: Offering to sell CSAM\n"
+                reply += "5: Other"
+                self.stage = 3
                 return [reply]
-            # Parse out the three ID strings from the message link
-            m = re.search('/(\d+)/(\d+)/(\d+)', message.content)
-            if not m:
-                return ["I'm sorry, I couldn't read that link. Please try again or say `cancel` to cancel."]
-            
-
-            guild = self.client.get_guild(int(m.group(1)))
-            if not guild:
-                return ["I cannot accept reports of messages from guilds that I'm not in. Please have the guild owner add me to the guild and try again."]
-            channel = guild.get_channel(int(m.group(2)))
-            if not channel:
-                return ["It seems this channel was deleted or never existed. Please try again or say `cancel` to cancel."]
-            try:
-                message = await channel.fetch_message(int(m.group(3)))
-            except discord.errors.NotFound:
-                return ["It seems this message was deleted or never existed. Please try again or say `cancel` to cancel."]
-
-            # Here we've found the message - it's up to you to decide what to do next!
-            self.state = State.MESSAGE_IDENTIFIED
-            return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
-                    "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
-        
-        
-        if self.state == State.MESSAGE_IDENTIFIED:
-            return ["<insert rest of reporting flow here>"]
-
+            elif message.content == "no" or message.content == "No":
+                self.stage = -1
+                return ["Thank you for your help - please use the DM reporting flow."]
+            return ["Please reply yes or no."]
+        if self.stage == 3:
+            legal_messages = [i+1 for i in range(5)]
+            if int(message.content) not in legal_messages:
+                self.stage = 2
+                return ["Please select an option above."]
+            if int(message.content) <= 1:
+                self.stage = 4
+                return ["Is this content targeted toward a person age 18 or older? Please reply yes or no."]
+            elif int(message.content) < 5:
+                self.solicitation_flag = True
+                self.stage = 4
+                reply = "Does it match levels 2 or above of the COPINE scale?\n"
+                reply += "1: Yes\n"
+                reply += "2: No\n"
+                reply += "3: No, but the content is in an inappropriate context.\n"
+                return [reply]
+            return ["Please reach out directly to our higher level review team."]
+        if self.stage == 4:
+            print(self.solicitation_flag)
+            print(message.content)
+            if self.solicitation_flag is False:
+                if message.content == "yes" or message.content == "Yes":
+                    self.stage = -1
+                    self.state = State.REPORT_COMPLETE
+                    return ["This material does not appear to be CSAM. No action has been taken at this time. Please reach out to our Trust and Safety team if you have further concerns."]
+                elif message.content == "no" or message.content == "No":
+                    self.stage = -1
+                    self.state = State.REPORT_COMPLETE
+                    reply = "Thank you for your report. We take these matters very seriously.\n"
+                    reply += "We have reported this content to the National Center for Missing & Exploited Children\n"
+                    reply += "and banned this user. The content has been removed."
+                    if (self.original_message is not None):
+                        await self.original_message.delete()
+                    return [reply]
+            else:
+                if int(message.content) == 3:
+                    self.stage = -1
+                    self.state = State.REPORT_COMPLETE
+                    return ["We have flagged this content and have sent it to our dedicated higher-level review team. Thank you for your report."]
+                elif int(message.content) == 1:
+                    self.stage = -1
+                    self.state = State.REPORT_COMPLETE
+                    reply = "Thank you for your report. We take these matters very seriously.\n"
+                    reply += "We have reported this content to the National Center for Missing & Exploited Children\n"
+                    reply += "and banned this user. The content has been removed."
+                    if (self.original_message is not None):
+                        await self.original_message.delete()
+                    return [reply]
+                else:
+                    self.stage = -1
+                    self.state = State.REPORT_COMPLETE
+                    return ["This material does not appear to be CSAM. No action has been taken at this time. Please reach out to our Trust and Safety team if you have further concerns."]
+                    # Not implementing bans since we are in 152 server. - sammym
         return []
 
     def report_complete(self):

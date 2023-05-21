@@ -101,36 +101,37 @@ class ModBot(discord.Client):
 
     async def handle_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel
-        if not message.channel.name == f'group-{self.group_num}':
-            return
+        # if not message.channel.name == f'group-{self.group_num}':
+        #     return
         responses = []
         # Forward the message to the mod channel
-        mod_channel = self.mod_channels[message.guild.id]
-        await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
+        if message.channel.name == f'group-{self.group_num}':
+            mod_channel = self.mod_channels[message.guild.id]
+            await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
         banned_user = message.author.name
         # For now we are going to use this as a placeholder until Milestone 3. 
-        if ("CSAM" in message.content): # REPLACE in milestone 3 with image hashset or link list etc.
+        if ("CSAM_HASH" in message.content): # REPLACE in milestone 3 with image hashset or link list etc.
             await message.delete()
-            await mod_channel.send(f"We have banned user {banned_user}, reported to NCMC and removed the content.")
+            await mod_channel.send(f"We have banned user {banned_user}, reported to NCMEC and removed the content.")
             return
         
-        if (message.content.lower() == "report"):
+        # if (message.content.lower() == "report"):
             # If we don't currently have an active report for this user, add one
-            if banned_user not in self.reports:
-                self.reports[banned_user] = Report(self)
-            elif self.reports[banned_user].report_complete():
-                self.reports.pop(banned_user)
-                self.reports[banned_user] = Report(self)
+        if banned_user not in self.reports:
+            self.reports[banned_user] = ModReport(self)
+        elif self.reports[banned_user].report_complete():
+            self.reports.pop(banned_user)
+            self.reports[banned_user] = ModReport(self)
 
-            #User Report Flow
-            responses = await self.reports[banned_user].handle_message(message)
-            for r in responses:
-                await message.channel.send(r)
+            # #User Report Flow
+            # responses = await self.reports[banned_user].handle_message(message)
+            # for r in responses:
+            #     await message.channel.send(r)
 
             #Moderator Report Handling
-            responses = await self.reports[banned_user].handle_mod_message(message)
-            for r in responses:
-                await self.mod_channels[message.guild.id].send(r)
+        responses = await self.reports[banned_user].handle_mod_message(message)
+        for r in responses:
+            await self.mod_channels[message.guild.id].send(r)
             # scores = self.eval_text(message.content)
             # await mod_channel.send(self.code_format(scores))
 
