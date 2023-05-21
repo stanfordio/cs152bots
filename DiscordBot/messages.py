@@ -13,7 +13,7 @@ class GenericMessage:
 class ReportStartMessage:
     START = (
         "Thank you for starting the reporting process. Say `help` at any time for more"
-        " information."
+        " information or `cancel` to cancel the report."
     )
     REQUEST_MSG = (
         "Please copy paste the link to the message you want to report.\nYou can obtain"

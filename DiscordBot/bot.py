@@ -8,6 +8,7 @@ from typing import Union
 import discord
 from report import Report
 from unidecode import unidecode
+import emoji
 
 # Set up logging to the console
 logger = logging.getLogger("discord")
@@ -134,8 +135,11 @@ class ModBot(discord.Client):
             responses = [responses]
 
         for r in responses:
-            await message.channel.send(r)
-            # TODO: if the report class returned a message with reactions, somehow make the bot add those reactions to make it easier for the user to respond
+            sent_message = await message.channel.send(r)
+            # if the report class returned a message with reactions, add those reactions to the message
+            emojis = emoji.emoji_list(r)
+            for e in emojis:
+                await sent_message.add_reaction(e["emoji"])
 
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():
