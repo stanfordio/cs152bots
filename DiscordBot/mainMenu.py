@@ -6,22 +6,38 @@ import time
 
 tickets = {}
 
-"""
-Prompt: "Please select reason for reporting this content"
-"""
+async def create_completionEmbed(bot, tid):
+    embed = CompletionEmbed(bot, tid)
+
+    if 'message_link' in tickets[tid].keys():
+        # link = 'https://discord.com/channels/1103033282779676743/1103033287250804838/1109919564701126787'
+        link = tickets[tid]['message_link'].split('/')
+        message = await bot.get_guild(int(link[-3])).get_channel(int(link[-2])).fetch_message(int(link[-1]))
+
+        tickets[tid]['message'] = message.content
+        tickets[tid]['msg_user_id'] = message.author
+
+    for key, value in tickets[tid].items():
+        embed.add_field(name=key, value=value)
+    
+    return embed
 
 class CompletionEmbed(discord.Embed):
-    def __init__(self, tid):
+    def __init__(self, bot, tid):
         super().__init__()
         self.tid = tid
+        self.bot = bot
         self.title = 'Summary of Report Request'
         self.description = '"Thank you. We will investigate further. Please expect a response within the next 36 hours."'
         self.add_field(name='Ticket ID', value=tid)
-        self.add_field(name='Reason for Reporting', value=tickets[tid]['reason'])
 
+"""
+Prompt: "Please select reason for reporting this content"
+"""
 class ReportSelection(discord.ui.View): 
-    def __init__(self, tid):
+    def __init__(self, bot, tid):
         super().__init__()
+        self.bot = bot
         self.tid = tid
     @discord.ui.select(placeholder='Please select reason for reporting this content', options=[
             discord.SelectOption(label='Harassment', description='description1'),
@@ -31,17 +47,45 @@ class ReportSelection(discord.ui.View):
             discord.SelectOption(label='Other', description='description5')
         ])
     async def selection_callback(self, interaction:discord.Interaction, selection:discord.ui.Select):
-        await interaction.response.send_message(f'You chose {selection.values[0]}',  ephemeral=True)
+        # await interaction.response.send_message(f'You chose {selection.values[0]}',  ephemeral=True)
+
         tickets[self.tid] = {'reason': selection.values[0]}
+        reason = ExplanationModal(selection.values[0], self.tid)
+        await interaction.response.send_modal(reason)
+        await reason.wait()
+        time.sleep(1)
+
         if selection.values[0] == 'Harassment':
-            await interaction.followup.send(view=HarassmentSelection(self.tid),  ephemeral=True)
+            await interaction.followup.send("You chose: Harassment", view=HarassmentSelection(self.bot, self.tid), ephemeral=True)
+        else:
+            # reason = ExplanationModal(selection.values[0], self.tid)
+            # await interaction.response.send_modal(reason)
+            # await reason.wait()
+            # time.sleep(3)
+            await interaction.followup.send(embed=await create_completionEmbed(self.bot, self.tid), ephemeral=True) 
+
+
+class ExplanationModal(discord.ui.Modal):
+    def __init__(self, choice, tid):
+        super().__init__(title=f"Your report reasoning is: {choice}")
+        self.tid = tid
+
+        self.add_item(discord.ui.TextInput(label="Paste Message Link ", style=discord.TextStyle.short))
+        self.add_item(discord.ui.TextInput(label="Please explain your reasoning", style=discord.TextStyle.long))
+
+    async def on_submit(self, interaction: discord.Interaction):
+        tickets[self.tid]['message_link'] = self.children[0].value
+        tickets[self.tid]['reason'] = self.children[1].value
+        await interaction.response.send_message("Thank you for your response!")
+        self.stop()
 """
 Prompt: Harassment: Select Type
 """
 class HarassmentSelection(discord.ui.View):
-    def __init__(self, tid):
+    def __init__(self, bot, tid):
         super().__init__()
         self.tid = tid
+        self.bot = bot
 
     @discord.ui.select(placeholder='Select Type', options=[
             discord.SelectOption(label='Sextortion', description='description1'),
@@ -54,16 +98,20 @@ class HarassmentSelection(discord.ui.View):
         tickets[self.tid]['harassment_type'] = selection.values[0]
 
         await interaction.response.send_message(f'You chose {selection.values[0]}',  ephemeral=True)
+
         if selection.values[0] == 'Sextortion':
-            await interaction.followup.send(view=SextortionTypeSelection(self.tid),  ephemeral=True)
+            await interaction.followup.send(view=SextortionTypeSelection(self.bot, self.tid),  ephemeral=True)
+        else:
+            await interaction.followup.send(embed=await create_completionEmbed(self.bot, self.tid), ephemeral=True)
 
 """
 Prompt: Sextortion - Select Type of Content
 """
 class SextortionTypeSelection(discord.ui.View):
-    def __init__(self, tid):
+    def __init__(self, bot, tid):
         super().__init__()
         self.tid = tid
+        self.bot = bot
 
     @discord.ui.select(placeholder='Select Type of Content', options=[
             discord.SelectOption(label='Content includes explicit images', description='description1'),
@@ -72,36 +120,38 @@ class SextortionTypeSelection(discord.ui.View):
     async def sextortype_callback(self, interaction:discord.Interaction, selection:discord.ui.Select):
         tickets[self.tid]['sextortion_content'] = selection.values[0]
         await interaction.response.send_message(f'You chose {selection.values[0]}',  ephemeral=True)
-        await interaction.followup.send('Are these images of you or someone else?', view=ImageOwnerSelection(self.tid),  ephemeral=True)
+        await interaction.followup.send('Are these images of you or someone else?', view=ImageOwnerSelection(self.bot, self.tid),  ephemeral=True)
 
 """
 Prompt: "Are these images of you or someone else?"
 """
 class ImageOwnerSelection(discord.ui.View):
-    def __init__(self, tid):
+    def __init__(self, bot, tid):
         super().__init__()
         self.tid = tid
+        self.bot = bot
 
     @discord.ui.button(label='Me', style=discord.ButtonStyle.red)
     async def MeOwnerBtn(self, interaction: discord.Interaction, button:discord.ui.Button):
         tickets[self.tid]['image_owner'] = 'Me'
-        await interaction.response.send_message("Do you know the user responsible?", view=UserResponsibleSelection(self.tid), ephemeral=True)
+        await interaction.response.send_message("Do you know the user responsible?", view=UserResponsibleSelection(self.bot, self.tid), ephemeral=True)
     @discord.ui.button(label="Other", style=discord.ButtonStyle.red)
     async def OtherOwnerBtn(self, interaction: discord.Interaction, button:discord.ui.Button):
         tickets[self.tid]['image_owner'] = 'Other'
         await interaction.response.send_message("Do you know this other person?", 
-        view=KnowOtherSelection(self.tid), ephemeral=True)
+        view=KnowOtherSelection(self.bot, self.tid), ephemeral=True)
 
 """
 Prompt: "Do you know the user responsible?"
 """
 class UserResponsibleSelection(discord.ui.View):
-    def __init__(self, tid):
+    def __init__(self, bot, tid):
         super().__init__()
         self.tid = tid
+        self.bot = bot
 
     async def owner_choice_callback(self, interaction:discord.Interaction, button:discord.ui.Button):
-        await interaction.response.send_message("Have you shared explicit images with this user?", view=SharedExplicitSelection(self.tid), ephemeral=True)
+        await interaction.response.send_message("Have you shared explicit images with this user?", view=SharedExplicitSelection(self.bot, self.tid), ephemeral=True)
         tickets[self.tid]['know_responsible'] = button.label
         # for key, value in tickets.items():
         #     print(key, value)
@@ -118,31 +168,33 @@ class UserResponsibleSelection(discord.ui.View):
 Prompt: "Have you shared explicit images with this user?"
 """
 class SharedExplicitSelection(discord.ui.View):
-    def __init__(self, tid):
+    def __init__(self, bot, tid):
         super().__init__()
         self.tid = tid
+        self.bot = bot
     
     @discord.ui.button(label="Yes", style=discord.ButtonStyle.red)
     async def MeOwnerBtn(self, interaction: discord.Interaction, button:discord.ui.Button):
         tickets[self.tid]['shared_explicit'] = 'Yes'
-        await interaction.response.send_message("Do you know what images this user has?", view=KnowImageSelection(self.tid), ephemeral=True)
+        await interaction.response.send_message("Do you know what images this user has?", view=KnowImageSelection(self.bot, self.tid), ephemeral=True)
 
     @discord.ui.button(label="No", style=discord.ButtonStyle.red)
     async def OtherOwnerBtn(self, interaction: discord.Interaction, button:discord.ui.Button):
         tickets[self.tid]['shared_explicit'] = 'No'
-        await interaction.response.send_message(embed=CompletionEmbed(self.tid), ephemeral=True)
+        await interaction.response.send_message(embed=await create_completionEmbed(self.bot, self.tid), ephemeral=True)
 
 """
 Prompt: "Do you know what images this user has?"
 """
 class KnowImageSelection(discord.ui.View):
-    def __init__(self, tid):
+    def __init__(self, bot, tid):
         super().__init__()
         self.tid = tid
+        self.bot = bot
     
     async def know_image_callback(self, interaction:discord.Interaction, button:discord.ui.Button):
         tickets[self.tid]['know_image'] = button.label
-        await interaction.followup.send(embed=CompletionEmbed(self.tid), ephemeral=True)
+        await interaction.followup.send(embed=await create_completionEmbed(self.bot, self.tid), ephemeral=True)
 
     @discord.ui.button(label="Yes", style=discord.ButtonStyle.red)
     async def MeOwnerBtn(self, interaction: discord.Interaction, button:discord.ui.Button):
@@ -158,12 +210,13 @@ class KnowImageSelection(discord.ui.View):
 Prompt: "Do you know this other person?"
 """
 class KnowOtherSelection(discord.ui.View):
-    def __init__(self, tid):
+    def __init__(self, bot, tid):
         super().__init__()
         self.tid = tid
+        self.bot = bot
 
     async def know_other_choice_callback(self, interaction:discord.Interaction, button:discord.ui.Button):
-        await interaction.followup.send("Did the user post an explicit image?",view=PostExplicitSelection(self.tid), ephemeral=True)
+        await interaction.followup.send("Did the user post an explicit image?",view=PostExplicitSelection(self.bot, self.tid), ephemeral=True)
         for key, value in tickets.items():
             print(key, value)
         tickets[self.tid]['know_other'] = button.label
@@ -200,12 +253,13 @@ class UsernameInputModal(discord.ui.Modal, title='Enter Username'):
 Prompt: "Did the user post an explicit image?"
 """
 class PostExplicitSelection(discord.ui.View):
-    def __init__(self, tid):
+    def __init__(self, bot, tid):
         super().__init__()
         self.tid = tid
+        self.bot = bot
     
     async def post_explicit_callback(self, interaction:discord.Interaction, button:discord.ui.Button):
-        await interaction.followup.send(embed=CompletionEmbed(self.tid), ephemeral=True)
+        await interaction.followup.send(embed=await create_completionEmbed(self.bot, self.tid), ephemeral=True)
         tickets[self.tid]['post_explicit'] = button.label
 
     @discord.ui.button(label="Yes", style=discord.ButtonStyle.red)
@@ -217,6 +271,9 @@ class PostExplicitSelection(discord.ui.View):
     async def OtherOwnerBtn(self, interaction: discord.Interaction, button:discord.ui.Button):
         await self.post_explicit_callback(interaction, button)
 
+"""
+Embed to redirect to takeitdown or other external image removal resources
+"""
 class ImageRemovalEmbed(discord.Embed):
     def __init__(self):
         super().__init__(title='Removal/Preventation Resources', url='https://takeitdown.ncmec.org/')
@@ -232,9 +289,9 @@ class MainMenuEmbed(discord.Embed):
 
 
 class MainMenuButtons(discord.ui.View):
-    def __init__(self, mod_channel):
+    def __init__(self, bot, mod_channel):
         super().__init__()
-        self.value = None
+        self.bot = bot
         self.mod_channel = mod_channel
         self.add_item(discord.ui.Button(label='Help', style=discord.ButtonStyle.link, url='https://www.stopsextortion.com/get-help/'))
 
@@ -242,7 +299,7 @@ class MainMenuButtons(discord.ui.View):
     async def reportBtn(self, interaction: discord.Interaction, button:discord.ui.Button):
         # await interaction.response.send_modal(MyModal())
         tid = uuid.uuid4()
-        await interaction.response.send_message(view=ReportSelection(tid))
+        await interaction.response.send_message(view=ReportSelection(self.bot, tid))
     
     # @discord.ui.button(label="Help", style=discord.ButtonStyle.red)
     # async def helpBtn(self, interaction: discord.Interaction, button:discord.ui.Button):

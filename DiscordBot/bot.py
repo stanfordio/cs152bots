@@ -42,7 +42,7 @@ class ModBot(commands.Bot):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
         for guild in self.guilds:
             print(f' - {guild.name}')
-        print('Press Ctrl-C to quit.')
+        print('Press Ctrl-C to quit.')      
 
         # Parse the group number out of the bot's name
         match = re.search('[gG]roup (\d+) [bB]ot', self.user.name)
@@ -115,7 +115,7 @@ class ModBot(commands.Bot):
 
         if message.content == "trigger":
             print("Tripped the message detector!")
-            view = mainMenu.MainMenuButtons(self.mod_channels[message.guild.id])
+            view = mainMenu.MainMenuButtons(self, self.mod_channels[message.guild.id])
             embed = mainMenu.MainMenuEmbed()
 
             # await message.channel.send("Click this button to report the message above", view=ReportButton())
