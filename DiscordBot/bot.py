@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import re
+from typing import Union
 
 import discord
 from report import Report
@@ -72,6 +73,37 @@ class ModBot(discord.Client):
         else:
             await self.handle_dm(message)
 
+    async def on_raw_message_edit(self, payload: discord.RawMessageUpdateEvent) -> None:
+        """
+        This function is called when a message is edited. It's called regardless of if
+        the message is in the client's message cache or not.
+        """
+        # Ignore messages that aren't sent in a server
+        if payload.guild_id is None:
+            return
+
+        # Ignore messages that are cached, on_message_edit will handle those
+        if payload.cached_message:
+            return
+
+        # Get the message that was edited
+        channel = self.get_channel(payload.channel_id)
+        message = await channel.fetch_message(payload.message_id)
+
+        await self.handle_channel_message_edit(None, message)
+
+    async def on_message_edit(
+        self, before: discord.Message, after: discord.Message
+    ) -> None:
+        """
+        This is called when a message is edited and found in this client's message cache.
+        """
+        # Ignore messages that aren't sent in a server
+        if before.guild is None:
+            return
+
+        await self.handle_channel_message_edit(before, after)
+
     async def handle_dm(self, message):
         # Handle a help message
         if message.content == Report.HELP_KEYWORD:
@@ -114,6 +146,24 @@ class ModBot(discord.Client):
         )
         scores = self.eval_text(message.content)
         await mod_channel.send(self.code_format(scores))
+
+    async def handle_channel_message_edit(
+        self, before: Union[discord.Message, None], after: discord.Message
+    ):
+        # Only handle messages sent in the "group-#" channel
+        if not after.channel.name == f"group-{self.group_num}":
+            return
+
+        # Forward the message to the mod channel
+        mod_channel = self.mod_channels[after.guild.id]
+        await mod_channel.send(
+            f"Forwarded edited message by {after.author.name}:\n"
+            f"Before: {before.content if before else 'message not cached'}\n"
+            f"After: {after.content}"
+        )
+        scores = self.eval_text(after.content)
+        await mod_channel.send(self.code_format(scores))
+
 
     def eval_text(self, message):
         """'
