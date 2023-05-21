@@ -192,6 +192,43 @@ class ModBot(discord.Client):
         # this is where we probable will format the reporting flow
         return "Evaluated: '" + text + "'"
 
+    async def on_raw_reaction_add(
+        self, payload: discord.RawReactionActionEvent
+    ) -> None:
+        """
+        This function is called when a reaction is added to a message. It's called
+        regardless of if the message is in the client's message cache or not.
+        """
+        reactor_id = payload.user_id
+
+        # Ignore reactions that may have been added by the bot
+        if reactor_id == self.user.id:
+            return
+
+        # Ignore reactions that aren't sent in a DM
+        if payload.guild_id is not None:
+            return
+
+        # We only care about adding reactions
+        if payload.event_type != "REACTION_ADD":
+            return
+
+        # Ignore reactions that aren't part of a reporting flow
+        if reactor_id not in self.reports:
+            return
+
+        # Get the channel that the reaction was added in
+        channel = await self.fetch_channel(payload.channel_id)
+
+        # Let the report class handle this reaction
+        responses = self.reports[reactor_id].handle_reaction_add(payload.emoji)
+        for r in responses:
+            await channel.send(r)
+
+        # If the report is complete or cancelled, remove it from our map
+        if self.reports[reactor_id].report_complete():
+            self.reports.pop(reactor_id)
+
 
 client = ModBot()
 client.run(discord_token)

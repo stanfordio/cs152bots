@@ -67,8 +67,10 @@ class Report:
     START_KEYWORD = "report"
     CANCEL_KEYWORD = "cancel"
     HELP_KEYWORD = "help"
-    YES_KEYWORDS = ["yes", "y"]
-    NO_KEYWORDS = ["no", "n"]
+    YES_KEYWORDS = {"yes", "y"}
+    NO_KEYWORDS = {"no", "n"}
+
+    REACT_STAGES = {State.AWAITING_REASON, State.AWAITING_ABUSE_TYPE}
 
     def __init__(self, client):
         self.state = State.REPORT_START
@@ -158,14 +160,8 @@ class Report:
                 self.state = State.AWAITING_ON_BEHALF_OF
                 return ["Who are you reporting on behalf of?"]
             elif message.content.lower() in self.NO_KEYWORDS:
-                self.state = State.AWAITING_REASON
                 # TODO: indicate that the user is reporting on their own behalf
-                return [
-                    "Please select the reason for reporting this message. React to this"
-                    " message with the corresponding emoji.\n:one: - Harassment /"
-                    " Offensive Content \n:two: - Spam \n:three: - Immediate"
-                    " danger\n:four: - Other"
-                ]
+                self.state = State.AWAITING_REASON
             else:
                 return [
                     "I'm sorry, I didn't understand that. Please say `yes` or `no`."
@@ -174,17 +170,46 @@ class Report:
         if self.state == State.AWAITING_ON_BEHALF_OF:
             # TODO: indicate that the user is reporting on behalf of someone else
             self.state = State.AWAITING_REASON
+
+        # Reaction must be added to this message before continuing
+        if self.state == State.AWAITING_REASON:
             return [
                 "Please select the reason for reporting this message. React to this"
-                " message with the corresponding emoji.\n:one: - Harassment / Offensive"
-                " Content \n:two: - Spam \n:three: - Immediate danger\n:four: - Other"
+                " message with the corresponding emoji.\n1️⃣ - Harassment / Offensive"
+                " Content \n2️⃣ - Spam \n3️⃣ - Immediate danger\n4️⃣ - Other"
             ]
 
-        if self.state == State.AWAITING_REASON:
-            self.state = State.AWAITING_ABUSE_DESCRIPTION
-            return []
+        if self.state == State.AWAITING_ABUSE_TYPE:
+            # TODO: add reactions to this message
+            return ["Please describe the abuse you are reporting."]
 
         return []
+
+    def handle_reaction_add(self, emoji: discord.PartialEmoji):
+        """
+        This function handles reactions to the message that the bot sends.
+        """
+        # Reaction was added to a message that didn't require a reaction
+        if self.state not in self.REACT_STAGES:
+            return []
+
+        if self.state == State.AWAITING_REASON:
+            if str(emoji.name) not in {"1️⃣", "2️⃣", "3️⃣", "4️⃣"}:
+                return [
+                    "I'm sorry, I didn't understand that. Please react with one of the"
+                    " following emojis:\n:one: - Harassment / Offensive Content \n:two:"
+                    " - Spam \n:three: - Immediate danger\n:four: - Other"
+                ]
+            else:
+                # TODO: record the reason for the report
+                self.state = State.AWAITING_ABUSE_TYPE
+                # TODO: add reactions to this message
+            return ["Please describe the abuse you are reporting."]
+
+    #     if self.state == State.AWAITING_ABUSE_TYPE:
+    #         ...
+
+    #     return []
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
