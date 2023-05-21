@@ -104,7 +104,7 @@ class ModBot(discord.Client):
         # if not message.channel.name == f'group-{self.group_num}':
         #     return
         responses = []
-        # Forward the message to the mod channel
+        # Forward the message to the mod channel if and only if it's not in the mod channel already.
         if message.channel.name == f'group-{self.group_num}':
             mod_channel = self.mod_channels[message.guild.id]
             await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
@@ -135,7 +135,13 @@ class ModBot(discord.Client):
             # scores = self.eval_text(message.content)
             # await mod_channel.send(self.code_format(scores))
 
-    
+    async def on_message_edit(self, before, after):
+        if before.content != after.content:
+            if 'CSAM_HASH' in after.content:
+                await after.delete()
+                await self.mod_channels[after.guild.id].send(f"We have banned user {after.author.name}, reported to NCMEC and removed the content.")
+                return
+
     def eval_text(self, message):
         ''''
         TODO: Once you know how you want to evaluate messages in your channel, 

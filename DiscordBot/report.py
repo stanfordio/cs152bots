@@ -20,7 +20,7 @@ class Report:
         self.block_stage = 0
         self.stage = 0
         self.report_type = None
-        self.abuse_report = None
+        self.abuse_report = []
         self.client = client
         self.message = None
 
@@ -62,7 +62,7 @@ class Report:
             if (message.content in replies):
                 self.stage = 2
                 self.report_type = types[message.content]
-                self.abuse_report.append += "Report Type: " + self.report_type + "\n"
+                self.abuse_report += ["Report Type: " + self.report_type + "\n"]
             return [reply]
         if (self.stage == 2):
             if (self.report_type == "Violence"):
