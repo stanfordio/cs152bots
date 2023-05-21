@@ -164,7 +164,7 @@ class Report:
 
         return []
 
-    def handle_reaction_add(self, emoji: discord.PartialEmoji):
+    async def handle_reaction_add(self, emoji: discord.PartialEmoji, message):
         """
         This function handles reactions to the message that the bot sends.
         """
@@ -173,6 +173,9 @@ class Report:
             return []
 
         if self.state == State.AWAITING_REASON:
+            if message.content != ReportDetailsMessage.REASON_FOR_REPORT:
+                return []
+            
             if str(emoji.name) not in {"1️⃣", "2️⃣", "3️⃣", "4️⃣"}:
                 return [
                     GenericMessage.INVALID_REACTION,
@@ -187,6 +190,9 @@ class Report:
                 return ReportDetailsMessage.ABUSE_TYPE
 
         if self.state == State.AWAITING_ABUSE_TYPE:
+            if message.content != ReportDetailsMessage.ABUSE_TYPE:
+                return []
+            
             if str(emoji.name) not in {"1️⃣", "2️⃣", "3️⃣", "4️⃣"}:
                 return [
                     GenericMessage.INVALID_REACTION,
@@ -201,6 +207,9 @@ class Report:
                 return ReportDetailsMessage.ABUSE_DESCRIPTION
 
         if self.state == State.AWAITING_ABUSE_DESCRIPTION:
+            if message.content != ReportDetailsMessage.ABUSE_DESCRIPTION:
+                return []
+            
             if str(emoji.name) not in {"1️⃣", "2️⃣"}:
                 return [
                     GenericMessage.INVALID_REACTION,

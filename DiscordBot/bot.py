@@ -229,9 +229,10 @@ class ModBot(discord.Client):
 
         # Get the channel that the reaction was added in
         channel = await self.fetch_channel(payload.channel_id)
+        fetched_message = await channel.fetch_message(payload.message_id)
 
         # Let the report class handle this reaction
-        responses = self.reports[reactor_id].handle_reaction_add(payload.emoji)
+        responses = await self.reports[reactor_id].handle_reaction_add(payload.emoji, fetched_message)
 
         # If the report class returned a string, convert it to a list to make it easier
         if isinstance(responses, str):
