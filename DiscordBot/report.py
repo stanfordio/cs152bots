@@ -2,6 +2,12 @@ import re
 from enum import Enum, auto
 
 import discord
+from messages import (
+    GenericMessage,
+    ReportDetailsMessage,
+    ReportStartMessage,
+    UserDetailsMessage,
+)
 
 
 class State(Enum):
@@ -87,85 +93,53 @@ class Report:
 
         if message.content == self.CANCEL_KEYWORD:
             self.state = State.REPORT_COMPLETE
-            return ["Report cancelled."]
+            return GenericMessage.CANCELLED
 
         if self.state == State.REPORT_START:
             self.state = State.AWAITING_MESSAGE
-            return [
-                (
-                    "Thank you for starting the reporting process. Say `help` at any"
-                    " time for more information."
-                ),
-                "Please copy paste the link to the message you want to report.",
-                (
-                    "You can obtain this link by right-clicking the message and"
-                    " clicking `Copy Message Link`."
-                ),
-            ]
+            return [ReportStartMessage.START, ReportStartMessage.REQUEST_MSG]
 
         if self.state == State.AWAITING_MESSAGE:
             # Parse out the three ID strings from the message link
             m = re.search("/(\d+)/(\d+)/(\d+)", message.content)
             if not m:
-                return [
-                    "I'm sorry, I couldn't read that link. Please try again or say"
-                    " `cancel` to cancel."
-                ]
+                return ReportStartMessage.INVALID_LINK
             guild = self.client.get_guild(int(m.group(1)))
             if not guild:
-                return [
-                    "I cannot accept reports of messages from guilds that I'm not in."
-                    " Please have the guild owner add me to the guild and try again."
-                ]
+                return ReportStartMessage.NOT_IN_GUILD
             channel = guild.get_channel(int(m.group(2)))
             if not channel:
-                return [
-                    "It seems this channel was deleted or never existed. Please try"
-                    " again or say `cancel` to cancel."
-                ]
+                return ReportStartMessage.CHANNEL_DELETED
             try:
                 message = await channel.fetch_message(int(m.group(3)))
             except discord.errors.NotFound:
-                return [
-                    "It seems this message was deleted or never existed. Please try"
-                    " again or say `cancel` to cancel."
-                ]
+                return ReportStartMessage.MESSAGE_DELETED
 
-            # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.MESSAGE_IDENTIFIED
-            return [
-                "I found this message:",
-                "```" + message.author.name + ": " + message.content + "```",
-                "Is this the message you want to report? Please say `yes` or `no`.",
-            ]
+            return ReportStartMessage.MESSAGE_IDENTIFIED.format(
+                author=message.author.name, content=message.content
+            )
 
         if self.state == State.MESSAGE_IDENTIFIED:
             if message.content.lower() in self.YES_KEYWORDS:
                 self.state = State.AWAITING_USER_DETAILS
                 # TODO: save the message for later
-                return [
-                    "Are you reporting on behalf of someone else? Please say `yes` or"
-                    " `no`."
-                ]
+                return UserDetailsMessage.ON_BEHALF_OF
             elif message.content.lower() in self.NO_KEYWORDS:
                 self.state = State.AWAITING_MESSAGE
-                return ["Please copy the link to the message you want to report."]
+                return ReportStartMessage.REQUEST_MSG
             else:
-                return [
-                    "I'm sorry, I didn't understand that. Please say `yes` or `no`."
-                ]
+                return GenericMessage.INVALID_YES_NO
 
         if self.state == State.AWAITING_USER_DETAILS:
             if message.content.lower() in self.YES_KEYWORDS:
                 self.state = State.AWAITING_ON_BEHALF_OF
-                return ["Who are you reporting on behalf of?"]
+                return UserDetailsMessage.WHO_ON_BEHALF_OF
             elif message.content.lower() in self.NO_KEYWORDS:
                 # TODO: indicate that the user is reporting on their own behalf
                 self.state = State.AWAITING_REASON
             else:
-                return [
-                    "I'm sorry, I didn't understand that. Please say `yes` or `no`."
-                ]
+                return GenericMessage.INVALID_YES_NO
 
         if self.state == State.AWAITING_ON_BEHALF_OF:
             # TODO: indicate that the user is reporting on behalf of someone else
@@ -173,15 +147,10 @@ class Report:
 
         # Reaction must be added to this message before continuing
         if self.state == State.AWAITING_REASON:
-            return [
-                "Please select the reason for reporting this message. React to this"
-                " message with the corresponding emoji.\n1️⃣ - Harassment / Offensive"
-                " Content \n2️⃣ - Spam \n3️⃣ - Immediate danger\n4️⃣ - Other"
-            ]
+            return ReportDetailsMessage.REASON_FOR_REPORT
 
         if self.state == State.AWAITING_ABUSE_TYPE:
-            # TODO: add reactions to this message
-            return ["Please describe the abuse you are reporting."]
+            return ReportDetailsMessage.ABUSE_TYPE
 
         return []
 
@@ -196,20 +165,24 @@ class Report:
         if self.state == State.AWAITING_REASON:
             if str(emoji.name) not in {"1️⃣", "2️⃣", "3️⃣", "4️⃣"}:
                 return [
-                    "I'm sorry, I didn't understand that. Please react with one of the"
-                    " following emojis:\n:one: - Harassment / Offensive Content \n:two:"
-                    " - Spam \n:three: - Immediate danger\n:four: - Other"
+                    GenericMessage.INVALID_REACTION,
+                    ReportDetailsMessage.REASON_FOR_REPORT,
                 ]
             else:
-                # TODO: record the reason for the report
+                # TODO: save the reason for later
                 self.state = State.AWAITING_ABUSE_TYPE
-                # TODO: add reactions to this message
-            return ["Please describe the abuse you are reporting."]
+                return ReportDetailsMessage.ABUSE_TYPE
 
-    #     if self.state == State.AWAITING_ABUSE_TYPE:
-    #         ...
-
-    #     return []
+        if self.state == State.AWAITING_ABUSE_TYPE:
+            if str(emoji.name) not in {"1️⃣", "2️⃣", "3️⃣", "4️⃣"}:
+                return [
+                    GenericMessage.INVALID_REACTION,
+                    ReportDetailsMessage.ABUSE_TYPE,
+                ]
+            else:
+                # TODO: save the abuse type for later
+                self.state = State.AWAITING_ABUSE_DESCRIPTION
+                # return ReportDetailsMessage.ABUSE_DESCRIPTION
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE

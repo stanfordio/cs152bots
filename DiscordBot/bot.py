@@ -128,8 +128,14 @@ class ModBot(discord.Client):
 
         # Let the report class handle this message; forward all the messages it returns to uss
         responses = await self.reports[author_id].handle_message(message)
+
+        # If the report class returned a string, convert it to a list to make it easier
+        if isinstance(responses, str):
+            responses = [responses]
+
         for r in responses:
             await message.channel.send(r)
+            # TODO: if the report class returned a message with reactions, somehow make the bot add those reactions to make it easier for the user to respond
 
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():
@@ -222,6 +228,11 @@ class ModBot(discord.Client):
 
         # Let the report class handle this reaction
         responses = self.reports[reactor_id].handle_reaction_add(payload.emoji)
+
+        # If the report class returned a string, convert it to a list to make it easier
+        if isinstance(responses, str):
+            responses = [responses]
+
         for r in responses:
             await channel.send(r)
 
