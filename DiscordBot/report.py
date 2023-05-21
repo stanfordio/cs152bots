@@ -5,9 +5,74 @@ import discord
 
 
 class State(Enum):
+    # SECTION 0: START
     REPORT_START = auto()
     AWAITING_MESSAGE = auto()
     MESSAGE_IDENTIFIED = auto()
+
+    # SECTION 1: USER DETAILS
+    # Are you reporting on behalf of someone else?
+    AWAITING_USER_DETAILS = auto()
+    AWAITING_ON_BEHALF_OF = auto()
+    USER_DETAILS_IDENTIFIED = auto()
+
+    # SECTION 2: REPORT DETAILS
+    # Please select the reason for reporting this message
+    AWAITING_REASON = auto()
+    HARRASSMENT_REASON_IDENTIFIED = auto() # -> REPORT_COMPLETE
+
+    # Please select the type of abuse
+    AWAITING_ABUSE_TYPE = auto()
+    SEXUALLY_EXPLICIT_ABUSE_TYPE_IDENTIFIED = auto() # -> REPORT_COMPLETE
+
+    # Which of the following best describes the situation?
+    AWAITING_ABUSE_DESCRIPTION = auto()
+
+    # SECTION 2a: UNWANTED REQUESTS DETAILS
+    # What is the account you are reporting requesting?
+    AWAITING_UNWANTED_REQUESTS = auto()
+    UNWANTED_REQUESTS_IDENTIFIED = auto()
+
+    # Have you or the person on behalf of whom this report is being filed received multiple requests from the account you are reporting?
+    AWAITING_MULTIPLE_REQUESTS = auto()
+    AWAITING_APPROXIMATE_REQUESTS = auto()
+    MULTIPLE_REQUESTS_IDENTIFIED = auto()
+
+    # Have you or the person on behalf of whom this report is being filed complied with these requests?
+    AWAITING_COMPLIED_WITH_REQUESTS = auto()
+
+    ABUSE_DESCRIPTION_IDENTIFIED = auto()
+
+    # SECTION 3: ADDITIONAL INFORMATION
+    # Does the sexually explicit content involve a minor?
+    AWAITING_MINOR_PARTICIPATION = auto()
+    MINOR_PARTICIPATION_IDENTIFIED = auto()
+
+    # Does this content contain you or the person on behalf of whom this report is being filed?
+    AWAITING_CONTAIN_YOURSELF = auto()
+    CONTAIN_YOURSELF_IDENTIFIED = auto()
+
+    # Is the account you are reporting encouraging self-harm?
+    AWAITING_ENCOURAGE_SELF_HARM = auto()
+    ENCOURAGE_SELF_HARM_IDENTIFIED = auto()
+
+    # Would you like to provide any additional information?
+    AWAITING_ADDITIONAL_INFO = auto()
+    AWAITING_PLEASE_SPECIFY = auto()
+    ADDITIONAL_INFO_IDENTIFIED = auto()
+
+    # SECTION X: FINAL STEPS
+    # Would you like to block the account you have reported?
+    AWAITING_BLOCK_USER = auto()
+    BLOCK_USER_IDENTIFIED = auto()
+    
+    # Please confirm that you would like to submit this report.
+    AWAITING_CONFIRMATION = auto()
+    CONFIRMATION_IDENTIFIED = auto()
+
+    # Thank you for reporting this activity.
+    # Our moderation team will review your report and contact you if needed.
+    # No further action is required on your part.
     REPORT_COMPLETE = auto()
 
 
