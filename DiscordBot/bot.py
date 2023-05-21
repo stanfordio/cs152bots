@@ -238,7 +238,11 @@ class ModBot(discord.Client):
             responses = [responses]
 
         for r in responses:
-            await channel.send(r)
+            sent_message = await channel.send(r)
+            # if the report class returned a message with reactions, add those reactions to the message
+            emojis = emoji.emoji_list(r)
+            for e in emojis:
+                await sent_message.add_reaction(e["emoji"])
 
         # If the report is complete or cancelled, remove it from our map
         if self.reports[reactor_id].report_complete():

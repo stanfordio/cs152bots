@@ -76,7 +76,7 @@ class Report:
     YES_KEYWORDS = {"yes", "y"}
     NO_KEYWORDS = {"no", "n"}
 
-    REACT_STAGES = {State.AWAITING_REASON, State.AWAITING_ABUSE_TYPE}
+    REACT_STAGES = {State.AWAITING_REASON, State.AWAITING_ABUSE_TYPE, State.AWAITING_ABUSE_DESCRIPTION}
 
     def __init__(self, client):
         self.state = State.REPORT_START
@@ -151,6 +151,9 @@ class Report:
 
         if self.state == State.AWAITING_ABUSE_TYPE:
             return ReportDetailsMessage.ABUSE_TYPE
+        
+        if self.state == State.AWAITING_ABUSE_DESCRIPTION:
+            return ReportDetailsMessage.ABUSE_DESCRIPTION
 
         return []
 
@@ -182,7 +185,18 @@ class Report:
             else:
                 # TODO: save the abuse type for later
                 self.state = State.AWAITING_ABUSE_DESCRIPTION
-                # return ReportDetailsMessage.ABUSE_DESCRIPTION
+                return ReportDetailsMessage.ABUSE_DESCRIPTION
+            
+        if self.state == State.AWAITING_ABUSE_DESCRIPTION:
+            if str(emoji.name) not in {"1️⃣", "2️⃣"}:
+                return [
+                    GenericMessage.INVALID_REACTION,
+                    ReportDetailsMessage.ABUSE_TYPE,
+                ]
+            else:
+                # TODO: save the abuse description for later
+                self.state = State.AWAITING_UNWANTED_REQUESTS
+                # return ReportDetailsMessage.UNWANTED_REQUESTS
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE

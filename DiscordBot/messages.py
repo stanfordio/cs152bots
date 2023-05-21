@@ -59,3 +59,8 @@ class ReportDetailsMessage:
         " the corresponding emoji.\n1️⃣ - Sexually explicit harassment\n2️⃣ - Encouraging"
         " self-harm\n3️⃣ - Hate speech\n4️⃣ - Other"
     )
+    ABUSE_DESCRIPTION = (
+        "Please select the description that best explains the situation. React to this message with"
+        " the corresponding emoji.\n1️⃣ - The reporting user is receiving sexually explicit content (images, text)\n"
+        "2️⃣ - The reporting user is receiving unwanted requests involving sexually explicit content"
+    )
