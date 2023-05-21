@@ -14,16 +14,13 @@ class State(Enum):
     # Are you reporting on behalf of someone else?
     AWAITING_USER_DETAILS = auto()
     AWAITING_ON_BEHALF_OF = auto()
-    USER_DETAILS_IDENTIFIED = auto()
 
     # SECTION 2: REPORT DETAILS
     # Please select the reason for reporting this message
     AWAITING_REASON = auto()
-    HARRASSMENT_REASON_IDENTIFIED = auto() # -> REPORT_COMPLETE
 
     # Please select the type of abuse
     AWAITING_ABUSE_TYPE = auto()
-    SEXUALLY_EXPLICIT_ABUSE_TYPE_IDENTIFIED = auto() # -> REPORT_COMPLETE
 
     # Which of the following best describes the situation?
     AWAITING_ABUSE_DESCRIPTION = auto()
@@ -31,44 +28,34 @@ class State(Enum):
     # SECTION 2a: UNWANTED REQUESTS DETAILS
     # What is the account you are reporting requesting?
     AWAITING_UNWANTED_REQUESTS = auto()
-    UNWANTED_REQUESTS_IDENTIFIED = auto()
 
     # Have you or the person on behalf of whom this report is being filed received multiple requests from the account you are reporting?
     AWAITING_MULTIPLE_REQUESTS = auto()
     AWAITING_APPROXIMATE_REQUESTS = auto()
-    MULTIPLE_REQUESTS_IDENTIFIED = auto()
 
     # Have you or the person on behalf of whom this report is being filed complied with these requests?
     AWAITING_COMPLIED_WITH_REQUESTS = auto()
 
-    ABUSE_DESCRIPTION_IDENTIFIED = auto()
-
     # SECTION 3: ADDITIONAL INFORMATION
     # Does the sexually explicit content involve a minor?
     AWAITING_MINOR_PARTICIPATION = auto()
-    MINOR_PARTICIPATION_IDENTIFIED = auto()
 
     # Does this content contain you or the person on behalf of whom this report is being filed?
     AWAITING_CONTAIN_YOURSELF = auto()
-    CONTAIN_YOURSELF_IDENTIFIED = auto()
 
     # Is the account you are reporting encouraging self-harm?
     AWAITING_ENCOURAGE_SELF_HARM = auto()
-    ENCOURAGE_SELF_HARM_IDENTIFIED = auto()
 
     # Would you like to provide any additional information?
     AWAITING_ADDITIONAL_INFO = auto()
     AWAITING_PLEASE_SPECIFY = auto()
-    ADDITIONAL_INFO_IDENTIFIED = auto()
 
     # SECTION X: FINAL STEPS
     # Would you like to block the account you have reported?
     AWAITING_BLOCK_USER = auto()
-    BLOCK_USER_IDENTIFIED = auto()
-    
+
     # Please confirm that you would like to submit this report.
     AWAITING_CONFIRMATION = auto()
-    CONFIRMATION_IDENTIFIED = auto()
 
     # Thank you for reporting this activity.
     # Our moderation team will review your report and contact you if needed.
@@ -80,6 +67,8 @@ class Report:
     START_KEYWORD = "report"
     CANCEL_KEYWORD = "cancel"
     HELP_KEYWORD = "help"
+    YES_KEYWORDS = ["yes", "y"]
+    NO_KEYWORDS = ["no", "n"]
 
     def __init__(self, client):
         self.state = State.REPORT_START
@@ -145,14 +134,55 @@ class Report:
             return [
                 "I found this message:",
                 "```" + message.author.name + ": " + message.content + "```",
-                (
-                    "This is all I know how to do right now - it's up to you to build"
-                    " out the rest of my reporting flow!"
-                ),
+                "Is this the message you want to report? Please say `yes` or `no`.",
             ]
 
         if self.state == State.MESSAGE_IDENTIFIED:
-            return ["<insert rest of reporting flow here>"]
+            if message.content.lower() in self.YES_KEYWORDS:
+                self.state = State.AWAITING_USER_DETAILS
+                # TODO: save the message for later
+                return [
+                    "Are you reporting on behalf of someone else? Please say `yes` or"
+                    " `no`."
+                ]
+            elif message.content.lower() in self.NO_KEYWORDS:
+                self.state = State.AWAITING_MESSAGE
+                return ["Please copy the link to the message you want to report."]
+            else:
+                return [
+                    "I'm sorry, I didn't understand that. Please say `yes` or `no`."
+                ]
+
+        if self.state == State.AWAITING_USER_DETAILS:
+            if message.content.lower() in self.YES_KEYWORDS:
+                self.state = State.AWAITING_ON_BEHALF_OF
+                return ["Who are you reporting on behalf of?"]
+            elif message.content.lower() in self.NO_KEYWORDS:
+                self.state = State.AWAITING_REASON
+                # TODO: indicate that the user is reporting on their own behalf
+                return [
+                    "Please select the reason for reporting this message. React to this"
+                    " message with the corresponding emoji.\n:one: - Harassment /"
+                    " Offensive Content \n:two: - Spam \n:three: - Immediate"
+                    " danger\n:four: - Other"
+                ]
+            else:
+                return [
+                    "I'm sorry, I didn't understand that. Please say `yes` or `no`."
+                ]
+
+        if self.state == State.AWAITING_ON_BEHALF_OF:
+            # TODO: indicate that the user is reporting on behalf of someone else
+            self.state = State.AWAITING_REASON
+            return [
+                "Please select the reason for reporting this message. React to this"
+                " message with the corresponding emoji.\n:one: - Harassment / Offensive"
+                " Content \n:two: - Spam \n:three: - Immediate danger\n:four: - Other"
+            ]
+
+        if self.state == State.AWAITING_REASON:
+            self.state = State.AWAITING_ABUSE_DESCRIPTION
+            return []
 
         return []
 
