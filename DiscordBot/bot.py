@@ -187,6 +187,9 @@ class ModBot(discord.Client):
             #for now, manually check all posts
             #mod_channel = self.mod_channels[message.guild.id]
             #await mod_channel.send("finished a report")
+
+            # For now add all reports to the manual check queue with severity 1
+            # TODO for milesotne 2: make severity high low or med depending on report type
             severity = 1
             self.manual_check_queue.put((severity, completed_report))
 
@@ -194,26 +197,26 @@ class ModBot(discord.Client):
         #   await message.channel.send(r)
 
     async def handle_channel_message(self, message):
-        # Only handle messages sent in the "group-#" channel
         if  message.channel.name == f'group-{self.group_num}':
-            # Forward the message to the mod channel
+            # Forward the messages from group channel to the mod channel
             mod_channel = self.mod_channels[message.guild.id]
             await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
             scores = self.eval_text(message.content)
             await mod_channel.send(self.code_format(scores))
 
         if message.channel.id == self.mod_channels[message.guild.id].id:
+            # if a mod is chatting in the mod group:
             await self.handle_mod_msg(message)
 
     async def handle_mod_msg(self, message):
         mod_channel = self.mod_channels[message.guild.id]
-        await mod_channel.send("recieved")
         if message.content == self.REVIEW_REPORT:
-            await mod_channel.send("reviewing report")
+            # If a moderator is asking to review the next report
             if self.manual_check_queue.empty():
                 await mod_channel.send("Nothing to review")
             else:
                 pri, report = self.manual_check_queue.get()
+                #TODO for milestone 2: format this text prettier
                 msg = "Reported user " + str(report.reported_user_id) + " for \n"
                 for i in report.reported_issues:
                     msg += str(i) + "\n"
@@ -222,13 +225,19 @@ class ModBot(discord.Client):
                 sent = await mod_channel.send(msg)
                 self.in_prog_reviews[sent.id] = report
 
+        #TODO: (maybe) for milestone 2: I haven't tested this but the idea here is to generate a report
+        # of everything a user has reported in case they ask (for police purposes etc)
         elif message.content.startswith(self.USER_REPORTS):
-            await mod_channel.send("looking for user")
+            #TODO: I have tested this zero
             l = message.content.split(' ')
             user_id = int(l[1])
-            await self.mod_channel.send(self.reports_by_user[user_id])
+            #TODO: format the reports_by_user, this will print python garbage
+            await self.mod_channel.send(str(self.reports_by_user[user_id]))
 
     async def handle_mod_react(self, payload):
+        # once a mod reacts to a manual review message, this should send the suspended/banned user a message simulating the bad
+        # TODO: Also send the reporter a message with the decision/report? as in case 3 where we do nothing
+        # TODO: Make this match the flowchart
         msg_id = payload.message_id
         if msg_id not in self.in_prog_reviews:
             return
@@ -241,14 +250,17 @@ class ModBot(discord.Client):
         if str(emoji.name) == '1️⃣':
             user = await self.fetch_user(reported_user)
             await user.send("You have been banned due to user reports")
+            self.in_prog_reviews.pop(msg_id)
         elif str(emoji.name) == '2️⃣':
             user = await self.fetch_user(reported_user)
             await user.send("You have been suspended for 15 days due to user reports")
+            self.in_prog_reviews.pop(msg_id)
         elif str(emoji.name) == '3️⃣':
             user = await self.fetch_user(reporting_user)
             await user.send("We have reviewed this case and will not be taking action")
+            self.in_prog_reviews.pop(msg_id)
         
-        self.in_prog_reviews.pop(msg_id)
+        
         
         
 
