@@ -300,7 +300,6 @@ class MainMenuEmbed(discord.Embed):
         self.add_field(name="Help", value="Click this to receive more information", inline=False)
         self.add_field(name="Talk to Moderator", value="Click this to request a private conversation with a moderator", inline=False)
 
-
 class MainMenuButtons(discord.ui.View):
     def __init__(self, bot, mod_channel):
         super().__init__()
