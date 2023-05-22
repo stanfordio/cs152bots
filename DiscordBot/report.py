@@ -30,6 +30,9 @@ class Report:
     REQUESTED_MONEY = "Requested Money"
     OBTAINED_MONEY = "Obtained Money"
     THREAT = "Threat"
+    OTHER = "Other"
+    NOT_INTERESTED = "Im Not Interetsed"
+    IMMINENT_DANGER = "Imminent Danger"
 
 
     def __init__(self, client):

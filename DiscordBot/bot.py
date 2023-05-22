@@ -180,12 +180,19 @@ class ModBot(discord.Client):
             #                                               user_making_report, self.reports_by_user,
             #                                               self.reports_about_user)
 
-            # For now add all reports to the manual check queue with severity 1
-            # TODO for milestone 2: make severity high low or med depending on report type
-            severity = 3
-            if Report.THREAT in completed.reported_issues:
+            # Feel free to change any of these 
+            severity = 1
+            severity1 = [Report.THREAT, Report.SPAM, Report.HARASSMENT, Report.FALSE_INFO, Report.NOT_INTERESTED, Report.OTHER]
+            severity2 = [Report.FRAUD, Report.REQUESTED_MONEY, Report.IMPERSONATION]
+            severity3 = [Report.OBTAINED_MONEY, Report.IMMINENT_DANGER]
+            if any(x in severity1 for x in completed_report.reported_issues):
                 severity =  1
+            if any(x in severity2 for x in completed_report.reported_issues):
+                severity =  2
+            if any(x in severity3 for x in completed_report.reported_issues):
+                severity =  3
             self.manual_check_queue.put((severity, completed_report))
+
 
         #for r in responses:
         #   await message.channel.send(r)
