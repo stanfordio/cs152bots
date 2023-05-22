@@ -2,6 +2,7 @@ import discord
 from myModal import MyModal
 import uuid
 import time
+from dataclasses import dataclass
 
 tickets = {}
 
@@ -15,6 +16,7 @@ async def create_completionEmbed(bot, tid : int):
     if 'message_link' in tickets[tid].keys():
         # link = 'https://discord.com/channels/1103033282779676743/1103033287250804838/1109919564701126787'
         link = tickets[tid]['message_link'].split('/')
+        # FIXME This indexes out of bounds.
         message = await bot.get_guild(int(link[-3])).get_channel(int(link[-2])).fetch_message(int(link[-1]))
 
         tickets[tid]['message'] = message.content
@@ -47,13 +49,13 @@ class ReportSelection(discord.ui.View):
 
     
     @discord.ui.select(placeholder='Please select reason for reporting this content', \
-        options=get_drop_down_options({ \
-                'Harassment'         : 'description1', \
-                'Spam'               : 'description2', \
-                'Offensive Content'  : 'description3', \
-                'Imminent Danger'    : 'description4', \
+        options=get_drop_down_options({
+                'Harassment'         : 'description1',
+                'Spam'               : 'description2',
+                'Offensive Content'  : 'description3',
+                'Imminent Danger'    : 'description4',
                 'Other'              : 'description5'
-        }) \
+        })
     )
     async def selection_callback(self, \
         interaction : discord.Interaction, \
@@ -126,33 +128,58 @@ class SextortionTypeSelection(discord.ui.View):
         self.tid = tid
         self.bot = bot
 
-    @discord.ui.select(placeholder='Select Type of Content', options=[
-            discord.SelectOption(label='Content includes explicit images', description='description1'),
-            discord.SelectOption(label='Content is a threat to spread explicit images', description='description2'),
-        ])
+    @discord.ui.select(placeholder='Select Type of Content', options=get_drop_down_options({
+            'Content includes explicit images'                  : 'description1',
+            'Content is a threat to spread explicit images'     : 'description2',
+        })
+    )
     async def sextortype_callback(self, interaction:discord.Interaction, selection:discord.ui.Select):
         tickets[self.tid]['sextortion_content'] = selection.values[0]
         await interaction.response.send_message(f'You chose {selection.values[0]}',  ephemeral=True)
         await interaction.followup.send('Are these images of you or someone else?', view=ImageOwnerSelection(self.bot, self.tid),  ephemeral=True)
 
-"""
-Prompt: "Are these images of you or someone else?"
-"""
-class ImageOwnerSelection(discord.ui.View):
-    def __init__(self, bot, tid):
-        super().__init__()
-        self.tid = tid
-        self.bot = bot
+@dataclass
+class Option:
+        name : str
+        callback : callable
 
-    @discord.ui.button(label='Me', style=discord.ButtonStyle.red)
-    async def MeOwnerBtn(self, interaction: discord.Interaction, button:discord.ui.Button):
-        tickets[self.tid]['image_owner'] = 'Me'
-        await interaction.response.send_message("Do you know the user responsible?", view=UserResponsibleSelection(self.bot, self.tid), ephemeral=True)
-    @discord.ui.button(label="Other", style=discord.ButtonStyle.red)
-    async def OtherOwnerBtn(self, interaction: discord.Interaction, button:discord.ui.Button):
-        tickets[self.tid]['image_owner'] = 'Other'
-        await interaction.response.send_message("Do you know this other person?", 
-        view=KnowOtherSelection(self.bot, self.tid), ephemeral=True)
+# TODO: make this work with labels that aren't yes or no
+class YesNoSelection(discord.ui.View):
+        def __init__(self, bot, tid : int, opt_1 : Option, opt_2 : Option):
+                super().__init__()
+                self.tid = tid
+                self.bot = bot
+                self.opt_1 = opt_1
+                self.opt_2 = opt_2
+
+        @discord.ui.button(label="Yes", style=discord.ButtonStyle.red)
+        async def Opt1ButtonImpl(self, interaction : discord.Interaction, button : discord.ui.Button):
+                await self.opt_1.callback(self.bot, self.tid, interaction, button)
+
+        @discord.ui.button(label="No", style=discord.ButtonStyle.red)
+        async def Opt2Button(self, interaction : discord.Interaction, button : discord.ui.Button):
+                await self.opt_2.callback(self.bot, self.tid, interaction, button)
+
+# TODO type hints
+async def ImageOwnerCallback1(bot, tid, interaction, button):
+        tickets[tid]['image_owner'] = 'Me'
+        await interaction.response.send_message("Do you know the user responsible?", \
+                view=UserResponsibleSelection(bot, tid), ephemeral=True)
+
+# TODO type hints
+async def ImageOwnerCallback2(bot, tid, interaction, button):
+        tickets[tid]['image_owner'] = 'Other'
+        await interaction.response.send_message("Do you know this other person?", \
+                view=KnowOtherSelection(bot, tid), ephemeral=True)
+
+def ImageOwnerSelection(bot, tid):
+        # This looks shitty because it requires answers to be "yes" or "no"
+        return YesNoSelection(
+                bot,
+                tid, 
+                Option("Me", ImageOwnerCallback1),
+                Option("Other", ImageOwnerCallback2)
+        )
 
 """
 Prompt: "Do you know the user responsible?"
