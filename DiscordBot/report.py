@@ -38,6 +38,7 @@ class Report:
         self.reported_user_id = None
         self.reporting_message_ids = {} # Map from id of message requiring react to type of request
         self.reported_issues = []
+        self.reported_msg = None
     
     #TODO: Handle replies to the please elaborate message 
     # (just ID if its a reply to a message with the OTHER_THREAD id from self.reporting_message_ids)
@@ -86,6 +87,7 @@ class Report:
             reply += ":four: : This user poses an imminent threat to my safety or the safety of others\n\n"
             reply += ":five: : I am no longer interested in this user"            
             self.reported_user_id = message.author.id
+            self.reported_msg = message.content
             self.state = State.MESSAGE_IDENTIFIED
             return ["I found this message:", "```" + message.author.name + ": " + message.content + "```" + reply]
 
@@ -98,6 +100,7 @@ class Report:
             reply += "Please react with one of the following:\n"
             reply += ":one: : Yes, please block this person\n\n"
             reply += ":two: : No, don't block this person"
+            self.state = State.REPORT_COMPLETE
             return [reply]
         #if self.state == State.MESSAGE_IDENTIFIED:
             # We have received a report but haven't finished the reporting flow and the user sends a new message
@@ -105,6 +108,7 @@ class Report:
 
     async def handle_react(self, payload):
         # only respond if we have a message identified
+        self.reporting_user_id = payload.user_id
         if self.state == State.MESSAGE_IDENTIFIED:
             message_id = payload.message_id
             level = self.reporting_message_ids[message_id]

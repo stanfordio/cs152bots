@@ -7,9 +7,10 @@ import logging
 import re
 import requests
 
-from DiscordBot import mod_flow
+#from DiscordBot import mod_flow
 from report import Report, BotReactMessage
 import pdb
+from queue import PriorityQueue
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -29,6 +30,9 @@ with open(token_path) as f:
 
 
 class ModBot(discord.Client):
+    REVIEW_REPORT = "review report"
+    USER_REPORTS = "generate "
+
     def __init__(self):
         intents = discord.Intents.default()
         intents.messages = True
@@ -39,6 +43,9 @@ class ModBot(discord.Client):
         self.flagged_users = {}  # Map of users that have been flagged to users that have flagged them (for moderator review)
         self.reports_by_user = {}  # Map from user to list of reports by the user
         self.reports_about_user = {}  # Map from user to list of reports against them
+        self.manual_check_queue = PriorityQueue()
+        self.in_prog_reviews = {}
+
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -69,6 +76,7 @@ class ModBot(discord.Client):
             return
 
         # Check if this message was sent in a server ("guild") or if it's a DM
+        #mod_channel = self.mod_channels[message.guild.id]
         if message.guild:
             await self.handle_channel_message(message)
         else:
@@ -78,6 +86,9 @@ class ModBot(discord.Client):
         # Only look for reacts in the DMs 
         if not payload.guild_id:
             await self.handle_dm_react(payload)
+
+        elif payload.channel_id == self.mod_channels[payload.guild_id].id:
+            await self.handle_mod_react(payload)
 
     async def handle_dm_react(self, payload):
         author_id = payload.user_id
@@ -113,6 +124,7 @@ class ModBot(discord.Client):
         # Handle a help message
         if message.content == Report.HELP_KEYWORD:
             reply = "Use the `report` command to begin the reporting process.\n"
+            reply += "Use the `done` command to complete an in progress report.\n"
             reply += "Use the `cancel` command to cancel the report process.\n"
             await message.channel.send(reply)
             return
@@ -150,11 +162,11 @@ class ModBot(discord.Client):
 
         # If the report is complete, remove it from our map but flag the reported user
         if self.reports[author_id].report_complete():
-            self.flagged_users[reported_user_id] = (author_id, self.reports[author_id].reported_issues)
+            #self.flagged_users[reported_user_id] = (author_id, self.reports[author_id].reported_issues)
             # TODO: do something with this information (maybe more for milesotne 3)
             completed_report = self.reports.pop(author_id)
             user_making_report = author_id
-            user_being_reported = reported_user_id
+            user_being_reported = completed_report.reported_user_id
 
             if user_making_report not in self.reports_by_user:
                 self.reports_by_user[user_making_report] = []
@@ -164,26 +176,81 @@ class ModBot(discord.Client):
                 self.reports_about_user[user_being_reported] = []
             self.reports_about_user[user_being_reported].append(completed_report)
 
-            take_post_down, response = mod_flow.new_report(completed_report, user_being_reported,
-                                                           user_making_report, self.reports_by_user,
-                                                           self.reports_about_user)
-            responses += [response]
-            if take_post_down:
-                await completed_report.get_message().delete()
+            #take_post_down, response, severity = mod_flow.new_report(completed_report, user_being_reported,
+            #                                               user_making_report, self.reports_by_user,
+            #                                               self.reports_about_user)
+            #responses += [response]
+            # the current flowchart does not specify deleting messages and usually we want to keep them for police reports, i feel like we should remove
+            #if take_post_down:
+            #    await completed_report.get_message().delete()
+            
+            #for now, manually check all posts
+            #mod_channel = self.mod_channels[message.guild.id]
+            #await mod_channel.send("finished a report")
+            severity = 1
+            self.manual_check_queue.put((severity, completed_report))
 
-        for r in responses:
-            await message.channel.send(r)
+        #for r in responses:
+        #   await message.channel.send(r)
 
     async def handle_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel
-        if not message.channel.name == f'group-{self.group_num}':
-            return
+        if  message.channel.name == f'group-{self.group_num}':
+            # Forward the message to the mod channel
+            mod_channel = self.mod_channels[message.guild.id]
+            await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
+            scores = self.eval_text(message.content)
+            await mod_channel.send(self.code_format(scores))
 
-        # Forward the message to the mod channel
+        if message.channel.id == self.mod_channels[message.guild.id].id:
+            await self.handle_mod_msg(message)
+
+    async def handle_mod_msg(self, message):
         mod_channel = self.mod_channels[message.guild.id]
-        await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-        scores = self.eval_text(message.content)
-        await mod_channel.send(self.code_format(scores))
+        await mod_channel.send("recieved")
+        if message.content == self.REVIEW_REPORT:
+            await mod_channel.send("reviewing report")
+            if self.manual_check_queue.empty():
+                await mod_channel.send("Nothing to review")
+            else:
+                pri, report = self.manual_check_queue.get()
+                msg = "Reported user " + str(report.reported_user_id) + " for \n"
+                for i in report.reported_issues:
+                    msg += str(i) + "\n"
+                msg += "Reported message\n" + str(report.reported_msg) + "\n"
+                msg += "React with 1, 2, 3 for ban, suspend, no action"
+                sent = await mod_channel.send(msg)
+                self.in_prog_reviews[sent.id] = report
+
+        elif message.content.startswith(self.USER_REPORTS):
+            await mod_channel.send("looking for user")
+            l = message.content.split(' ')
+            user_id = int(l[1])
+            await self.mod_channel.send(self.reports_by_user[user_id])
+
+    async def handle_mod_react(self, payload):
+        msg_id = payload.message_id
+        if msg_id not in self.in_prog_reviews:
+            return
+        
+        report = self.in_prog_reviews[msg_id]
+        reported_user = report.reported_user_id
+        reporting_user = report.reporting_user_id
+        emoji = payload.emoji
+
+        if str(emoji.name) == '1️⃣':
+            user = await self.fetch_user(reported_user)
+            await user.send("You have been banned due to user reports")
+        elif str(emoji.name) == '2️⃣':
+            user = await self.fetch_user(reported_user)
+            await user.send("You have been suspended for 15 days due to user reports")
+        elif str(emoji.name) == '3️⃣':
+            user = await self.fetch_user(reporting_user)
+            await user.send("We have reviewed this case and will not be taking action")
+        
+        self.in_prog_reviews.pop(msg_id)
+        
+        
 
     def eval_text(self, message):
         ''''
