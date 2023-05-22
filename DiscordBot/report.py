@@ -24,7 +24,7 @@ class Report:
 
     FRAUD = "Fraud"
     SPAM = "Spam"
-    HARRASSMENT = "Harrasment"
+    HARASSMENT = "Harassment"
     IMPERSONATION = "Impersonation"
     FALSE_INFO = "False Information"
     REQUESTED_MONEY = "Requested Money"
@@ -82,7 +82,7 @@ class Report:
             reply =  "Please react with one or more of the following to specify a reason for this report. Say `done` when done. Say `cancel` to cancel.\n"
             reply += ":one: : I suspect this user of fraud\n\n"
             reply += ":two: : This message contains spam\n\n"
-            reply += ":three: : This message contains harrassment\n\n"
+            reply += ":three: : This message contains harassment\n\n"
             reply += ":four: : This user poses an imminent threat to my safety or the safety of others\n\n"
             reply += ":five: : I am no longer interested in this user"            
             self.reported_user_id = message.author.id
@@ -95,13 +95,13 @@ class Report:
             reply += "This may include profile warning, suspension, or removal for the reported party. "
             reply += "We will follow up with the status of the report within 72 hours.\n\n"
             reply += "Would you like to block this user to prevent them from sending you more messages in the future? "
-            reply += "Please react with one of the folling:\n"
+            reply += "Please react with one of the following:\n"
             reply += ":one: : Yes, please block this person\n\n"
             reply += ":two: : No, don't block this person"
             return [reply]
-        if self.state == State.MESSAGE_IDENTIFIED:
+        #if self.state == State.MESSAGE_IDENTIFIED:
             # We have received a report but haven't finished the reporting flow and the user sends a new message
-            return ["It appears you are in the middle of reporting a message. Please complete or cancel the previous report before reporting a new message"]
+            #return ["It appears you are in the middle of reporting a message. Please complete or cancel the previous report before reporting a new message"]
 
     async def handle_react(self, payload):
         # only respond if we have a message identified
@@ -123,8 +123,8 @@ class Report:
                     reply = None #"You reported spam. Thank you for reporting"
                     self.reported_issues.append(self.SPAM)
                 elif str(emoji.name) == '3️⃣':
-                    reply = None #"You reported harrassment. Thank you for reporting"
-                    self.reported_issues.append(self.HARRASSMENT)
+                    reply = None #"You reported harassment. Thank you for reporting"
+                    self.reported_issues.append(self.HARASSMENT)
                 elif str(emoji.name) == '4️⃣':
                     reply = None #"You reported an imminent threat. Thank you for reporting"
                     self.reported_issues.append(self.THREAT)
@@ -177,6 +177,6 @@ class Report:
     def report_canceled(self):
         return self.state == State.REPORT_CANCELED
 
-
-    
+    def get_reported_issues(self):
+        return self.reported_issues
 

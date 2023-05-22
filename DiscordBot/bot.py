@@ -6,6 +6,8 @@ import json
 import logging
 import re
 import requests
+
+from DiscordBot import mod_flow
 from report import Report, BotReactMessage
 import pdb
 
@@ -27,14 +29,16 @@ with open(token_path) as f:
 
 
 class ModBot(discord.Client):
-    def __init__(self): 
+    def __init__(self):
         intents = discord.Intents.default()
         intents.messages = True
         super().__init__(command_prefix='.', intents=intents)
         self.group_num = None
-        self.mod_channels = {} # Map from guild to the mod channel id for that guild
-        self.reports = {} # Map from user IDs to the state of their report
-        self.flagged_users = {} # Map of users that have been flagged to users that have flagged them (for moderator review)
+        self.mod_channels = {}  # Map from guild to the mod channel id for that guild
+        self.reports = {}  # Map from user IDs to the state of their report
+        self.flagged_users = {}  # Map of users that have been flagged to users that have flagged them (for moderator review)
+        self.reports_by_user = {}  # Map from user to list of reports by the user
+        self.reports_about_user = {}  # Map from user to list of reports against them
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -54,7 +58,6 @@ class ModBot(discord.Client):
             for channel in guild.text_channels:
                 if channel.name == f'group-{self.group_num}-mod':
                     self.mod_channels[guild.id] = channel
-        
 
     async def on_message(self, message):
         '''
@@ -70,7 +73,7 @@ class ModBot(discord.Client):
             await self.handle_channel_message(message)
         else:
             await self.handle_dm(message)
-    
+
     async def on_raw_reaction_add(self, payload):
         # Only look for reacts in the DMs 
         if not payload.guild_id:
@@ -87,7 +90,7 @@ class ModBot(discord.Client):
         if author_id not in self.reports or message_id not in self.reports[author_id].reporting_message_ids:
             logger.info("message id " + str(message_id) + " not in reports")
             return
-        
+
         channel = await self.fetch_channel(payload.channel_id)
         responses = await self.reports[author_id].handle_react(payload)
         for r in responses:
@@ -106,11 +109,10 @@ class ModBot(discord.Client):
             else:
                 await channel.send(r)
 
-
     async def handle_dm(self, message):
         # Handle a help message
         if message.content == Report.HELP_KEYWORD:
-            reply =  "Use the `report` command to begin the reporting process.\n"
+            reply = "Use the `report` command to begin the reporting process.\n"
             reply += "Use the `cancel` command to cancel the report process.\n"
             await message.channel.send(reply)
             return
@@ -149,8 +151,28 @@ class ModBot(discord.Client):
         # If the report is complete, remove it from our map but flag the reported user
         if self.reports[author_id].report_complete():
             self.flagged_users[reported_user_id] = (author_id, self.reports[author_id].reported_issues)
-            #TODO: do something with this information (maybe more for milesotne 3)
-            self.reports.pop(author_id)
+            # TODO: do something with this information (maybe more for milesotne 3)
+            completed_report = self.reports.pop(author_id)
+            user_making_report = author_id
+            user_being_reported = reported_user_id
+
+            if user_making_report not in self.reports_by_user:
+                self.reports_by_user[user_making_report] = []
+            self.reports_by_user[user_making_report].append(completed_report)
+
+            if user_being_reported not in self.reports_about_user:
+                self.reports_about_user[user_being_reported] = []
+            self.reports_about_user[user_being_reported].append(completed_report)
+
+            take_post_down, response = mod_flow.new_report(completed_report, user_being_reported,
+                                                           user_making_report, self.reports_by_user,
+                                                           self.reports_about_user)
+            responses += [response]
+            if take_post_down:
+                await completed_report.get_message().delete()
+
+        for r in responses:
+            await message.channel.send(r)
 
     async def handle_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel
@@ -163,7 +185,6 @@ class ModBot(discord.Client):
         scores = self.eval_text(message.content)
         await mod_channel.send(self.code_format(scores))
 
-    
     def eval_text(self, message):
         ''''
         TODO: Once you know how you want to evaluate messages in your channel, 
@@ -171,14 +192,13 @@ class ModBot(discord.Client):
         '''
         return message
 
-    
     def code_format(self, text):
         ''''
         TODO: Once you know how you want to show that a message has been 
         evaluated, insert your code here for formatting the string to be 
         shown in the mod channel. 
         '''
-        return "Evaluated: '" + text+ "'"
+        return "Evaluated: '" + text + "'"
 
 
 client = ModBot()
