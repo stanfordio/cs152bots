@@ -2,7 +2,6 @@ import discord
 from myModal import MyModal
 import uuid
 import time
-from dataclasses import dataclass
 
 tickets = {}
 
@@ -138,139 +137,118 @@ class SextortionTypeSelection(discord.ui.View):
         await interaction.response.send_message(f'You chose {selection.values[0]}',  ephemeral=True)
         await interaction.followup.send('Are these images of you or someone else?', view=ImageOwnerSelection(self.bot, self.tid),  ephemeral=True)
 
-@dataclass
-class Option:
-        name : str
-        callback : callable
+# =========== TYPE ALIASES ==============
+Interaction = discord.Interaction
+Button = discord.ui.Button
+# ========= END TYPE ALIASES ===========
 
-# TODO: make this work with labels that aren't yes or no
-class YesNoSelection(discord.ui.View):
-        def __init__(self, bot, tid : int, opt_1 : Option, opt_2 : Option):
-                super().__init__()
-                self.tid = tid
-                self.bot = bot
-                self.opt_1 = opt_1
-                self.opt_2 = opt_2
+def BinaryOption(label_1 : str, label_2 : str):
+        class Impl(discord.ui.View):
+                # TODO: tighten up argument types on these callables
+                def __init__(self, bot, tid : int, opt_1 : callable, opt_2 : callable):
+                        super().__init__()
+                        self.tid = tid
+                        self.bot = bot
+                        self.opt_1 = opt_1
+                        self.opt_2 = opt_2
 
-        @discord.ui.button(label="Yes", style=discord.ButtonStyle.red)
-        async def Opt1ButtonImpl(self, interaction : discord.Interaction, button : discord.ui.Button):
-                await self.opt_1.callback(self.bot, self.tid, interaction, button)
+                @discord.ui.button(label=label_1, style=discord.ButtonStyle.red)
+                async def Opt1Button(self, interaction : discord.Interaction, button : discord.ui.Button):
+                        await self.opt_1(self.bot, self.tid, interaction, button)
 
-        @discord.ui.button(label="No", style=discord.ButtonStyle.red)
-        async def Opt2Button(self, interaction : discord.Interaction, button : discord.ui.Button):
-                await self.opt_2.callback(self.bot, self.tid, interaction, button)
+                @discord.ui.button(label=label_2, style=discord.ButtonStyle.red)
+                async def Opt2Button(self, interaction : discord.Interaction, button : discord.ui.Button):
+                        await self.opt_2(self.bot, self.tid, interaction, button)
+
+        return Impl
+
+# =========== TYPE ALIASES ==============
+YesNoOption = BinaryOption("Yes", "No")
+# ========= END TYPE ALIASES ===========
 
 # TODO type hints
-async def ImageOwnerCallback1(bot, tid, interaction, button):
+async def ImageOwnerCallback1(bot, tid : int, interaction : Interaction, button : Button):
         tickets[tid]['image_owner'] = 'Me'
         await interaction.response.send_message("Do you know the user responsible?", \
                 view=UserResponsibleSelection(bot, tid), ephemeral=True)
 
 # TODO type hints
-async def ImageOwnerCallback2(bot, tid, interaction, button):
+async def ImageOwnerCallback2(bot, tid : int, interaction, button):
         tickets[tid]['image_owner'] = 'Other'
         await interaction.response.send_message("Do you know this other person?", \
                 view=KnowOtherSelection(bot, tid), ephemeral=True)
 
-def ImageOwnerSelection(bot, tid):
-        # This looks shitty because it requires answers to be "yes" or "no"
-        return YesNoSelection(
-                bot,
-                tid, 
-                Option("Me", ImageOwnerCallback1),
-                Option("Other", ImageOwnerCallback2)
-        )
+"""
+Prompt: Are these images of you or someone else?
+"""
+def ImageOwnerSelection(bot, tid : int):
+        return BinaryOption("Me", "Other")(bot, tid, ImageOwnerCallback1, ImageOwnerCallback2)
+
+async def owner_choice_callback(bot, tid : int, interaction : Interaction, button : Button):
+        await interaction.response.send_message("Have you shared explicit images with this user?",
+                view=SharedExplicitSelection(bot, tid), ephemeral=True)
+        tickets[tid]['know_responsible'] = button.label
 
 """
-Prompt: "Do you know the user responsible?"
+Prompt: Do you know this other person?
 """
-class UserResponsibleSelection(discord.ui.View):
-    def __init__(self, bot, tid):
-        super().__init__()
-        self.tid = tid
-        self.bot = bot
+def UserResponsibleSelection(bot, tid : int):
+        return YesNoOption(bot, tid, owner_choice_callback, owner_choice_callback)
 
-    async def owner_choice_callback(self, interaction:discord.Interaction, button:discord.ui.Button):
-        await interaction.response.send_message("Have you shared explicit images with this user?", view=SharedExplicitSelection(self.bot, self.tid), ephemeral=True)
-        tickets[self.tid]['know_responsible'] = button.label
-        # for key, value in tickets.items():
-        #     print(key, value)
-    
-    @discord.ui.button(label="Yes", style=discord.ButtonStyle.red)
-    async def MeOwnerBtn(self, interaction: discord.Interaction, button:discord.ui.Button):
-        await self.owner_choice_callback(interaction, button)
+async def my_images_callback(bot, tid : int, interaction : Interaction, button : Button):
+        tickets[tid]['shared_explicit'] = 'Yes'
+        await interaction.response.send_message("Do you know what images this user has?", \
+                view=KnowImageSelection(bot, tid), ephemeral=True)
 
-    @discord.ui.button(label="No", style=discord.ButtonStyle.red)
-    async def OtherOwnerBtn(self, interaction: discord.Interaction, button:discord.ui.Button):
-        await self.owner_choice_callback(interaction, button)
+async def others_images_callback(bot, tid : int, interaction : Interaction, button : Button):
+        tickets[tid]['shared_explicit'] = 'No'
+        await interaction.response.send_message(embed= \
+                await create_completionEmbed(bot, tid), ephemeral=True)
 
 """
 Prompt: "Have you shared explicit images with this user?"
 """
-class SharedExplicitSelection(discord.ui.View):
-    def __init__(self, bot, tid):
-        super().__init__()
-        self.tid = tid
-        self.bot = bot
-    
-    @discord.ui.button(label="Yes", style=discord.ButtonStyle.red)
-    async def MeOwnerBtn(self, interaction: discord.Interaction, button:discord.ui.Button):
-        tickets[self.tid]['shared_explicit'] = 'Yes'
-        await interaction.response.send_message("Do you know what images this user has?", view=KnowImageSelection(self.bot, self.tid), ephemeral=True)
+def SharedExplicitSelection(bot, tid : int):
+        return YesNoOption(bot, tid, my_images_callback, others_images_callback)
 
-    @discord.ui.button(label="No", style=discord.ButtonStyle.red)
-    async def OtherOwnerBtn(self, interaction: discord.Interaction, button:discord.ui.Button):
-        tickets[self.tid]['shared_explicit'] = 'No'
-        await interaction.response.send_message(embed=await create_completionEmbed(self.bot, self.tid), ephemeral=True)
+async def know_image_callback(bot, tid : int, interaction:Interaction, button:Button):
+        tickets[tid]['know_image'] = button.label
+        await interaction.followup.send(embed=await create_completionEmbed(bot, tid), ephemeral=True)
 
+async def handle_know_image(bot, tid : int, interaction : Interaction, button : Button):
+        await interaction.response.send_message(embed=ImageRemovalEmbed())
+        time.sleep(5)
+        await know_image_callback(bot, tid, interaction, button)
+
+async def handle_dont_know_image(bot, tid : int, interaction : Interaction, button : Button):
+        await know_image_callback(bot, tid, interaction, button)
 """
 Prompt: "Do you know what images this user has?"
 """
-class KnowImageSelection(discord.ui.View):
-    def __init__(self, bot, tid):
-        super().__init__()
-        self.tid = tid
-        self.bot = bot
-    
-    async def know_image_callback(self, interaction:discord.Interaction, button:discord.ui.Button):
-        tickets[self.tid]['know_image'] = button.label
-        await interaction.followup.send(embed=await create_completionEmbed(self.bot, self.tid), ephemeral=True)
+def KnowImageSelection(bot, tid : int):
+        return YesNoOption(bot, tid, handle_know_image, handle_dont_know_image)
 
-    @discord.ui.button(label="Yes", style=discord.ButtonStyle.red)
-    async def MeOwnerBtn(self, interaction: discord.Interaction, button:discord.ui.Button):
-        await interaction.response.send_message(embed=ImageRemovalEmbed())
-        time.sleep(5)
-        await self.know_image_callback(interaction, button)
+async def know_other_choice_callback(bot, tid : int, interaction:Interaction, button:Button):
+        await interaction.followup.send("Did the user post an explicit image?",
+                view=PostExplicitSelection(bot, tid), ephemeral=True)
+        for key, value in tickets.items():
+            print(key, value)
+        tickets[tid]['know_other'] = button.label
 
-    @discord.ui.button(label="No", style=discord.ButtonStyle.red)
-    async def OtherOwnerBtn(self, interaction: discord.Interaction, button:discord.ui.Button):
-        await self.know_image_callback(interaction, button)
+async def handle_know_other(bot, tid : int, interaction : Interaction, button : Button):
+        UsernameModal = UsernameInputModal(tid)
+        await interaction.response.send_modal(UsernameModal)
+        await UsernameModal.wait()
+        await know_other_choice_callback(bot, tid, interaction, button)
 
+async def handle_dont_know_other(bot, tid : int, interaction : Interaction, button : Button):
+        await know_other_choice_callback(bot, tid, interaction, button)
+        
 """
 Prompt: "Do you know this other person?"
 """
-class KnowOtherSelection(discord.ui.View):
-    def __init__(self, bot, tid):
-        super().__init__()
-        self.tid = tid
-        self.bot = bot
-
-    async def know_other_choice_callback(self, interaction:discord.Interaction, button:discord.ui.Button):
-        await interaction.followup.send("Did the user post an explicit image?",view=PostExplicitSelection(self.bot, self.tid), ephemeral=True)
-        for key, value in tickets.items():
-            print(key, value)
-        tickets[self.tid]['know_other'] = button.label
-
-    @discord.ui.button(label="Yes", style=discord.ButtonStyle.red)
-    async def KnowOtherBtn(self, interaction:discord.Interaction, button:discord.ui.Button):
-        UsernameModal = UsernameInputModal(self.tid)
-        await interaction.response.send_modal(UsernameModal)
-        await UsernameModal.wait()
-        await self.know_other_choice_callback(interaction, button)
-
-    @discord.ui.button(label="No", style=discord.ButtonStyle.red)
-    async def DKnowOtherBtn(self, interaction: discord.Interaction, button:discord.ui.Button):
-        await self.know_other_choice_callback(interaction, button)
+def KnowOtherSelection(bot, tid : int):
+        return YesNoOption(bot, tid, handle_know_other, handle_dont_know_other)
 
 """
 Prompt: "Do you know this other person?" > "Yes" > "Enter Username"
@@ -284,32 +262,27 @@ class UsernameInputModal(discord.ui.Modal, title='Enter Username'):
 
         self.add_item(discord.ui.TextInput(label="Username", style=discord.TextStyle.short))
 
-    async def on_submit(self, interaction: discord.Interaction):
+    async def on_submit(self, interaction: Interaction):
         tickets[self.tid]['other_username'] = self.children[0].value
         await interaction.response.send_message("Thank you!")
         self.stop()
 
+async def post_explicit_callback(bot, tid : int, interaction : Interaction, button : Button):
+        await interaction.followup.send(embed=await create_completionEmbed(bot, tid), ephemeral=True)
+        tickets[tid]['post_explicit'] = button.label
+
+async def handle_post_explicit(bot, tid : int, interaction : Interaction, button : Button):
+        await interaction.response.send_message(embed=ImageRemovalEmbed())
+        await post_explicit_callback(bot, tid, interaction, button)
+
+async def handle_didnt_post_explicit(bot, tid : int, interaction : Interaction, button : Button):
+        await post_explicit_callback(bot, tid, interaction, button)
+
 """
 Prompt: "Did the user post an explicit image?"
 """
-class PostExplicitSelection(discord.ui.View):
-    def __init__(self, bot, tid):
-        super().__init__()
-        self.tid = tid
-        self.bot = bot
-    
-    async def post_explicit_callback(self, interaction:discord.Interaction, button:discord.ui.Button):
-        await interaction.followup.send(embed=await create_completionEmbed(self.bot, self.tid), ephemeral=True)
-        tickets[self.tid]['post_explicit'] = button.label
-
-    @discord.ui.button(label="Yes", style=discord.ButtonStyle.red)
-    async def MeOwnerBtn(self, interaction: discord.Interaction, button:discord.ui.Button):
-        await interaction.response.send_message(embed=ImageRemovalEmbed())
-        await self.post_explicit_callback(interaction, button)
-
-    @discord.ui.button(label="No", style=discord.ButtonStyle.red)
-    async def OtherOwnerBtn(self, interaction: discord.Interaction, button:discord.ui.Button):
-        await self.post_explicit_callback(interaction, button)
+def PostExplicitSelection(bot, tid : int):
+        return YesNoOption(bot, tid, handle_post_explicit, handle_didnt_post_explicit)
 
 """
 Embed to redirect to takeitdown or other external image removal resources
@@ -333,24 +306,24 @@ class MainMenuButtons(discord.ui.View):
         super().__init__()
         self.bot = bot
         self.mod_channel = mod_channel
-        self.add_item(discord.ui.Button(label='Help', style=discord.ButtonStyle.link, url='https://www.stopsextortion.com/get-help/'))
+        self.add_item(Button(label='Help', style=discord.ButtonStyle.link, url='https://www.stopsextortion.com/get-help/'))
 
     @discord.ui.button(label="Report", style=discord.ButtonStyle.red)
-    async def reportBtn(self, interaction: discord.Interaction, button:discord.ui.Button):
+    async def reportBtn(self, interaction: Interaction, button:Button):
         # await interaction.response.send_modal(MyModal())
         tid = uuid.uuid4()
         await interaction.response.send_message(view=ReportSelection(self.bot, tid))
     
     # @discord.ui.button(label="Help", style=discord.ButtonStyle.red)
-    # async def helpBtn(self, interaction: discord.Interaction, button:discord.ui.Button):
+    # async def helpBtn(self, interaction: Interaction, button:Button):
     #     await self.mod_channel.send(f'Forwarded message:\n{interaction.user.display_name}: Help!')
     #     await interaction.response.send_message("You clicked the help button. We've sent your request to the mod-team", ephemeral=True)
 
     @discord.ui.button(label="Talk to Mod", style=discord.ButtonStyle.red)
-    async def talkBtn(self, interaction: discord.Interaction, button:discord.ui.Button):
+    async def talkBtn(self, interaction: Interaction, button:Button):
         await self.mod_channel.send(f'Forwarded message:\n{interaction.user.display_name}: Help!')
         await interaction.response.send_message("You clicked the help button. We've sent your request to the mod-team", ephemeral=True)
 
-	# async def reportBtn(self, interaction: discord.Interaction, button:discord.ui.Button):
+	# async def reportBtn(self, interaction: Interaction, button:Button):
     #     await interaction.response.send_modal(MyModal())
     
