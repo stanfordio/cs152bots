@@ -5,8 +5,8 @@ class GenericMessage:
         " cancel."
     )
     INVALID_REACTION = (
-        "I'm sorry, I didn't understand that reaction. Please try again or type `cancel`"
-        " to cancel the report."
+        "I'm sorry, I didn't understand that reaction. Please try again or type"
+        " `cancel` to cancel the report."
     )
     CANCELED = "Report canceled."
     REPORT_COMPLETE = (
@@ -15,7 +15,11 @@ class GenericMessage:
     )
     INVALID_SKIP = (
         "I'm sorry. This question cannot be skipped. Please choose an option or type"
-         " `cancel` to cancel the report."
+        " `cancel` to cancel the report."
+    )
+    INVALID_NUMBER = (
+        "I'm sorry, I didn't understand that number. Please try again or type `cancel`"
+        " to cancel the report."
     )
 
 
@@ -64,15 +68,15 @@ class ReportDetailsMessage:
         " \n3️⃣ - Immediate danger\n4️⃣ - Other"
     )
     ABUSE_TYPE = (
-        "What type of abuse are you reporting? React to this message with"
-        " the corresponding emoji.\n1️⃣ - Sexually explicit harassment\n2️⃣ - Encouraging"
+        "What type of abuse are you reporting? React to this message with the"
+        " corresponding emoji.\n1️⃣ - Sexually explicit harassment\n2️⃣ - Encouraging"
         " self-harm\n3️⃣ - Hate speech\n4️⃣ - Other"
     )
     ABUSE_DESCRIPTION = (
-        "Which of the following best describes the situation? React to this"
-        " message with the corresponding emoji.\n1️⃣ - The reporting user is receiving"
-        " sexually explicit content (images, text)\n2️⃣ - The reporting user is receiving"
-        " unwanted requests involving sexually explicit content"
+        "Which of the following best describes the situation? React to this message"
+        " with the corresponding emoji.\n1️⃣ - The reporting user is receiving sexually"
+        " explicit content (images, text)\n2️⃣ - The reporting user is receiving unwanted"
+        " requests involving sexually explicit content"
     )
     UNWANTED_REQUESTS = (
         "What is the account you are reporting requesting? React to this"
@@ -80,12 +84,11 @@ class ReportDetailsMessage:
         "2️⃣ - Additional sexually explicit content\n3️⃣ - Other"
     )
     MULTIPLE_REQUESTS = (
-        "Have you or the person on behalf of whom this report is being filed received multiple"
-        " requests from the account you are reporting? Please type `yes` or `no`."
+        "Have you or the person on behalf of whom this report is being filed received"
+        " multiple requests from the account you are reporting? Please type `yes` or"
+        " `no`."
     )
-    APPROXIMATE_REQUESTS = (
-        "Please approximate the number of requests."
-    )
+    APPROXIMATE_REQUESTS = "Please approximate the number of requests."
     COMPLIED_WITH_REQUESTS = (
         "Have you or the person on behalf of whom this report is being filed complied"
         " with these requests? Please type `yes` or `no`."
@@ -94,29 +97,25 @@ class ReportDetailsMessage:
         "Does the sexually explicit content involve a minor? Please type `yes` or `no`."
     )
     CONTAIN_YOURSELF = (
-        "Does this content contain you or the person on behalf of whom this report is being"
-        " filed? Please type `yes` or `no`."
+        "Does this content contain you or the person on behalf of whom this report is"
+        " being filed? Please type `yes` or `no`."
     )
     ENCOURAGE_SELF_HARM = (
-        "Is the account you are reporting encouraging self-harm? Please type `yes`, `no`, or"
-        " `skip` to skip this question."
+        "Is the account you are reporting encouraging self-harm? Please type `yes`,"
+        " `no`, or `skip` to skip this question."
     )
-    SELF_HELP_RESOURCES = (
-        "self-help: idk"
-    )
+    SELF_HELP_RESOURCES = "***TODO***self-help: idk"
     ADDITIONAL_INFO = (
-        "Would you like to provide any additional information? Please type `yes` or `no`."
+        "Would you like to provide any additional information? Please type `yes` or"
+        " `no`."
     )
-    PLEASE_SPECIFY = (
-        "Please specify."
-    )
+    PLEASE_SPECIFY = "Please specify."
     BLOCK_USER = (
-        "Would you like to block the account you have reported? Please type `yes` or `no`."
+        "Would you like to block the account you have reported? Please type `yes` or"
+        " `no`."
     )
-    BLOCKED = (
-        "`{author}` has been blocked."
-    )
+    BLOCKED = "`{author}` has been blocked."
     CONFIRMATION = (
-        "show current report. \n"
-        "Please type `yes` or `no` to confirm that you would like to submit this report."
+        "Here is a summary of your report. Please type `yes` or `no` to confirm that"
+        " you would like to submit this report."
     )

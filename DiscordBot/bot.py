@@ -1,4 +1,5 @@
 # bot.py
+import asyncio
 import json
 import logging
 import os
@@ -6,9 +7,9 @@ import re
 from typing import Union
 
 import discord
+import emoji
 from report import Report
 from unidecode import unidecode
-import emoji
 
 # Set up logging to the console
 logger = logging.getLogger("discord")
@@ -58,6 +59,14 @@ class ModBot(discord.Client):
             for channel in guild.text_channels:
                 if channel.name == f"group-{self.group_num}-mod":
                     self.mod_channels[guild.id] = channel
+
+    async def send_to_mod_channels(self, message: str) -> None:
+        """
+        Send a message to all the mod channels that this bot is configured to report to.
+        """
+        await asyncio.gather(
+            *[channel.send(message) for channel in self.mod_channels.values()]
+        )
 
     async def on_message(self, message):
         """
@@ -232,7 +241,9 @@ class ModBot(discord.Client):
         fetched_message = await channel.fetch_message(payload.message_id)
 
         # Let the report class handle this reaction
-        responses = await self.reports[reactor_id].handle_reaction_add(payload.emoji, fetched_message)
+        responses = await self.reports[reactor_id].handle_reaction_add(
+            payload.emoji, fetched_message
+        )
 
         # If the report class returned a string, convert it to a list to make it easier
         if isinstance(responses, str):
