@@ -213,7 +213,7 @@ async def my_images_callback(bot, tid : int, interaction : Interaction, button :
                 view=KnowImageSelection(bot, tid), ephemeral=True)
 
 async def others_images_callback(bot, tid : int, interaction : Interaction, button : Button):
-        tickets[self.tid]['shared_explicit'] = 'No'
+        tickets[tid]['shared_explicit'] = 'No'
         # await interaction.response.send_message(embed=await create_completionEmbed(self.bot, self.tid), ephemeral=True)
         await interaction.response.send_message('You responded: No.',  ephemeral=True)
         await send_completionEmbed(interaction, bot, tid)
@@ -305,7 +305,7 @@ Embed to redirect to takeitdown or other external image removal resources
 """
 class ImageRemovalEmbed(discord.Embed):
     def __init__(self):
-        super().__init__(title='Removal/Preventation Resources', url='https://takeitdown.ncmec.org/')
+        super().__init__(title='Removal/Prevention Resources', url='https://takeitdown.ncmec.org/')
         self.add_field(name="Please click on the link above.", value="These instructions will help get your image removed and stop their spread", inline=False)
 class MainMenuEmbed(discord.Embed):
     def __init__(self):
