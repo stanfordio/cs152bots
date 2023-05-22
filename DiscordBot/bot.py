@@ -43,8 +43,8 @@ class ModBot(discord.Client):
         self.flagged_users = {}  # Map of users that have been flagged to users that have flagged them (for moderator review)
         self.reports_by_user = {}  # Map from user to list of reports by the user
         self.reports_about_user = {}  # Map from user to list of reports against them
-        self.manual_check_queue = PriorityQueue()
-        self.in_prog_reviews = {}
+        self.manual_check_queue = PriorityQueue() # Queue of reports to be manually reviewed prioritized by severity
+        self.in_prog_reviews = {} # Map of mod-channel message ids to reports for reports currently in review
 
 
     async def on_ready(self):
@@ -176,17 +176,9 @@ class ModBot(discord.Client):
                 self.reports_about_user[user_being_reported] = []
             self.reports_about_user[user_being_reported].append(completed_report)
 
-            #take_post_down, response, severity = mod_flow.new_report(completed_report, user_being_reported,
+            # take_post_down, response, severity = mod_flow.new_report(completed_report, user_being_reported,
             #                                               user_making_report, self.reports_by_user,
             #                                               self.reports_about_user)
-            #responses += [response]
-            # the current flowchart does not specify deleting messages and usually we want to keep them for police reports, i feel like we should remove
-            #if take_post_down:
-            #    await completed_report.get_message().delete()
-            
-            #for now, manually check all posts
-            #mod_channel = self.mod_channels[message.guild.id]
-            #await mod_channel.send("finished a report")
 
             # For now add all reports to the manual check queue with severity 1
             # TODO for milesotne 2: make severity high low or med depending on report type
