@@ -181,8 +181,10 @@ class ModBot(discord.Client):
             #                                               self.reports_about_user)
 
             # For now add all reports to the manual check queue with severity 1
-            # TODO for milesotne 2: make severity high low or med depending on report type
-            severity = 1
+            # TODO for milestone 2: make severity high low or med depending on report type
+            severity = 3
+            if Report.THREAT in completed.reported_issues:
+                severity =  1
             self.manual_check_queue.put((severity, completed_report))
 
         #for r in responses:
@@ -207,6 +209,7 @@ class ModBot(discord.Client):
             if self.manual_check_queue.empty():
                 await mod_channel.send("Nothing to review")
             else:
+                #TODO: Handle report.reported_msg is encoded in some way
                 pri, report = self.manual_check_queue.get()
                 #TODO for milestone 2: format this text prettier
                 msg = "Reported user " + str(report.reported_user_id) + " for \n"
@@ -217,19 +220,19 @@ class ModBot(discord.Client):
                 sent = await mod_channel.send(msg)
                 self.in_prog_reviews[sent.id] = report
 
-        #TODO: (maybe) for milestone 2: I haven't tested this but the idea here is to generate a report
-        # of everything a user has reported in case they ask (for police purposes etc)
-        elif message.content.startswith(self.USER_REPORTS):
-            #TODO: I have tested this zero
-            l = message.content.split(' ')
-            user_id = int(l[1])
-            #TODO: format the reports_by_user, this will print python garbage
-            await self.mod_channel.send(str(self.reports_by_user[user_id]))
+        # #TODO: (maybe) for milestone 2: I haven't tested this but the idea here is to generate a report
+        # # of everything a user has reported in case they ask (for police purposes etc)
+        # elif message.content.startswith(self.USER_REPORTS):
+        #     #TODO: I have tested this zero
+        #     l = message.content.split(' ')
+        #     user_id = int(l[1])
+        #     #TODO: format the reports_by_user, this will print python garbage
+        #     await self.mod_channel.send(str(self.reports_by_user[user_id]))
 
     async def handle_mod_react(self, payload):
         # once a mod reacts to a manual review message, this should send the suspended/banned user a message simulating the bad
         # TODO: Also send the reporter a message with the decision/report? as in case 3 where we do nothing
-        # TODO: Make this match the flowchart
+        # TODO: Make this match the flowchart words wise
         msg_id = payload.message_id
         if msg_id not in self.in_prog_reviews:
             return
@@ -239,6 +242,7 @@ class ModBot(discord.Client):
         reporting_user = report.reporting_user_id
         emoji = payload.emoji
 
+        #TODO: make these messages match flow chart and send messages to both users in each case
         if str(emoji.name) == '1️⃣':
             user = await self.fetch_user(reported_user)
             await user.send("You have been banned due to user reports")
