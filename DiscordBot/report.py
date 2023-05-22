@@ -85,6 +85,7 @@ class Report:
             self.state = State.AWAITING_SUBCATEGORY
             if self.category == "imminent danger": # dif implementation because of nested subcategory
                 return ["You've selected " + self.category + ". Please specify the subcategory: " + ", ".join(self.CATEGORIES[self.category].keys())]
+                # TODO: bool flag for law enforcement recommendation 
             else:
                 return ["You've selected " + self.category + ". Please specify the subcategory: " + ", ".join(self.CATEGORIES[self.category])]
 
@@ -114,6 +115,9 @@ class Report:
                         (", Subsubcategory - " + self.subsubcategory if self.category == "imminent danger" and self.subcategory == "threats" else "") + ". Thank you for your report."]
             else:
                 return ["Invalid response. Please confirm your selection by saying 'confirm' or restart by saying 'cancel'."]
+
+
+        # TODO: ask to block?
         return []
 
     def report_complete(self):
