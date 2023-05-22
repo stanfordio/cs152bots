@@ -110,12 +110,19 @@ class ModBot(discord.Client):
 
     async def clean_up_report(self, author_id):
         """If the report is complete or cancelled, remove it from our map."""
-        if author_id in self.reports and self.reports[author_id].report_complete():
-            # TODO: I'm sending report info to mod channel. Is that what we want?
-            # Don't think so because report_complete can also be `cancelled`.
+        if author_id not in self.reports:
+            return
+        # Forward completed reports for review
+        if self.reports[author_id].report_complete():
+            # TODO: I'm sending completed report info to mod channel. Is that what we want?
             cur_report = self.reports[author_id]
             mod_channel = self.mod_channels[cur_report.message.guild.id]
             await mod_channel.send(self.reports[author_id].report_info())
+        # Remove from internal map.
+        if (
+            self.reports[author_id].report_canceled()
+            or self.reports[author_id].report_complete()
+        ):
             self.reports.pop(author_id)
 
     async def handle_channel_message(self, message):

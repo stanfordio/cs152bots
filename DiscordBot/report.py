@@ -17,6 +17,7 @@ class State(Enum):
     IN_VIEW = auto()
     GETTING_MSG_ID = auto()
     GETTING_EXTRA_INFO = auto()
+    REPORT_CANCELED = auto()
     REPORT_COMPLETE = auto()
 
 
@@ -47,7 +48,7 @@ class Report:
         """
 
         if message.content == self.CANCEL_KEYWORD:
-            self.state = State.REPORT_COMPLETE
+            self.state = State.REPORT_CANCELED
             return ["Report cancelled."]
 
         if self.state == State.REPORT_START:
@@ -139,6 +140,9 @@ class Report:
             ]
 
         return []
+
+    def report_canceled(self):
+        return self.state == State.REPORT_CANCELED
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
