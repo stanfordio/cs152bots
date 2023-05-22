@@ -51,8 +51,8 @@ class AnythingElse(ButtonView):
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.primary)
     async def submit_callback(self, interaction, button):
         await self.change_buttons(interaction, button)
-        self.report.set_report_done()
         await interaction.followup.send(SUBMIT_MSG)
+        await self.report.finish_report()
 
     @discord.ui.button(label="Add description", style=discord.ButtonStyle.secondary)
     async def more_button_callback(self, interaction, button):
@@ -87,8 +87,8 @@ class SubmitOrInfoView(ButtonView):
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.primary)
     async def submit_callback(self, interaction, button):
         await self.change_buttons(interaction, button)
-        self.report.set_report_done()
         await interaction.followup.send(SUBMIT_MSG)
+        await self.report.finish_report()
 
     @discord.ui.button(label="More Info", style=discord.ButtonStyle.secondary)
     async def more_button_callback(self, interaction, button):

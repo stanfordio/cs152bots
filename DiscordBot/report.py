@@ -28,10 +28,12 @@ class Report:
     def __init__(self, client):
         # State to handle inner working of bot
         self.state = State.REPORT_START
+        # The mod bot
         self.client = client
         # State for filing a report
-        self.message = None
-        self.abuse_type: Optional[ABUSE_TYPES] = None
+        self.author_id: int = None  # Author of the report
+        self.message = None  # Reported message
+        self.abuse_type: ABUSE_TYPES = None
         self.harassment_types: List[HARASSMENT_TYPES] = []
         self.target = None  # TODO: Still has to change
         self.additional_msgs: List[str] = None
@@ -54,6 +56,7 @@ class Report:
             reply += "Please copy paste the link to the message you want to report.\n"
             reply += "You can obtain this link by right-clicking the message and clicking `Copy Message Link`."
             self.state = State.AWAITING_MESSAGE
+            self.author_id = message.author.id
             return [reply]
 
         if self.state == State.AWAITING_MESSAGE:
@@ -141,7 +144,13 @@ class Report:
         return self.state == State.REPORT_COMPLETE
 
     def report_info(self):
-        return f"Reported Message:\n```{self.message.author.name}: {self.message.content}```\nAbuse Type: {self.abuse_type}\nHarassment Types: {self.harassment_types}\nTarget: {self.target} \nAdditional Msgs: {self.additional_msgs}\nAdditional Info {self.additional_info}"
+        """Info provided to the moderators for review."""
+        return f"User #{self.author_id} reported the following message:\n```{self.message.author.name}: {self.message.content}```\nAbuse Type: {self.abuse_type}\nHarassment Types: {self.harassment_types}\nTarget: {self.target} \nAdditional Msgs: {self.additional_msgs}\nAdditional Info {self.additional_info}"
+
+    async def finish_report(self):
+        """Finishes the report by setting the type to complete and calling the client's clean up funciton."""
+        self.state = State.REPORT_COMPLETE
+        await self.client.clean_up_report(self.author_id)
 
     # State setters and getters
     def set_info_state(self):
@@ -149,9 +158,6 @@ class Report:
 
     def set_msg_id_state(self):
         self.state = State.GETTING_MSG_ID
-
-    def set_report_done(self):
-        self.state = State.REPORT_COMPLETE
 
     def set_abuse_type(self, abuse: ABUSE_TYPES):
         self.abuse_type = abuse

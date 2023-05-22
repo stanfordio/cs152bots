@@ -94,17 +94,25 @@ class ModBot(discord.Client):
         if author_id not in self.reports:
             self.reports[author_id] = Report(self)
 
-        # Let the report class handle this message; forward all the messages it returns to uss
+        # Let the report class handle this message; forward all the messages it returns to us
         responses = await self.reports[author_id].handle_message(message)
         for r in responses:
             if type(r) is tuple:
+                # Some responses might include a View.
                 await message.channel.send(r[0], view=r[1])
             else:
                 await message.channel.send(r)
 
         # If the report is complete or cancelled, remove it from our map
-        if self.reports[author_id].report_complete():
+        # We do this here just in case the report is not completed by a View callback.
+        # View callback's must call `clean_up_report` themselves.
+        await self.clean_up_report(author_id)
+
+    async def clean_up_report(self, author_id):
+        """If the report is complete or cancelled, remove it from our map."""
+        if author_id in self.reports and self.reports[author_id].report_complete():
             # TODO: I'm sending report info to mod channel. Is that what we want?
+            # Don't think so because report_complete can also be `cancelled`.
             cur_report = self.reports[author_id]
             mod_channel = self.mod_channels[cur_report.message.guild.id]
             await mod_channel.send(self.reports[author_id].report_info())
