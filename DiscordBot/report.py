@@ -9,6 +9,7 @@ from user_report import (
     HARASSMENT_TYPES,
 )
 from typing import Optional, List
+from datetime import date
 
 
 class State(Enum):
@@ -29,7 +30,7 @@ class Report:
     def __init__(self, client):
         # State to handle inner working of bot
         self.state = State.REPORT_START
-        # The mod bot
+        # The ModBot
         self.client = client
         # State for filing a report
         self.author_id: int = None  # Author of the report
@@ -37,6 +38,7 @@ class Report:
         self.abuse_type: ABUSE_TYPES = None
         self.harassment_types: List[HARASSMENT_TYPES] = []
         self.target = None  # TODO: Still has to change
+        self.date_submitted = None
         self.additional_msgs: List[str] = None
         self.additional_info: Optional[str] = None
 
@@ -149,11 +151,12 @@ class Report:
 
     def report_info(self):
         """Info provided to the moderators for review."""
-        return f"User #{self.author_id} reported the following message:\n```{self.message.author.name}: {self.message.content}```\nAbuse Type: {self.abuse_type}\nHarassment Types: {self.harassment_types}\nTarget: {self.target} \nAdditional Msgs: {self.additional_msgs}\nAdditional Info {self.additional_info}"
+        return f"User #{self.author_id} reported the following message on {self.date_submitted}:\n```{self.message.author.name}: {self.message.content}```\nAbuse Type: {self.abuse_type}\nHarassment Types: {self.harassment_types}\nTarget: {self.target} \nAdditional Msgs: {self.additional_msgs}\nAdditional Info {self.additional_info}"
 
     async def finish_report(self):
         """Finishes the report by setting the type to complete and calling the client's clean up funciton."""
         self.state = State.REPORT_COMPLETE
+        self.date_submitted = date.today()
         await self.client.clean_up_report(self.author_id)
 
     # State setters and getters
