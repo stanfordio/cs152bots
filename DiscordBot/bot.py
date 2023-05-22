@@ -8,6 +8,7 @@ import re
 import requests
 from report import Report
 import pdb
+from discord.ext import context
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -26,7 +27,7 @@ with open(token_path) as f:
     discord_token = tokens['discord']
 
 
-class ModBot(discord.Client):
+class ModBot(context.ContextClient, discord.Client):
     def __init__(self): 
         intents = discord.Intents.default()
         intents.message_content = True
@@ -65,10 +66,11 @@ class ModBot(discord.Client):
             return
 
         # Check if this message was sent in a server ("guild") or if it's a DM
-        if message.guild:
-            await self.handle_channel_message(message)
-        else:
-            await self.handle_dm(message)
+        #if message.guild:
+            ##TODO: Get rid of this for now till we have automatic checking
+            #await self.handle_channel_message(message)
+        #else:
+        await self.handle_dm(message)
 
     async def handle_dm(self, message):
         # Handle a help message
