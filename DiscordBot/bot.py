@@ -7,7 +7,7 @@ import logging
 import re
 import requests
 
-#from DiscordBot import mod_flow
+# from DiscordBot import mod_flow
 from report import Report, BotReactMessage
 import pdb
 from queue import PriorityQueue
@@ -35,7 +35,11 @@ class ModBot(discord.Client):
 
     def __init__(self):
         intents = discord.Intents.default()
-        intents.messages = True
+        try:
+            intents.message_content = True
+        except:
+            intents.messages = True
+
         super().__init__(command_prefix='.', intents=intents)
         self.group_num = None
         self.mod_channels = {}  # Map from guild to the mod channel id for that guild
@@ -43,9 +47,8 @@ class ModBot(discord.Client):
         self.flagged_users = {}  # Map of users that have been flagged to users that have flagged them (for moderator review)
         self.reports_by_user = {}  # Map from user to list of reports by the user
         self.reports_about_user = {}  # Map from user to list of reports against them
-        self.manual_check_queue = PriorityQueue() # Queue of reports to be manually reviewed prioritized by severity
-        self.in_prog_reviews = {} # Map of mod-channel message ids to reports for reports currently in review
-
+        self.manual_check_queue = PriorityQueue()  # Queue of reports to be manually reviewed prioritized by severity
+        self.in_prog_reviews = {}  # Map of mod-channel message ids to reports for reports currently in review
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -76,7 +79,7 @@ class ModBot(discord.Client):
             return
 
         # Check if this message was sent in a server ("guild") or if it's a DM
-        #mod_channel = self.mod_channels[message.guild.id]
+        # mod_channel = self.mod_channels[message.guild.id]
         if message.guild:
             await self.handle_channel_message(message)
         else:
@@ -162,7 +165,7 @@ class ModBot(discord.Client):
 
         # If the report is complete, remove it from our map but flag the reported user
         if self.reports[author_id].report_complete():
-            #self.flagged_users[reported_user_id] = (author_id, self.reports[author_id].reported_issues)
+            # self.flagged_users[reported_user_id] = (author_id, self.reports[author_id].reported_issues)
             # TODO: do something with this information (maybe more for milesotne 3)
             completed_report = self.reports.pop(author_id)
             user_making_report = author_id
@@ -182,23 +185,23 @@ class ModBot(discord.Client):
 
             # Feel free to change any of these 
             severity = 1
-            severity1 = [Report.THREAT, Report.SPAM, Report.HARASSMENT, Report.FALSE_INFO, Report.NOT_INTERESTED, Report.OTHER]
+            severity1 = [Report.THREAT, Report.SPAM, Report.HARASSMENT, Report.FALSE_INFO, Report.NOT_INTERESTED,
+                         Report.OTHER]
             severity2 = [Report.FRAUD, Report.REQUESTED_MONEY, Report.IMPERSONATION]
             severity3 = [Report.OBTAINED_MONEY, Report.IMMINENT_DANGER]
             if any(x in severity1 for x in completed_report.reported_issues):
-                severity =  1
+                severity = 1
             if any(x in severity2 for x in completed_report.reported_issues):
-                severity =  2
+                severity = 2
             if any(x in severity3 for x in completed_report.reported_issues):
-                severity =  3
+                severity = 3
             self.manual_check_queue.put((severity, completed_report))
 
-
-        #for r in responses:
+        # for r in responses:
         #   await message.channel.send(r)
 
     async def handle_channel_message(self, message):
-        if  message.channel.name == f'group-{self.group_num}':
+        if message.channel.name == f'group-{self.group_num}':
             # Forward the messages from group channel to the mod channel
             mod_channel = self.mod_channels[message.guild.id]
             await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
@@ -216,7 +219,7 @@ class ModBot(discord.Client):
             if self.manual_check_queue.empty():
                 await mod_channel.send("Nothing to review")
             else:
-                #TODO: Handle report.reported_msg is encoded in some way - milestone 3
+                # TODO: Handle report.reported_msg is encoded in some way - milestone 3
                 pri, report = self.manual_check_queue.get()
                 msg = "Report:" + "\n"
                 msg += "\t" + "Report against user: " + str(report.reported_user_id) + "\n"
@@ -243,7 +246,7 @@ class ModBot(discord.Client):
         msg_id = payload.message_id
         if msg_id not in self.in_prog_reviews:
             return
-        
+
         report = self.in_prog_reviews[msg_id]
         reported_user = report.reported_user_id
         reporting_user = report.reporting_user_id
@@ -252,9 +255,10 @@ class ModBot(discord.Client):
         if str(emoji.name) == '1️⃣':  # Remove account
             user_reported = await self.fetch_user(reported_user)
             user_making_report = await self.fetch_user(reporting_user)
-            await user_reported.send("We detected fraudulent activity on your account. We will be banning your account.")
+            await user_reported.send(
+                "We detected fraudulent activity on your account. We will be banning your account.")
             await user_making_report.send("We took action against" + user_reported.name + "who you recently reported. "
-                                          "Thank you for keeping our platform safe.")
+                                                                                          "Thank you for keeping our platform safe.")
             self.in_prog_reviews.pop(msg_id)
 
         elif str(emoji.name) == '2️⃣':  # Suspend for 15 days
@@ -263,7 +267,7 @@ class ModBot(discord.Client):
             await user_reported.send("We detected fraudulent activity on your account. "
                                      "We will be suspending your account for 15 days.")
             await user_making_report.send("We took action against" + user_reported.name + "who you recently reported. "
-                                          "Thank you for keeping our platform safe.")
+                                                                                          "Thank you for keeping our platform safe.")
             self.in_prog_reviews.pop(msg_id)
 
         elif str(emoji.name) == '3️⃣':  # Warning
@@ -272,20 +276,18 @@ class ModBot(discord.Client):
             await user_reported.send("We detected fraudulent activity on your account. "
                                      "This is a warning; continuation of fraudulent activity will result in escalated action.")
             await user_making_report.send("We took action against" + user_reported.name + "who you recently reported. "
-                                          "Thank you for keeping our platform safe.")
+                                                                                          "Thank you for keeping our platform safe.")
             self.in_prog_reviews.pop(msg_id)
 
         elif str(emoji.name) == '4️⃣':  # No action
             user_reported = await self.fetch_user(reported_user)
             user_making_report = await self.fetch_user(reporting_user)
-            await user_making_report.send("We did not detect any fraudulent information in the message/profile submitted. "
-                                          "The next course of action to protect yourself can include: " + "\n"
-                                          "\t" + "Blocking" + user_reported.name + "\n"
-                                          "\t" + "Calling 911 if this is an emergency.")
+            await user_making_report.send(
+                "We did not detect any fraudulent information in the message/profile submitted. "
+                "The next course of action to protect yourself can include: " + "\n"
+                                                                                "\t" + "Blocking" + user_reported.name + "\n"
+                                                                                                                         "\t" + "Calling 911 if this is an emergency.")
             self.in_prog_reviews.pop(msg_id)
-        
-        
-        
 
     def eval_text(self, message):
         ''''
