@@ -8,15 +8,58 @@ class State(Enum):
     MESSAGE_IDENTIFIED = auto()
     REPORT_COMPLETE = auto()
 
+    # Message Classification
+    SPAM = auto()
+    HARASSMENT = auto()
+    OFFENSIVE_CONTENT = auto()
+    HARM_OR_DANGER = auto()
+
+    # Offensive Content Classification
+    SEXUAL_CONTENT = auto()
+
+    # Sexual Content Classification
+    ADULT = auto()
+    CSAM = auto()
+
+
 class Report:
     START_KEYWORD = "report"
     CANCEL_KEYWORD = "cancel"
     HELP_KEYWORD = "help"
 
+    SPAM = "spam"
+    HARASSMENT = "harassment"
+    OFFENSIVE = "offensive"
+    HARM = "harm"
+
+    FRAUD = "fraud"
+    IMPERSONATION = "impersonation"
+
+    TARGETING_ME = "me"
+    TARGETING_OTHERS = "other"
+
+    GRAPHIC_VIOLENCE = "graphic"
+    SEXUALLY_EXPLICIT_CONTENT = "sexual"
+    NUDITY = "nuidity"
+    HATE_SPEECH = "hate"
+
+    THREATENS_OTHERS = "others"
+    SELF_HARM = "self"
+    SUBSTANCE_ABUSE = "substance"
+
+    ADULT = "adult"
+    CSAM = "child"
+
+    BLOCK = "block"
+    HIDE = "hide"
+    NONE = "no"
+
+
     def __init__(self, client):
         self.state = State.REPORT_START
         self.client = client
         self.message = None
+        self.reportedUser = None
     
     async def handle_message(self, message):
         '''
@@ -55,11 +98,164 @@ class Report:
 
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.MESSAGE_IDENTIFIED
+            self.reportedUser = message.author.name
             return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
-                    "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
-        
+                    "Please classify the message as one of the following: ", \
+                    "Use the command `spam` to classify the message as a spam.", \
+                    "Use the command `harassment` to classify the message as a harassment.", \
+                    "Use the command `offensive` to classify the message as being offensive.", \
+                    "Use the command `harm` if the message threatens to cause harm.\n"]
+
+        # Classifying the message.
         if self.state == State.MESSAGE_IDENTIFIED:
-            return ["<insert rest of reporting flow here>"]
+            if message.content == self.SPAM:
+                self.state = State.SPAM
+                return ["You have classified the message as a spam.", \
+                        "Please identify if the spam is a fraud or an impersonation.", \
+                        "Use the command `fraud` to classify the spam as fraudulent.", \
+                        "Use the command `impersonation` to classify the spam as an impersonation.\n"]
+
+            if message.content == self.HARASSMENT:
+                self.state = State.HARASSMENT
+                return ["You have classified the message as a harassment.", \
+                        "Please identify if the harassment is directed to you or someone else.", \
+                        "Use the command `me` if the harasser is targeting you.", \
+                        "Use the command `other` if the harasser is targeting someone else.\n"]
+
+            if message.content == self.OFFENSIVE:
+                self.state = State.OFFENSIVE_CONTENT
+                return ["You have classified the message as offensive.", \
+                        "Please identify under which category the offensive content falls under.", \
+                        "Use the command `graphic` if the message contains graphic violence.", \
+                        "Use the command `sexual` if the message contains sexually explicit content or nudity.", \
+                        "Use the command `hate` if the message is a hate speech.\n"]
+
+            if message.content == self.HARM:
+                self.state = State.HARM_OR_DANGER
+                return ["You have classified the message as harmful or dangerous.", \
+                        "Please identify the type of harm the message insinuates", \
+                        "Use the command `threatens` if the message threatens someone.", \
+                        "Use the command `self` if the message is about self-harm or suicide.", \
+                        "Use the command `substance` if the message is related to illegal substance abuse.\n"]
+
+        # spam control flow
+        if self.state == State.SPAM:
+            if message.content == self.FRAUD:
+                self.state = State.REPORT_COMPLETE
+                return ["You have reported that the message is a fraudulent spam.", \
+                        "Report complete. Thank you very much."]
+
+            if message.content == self.IMPERSONATION:
+                self.state = State.REPORT_COMPLETE
+                return ["You have reported that the message is a spam where " + self.reportedUser + "impersonates as someone else.", \
+                        "Report complete. Thank you very much."]
+
+        # harassment control flow
+        if self.state == State.HARASSMENT:
+            if message.content == self.TARGETING_ME:
+                self.state = State.REPORT_COMPLETE
+                return ["You have reported that this message is proof of harassment against you by " + self.reportedUser + ".", \
+                        "Report complete. Thank you very much."]
+
+            if message.content == self.TARGETING_OTHERS:
+                self.state = State.REPORT_COMPLETE
+                return ["You have reported that this message is proof of harassment against someone else by " + self.reportedUser + ".", \
+                        "Report complete. Thank you very much."]
+
+        # offensive content control flow
+        if self.state == State.OFFENSIVE_CONTENT:
+            if message.content == self.GRAPHIC_VIOLENCE:
+                self.state = State.REPORT_COMPLETE
+                return ["You have reported that the message contains grahpic violence.", \
+                        "Report complete. Thank you very much."]
+
+            if message.content == self.SEXUALLY_EXPLICIT_CONTENT or message.content == self.NUDITY:
+                self.state = State.SEXUAL_CONTENT
+                return ["You have specified that the message contains sexually explicit content.", \
+                        "Please state if the sexual content features an adult or a child/minor.", \
+                        "Use the command `adult` if the message features only adults.", \
+                        "Use the command `child` if the message features a child or a minor."]
+
+            if message.content == self.HATE_SPEECH:
+                self.state = State.REPORT_COMPLETE
+                return ["You have reported that the message is a hate speech against someone else.", \
+                        "Report complete. Thank you very much."]
+
+        if self.state == State.SEXUAL_CONTENT:
+            if message.content == self.ADULT:
+                self.state = State.ADULT
+                return ["Thank you for your report. We take these matters very seriously and will "
+                        "investigate this message promptly. We will take appropriate actions, which "
+                        "may include removal of the message and/or the user.", \
+
+                        "In the meantime, would you like to block this user to prevent them from "
+                        "sending future messages to you or hide the message from your account?", \
+
+                        "Use the command `block` to block the user.", \
+                        "Use the command `hide` to hide the reported message.", \
+                        "Use the command `no` to take no action"]
+
+            if message.content == self.CSAM:
+                self.state = State.CSAM
+                return ["Thank you for your report. We take these matters very seriously and will "
+                        "investigate this message promptly. We will take appropriate actions, "
+                        "which may include removal of the message and/or the user and working "
+                        "with law enforcement.", \
+
+                        "In the meantime, would you like to block this user to prevent them from "
+                        "sending future messages to you or hide the message from your account?", \
+
+                        "Use the command `block` to block the user.", \
+                        "Use the command `hide` to hide the reported message.", \
+                        "Use the command `no` to take no action"
+                        ]
+
+        if self.state == State.ADULT:
+            if message.content == self.BLOCK:
+                self.state = State.REPORT_COMPLETE
+                return ["You have blocked the user " + self.reportedUser + ".", \
+                        "Report complete. Thank you very much."]
+
+            if message.content == self.HIDE:
+                self.state = State.REPORT_COMPLETE
+                return ["The reported message has been hidden from you. It will no longer appear in your feed.", \
+                        "Report complete. Thank you very much."]
+
+            if message.content == self.NONE:
+                self.state = State.REPORT_COMPLETE
+                return ["Report complete. Thank you very much."]
+
+        if self.state == State.CSAM:
+            if message.content == self.BLOCK:
+                self.state = State.REPORT_COMPLETE
+                return ["You have blocked the user " + self.reportedUser + ".", \
+                        "Report complete. Thank you very much."]
+
+            if message.content == self.HIDE:
+                self.state = State.REPORT_COMPLETE
+                return ["The reported message has been hidden from you. It will no longer appear in your feed.", \
+                        "Report complete. Thank you very much."]
+
+            if message.content == self.NONE:
+                self.state = State.REPORT_COMPLETE
+                return ["Report complete. Thank you very much."]
+
+        # harm/danger control flow
+        if self.state == State.HARM_OR_DANGER:
+            if message.content == self.THREATENS_OTHERS:
+                self.state = State.REPORT_COMPLETE
+                return ["You have reported that the message contains threats to someone else.", \
+                        "Report complete. Thank you very much."]
+
+            if message.content == self.SELF_HARM:
+                self.state = State.REPORT_COMPLETE
+                return ["You have reported that the message contains elements of self harm or suicide", \
+                        "Report complete. Thank you very much."]
+
+            if message.content == self.SUBSTANCE_ABUSE:
+                self.state = State.REPORT_COMPLETE
+                return ["You have reported that the message is related to illegal substance abuse.", \
+                        "Report complete. Thank you very much."]
 
         return []
 
