@@ -1,4 +1,5 @@
 from datetime import datetime
+import cuid
 
 
 class ReportData:
@@ -25,6 +26,8 @@ Additional Information:
 
     MODERATOR_NOTES = """
 Moderator Notes:
+    Report ID: {id}
+
     Priority: {priority}
     Created at: {date} (UTC)
     Completed at: {completed_at} (UTC)
@@ -36,6 +39,7 @@ Moderator Notes:
 """
 
     def __init__(self):
+        self.id = cuid.cuid()
         self.report_started_at = datetime.utcnow()
         self.report_completed_at = None
         self.reporter = None
@@ -110,6 +114,7 @@ Moderator Notes:
             " necessary action.\n"
             + "```"
             + ReportData.MODERATOR_NOTES.format(
+                id=self.id,
                 priority=self.priority,
                 date=self.report_started_at,
                 completed_at=self.report_completed_at,

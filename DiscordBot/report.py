@@ -305,6 +305,7 @@ class Report:
 
                 # Send the report to the mod channel
                 await self.client.send_to_mod_channels(self.data.moderator_summary)
+                self.client.open_reports.append(self.data)
 
                 self.state = State.REPORT_COMPLETE
                 return GenericMessage.REPORT_COMPLETE

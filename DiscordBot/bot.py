@@ -39,6 +39,7 @@ class ModBot(discord.Client):
         self.mod_channels = {}  # Map from guild to the mod channel id for that guild
         self.reports = {}  # Map from user IDs to the state of their report
         self.moderating = None # The moderation session that is currently running
+        self.open_reports = [] # List of all open reports
 
     async def on_ready(self):
         print(f"{self.user.name} has connected to Discord! It is these guilds:")
