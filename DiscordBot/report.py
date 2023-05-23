@@ -5,16 +5,20 @@ from discord.ext.context import ctx
 from question_templates.block_or_mute import BlockOrMute, BlockOrMuteType
 from question_templates.checking_spam import CheckingSpam, SpamRequestType
 from question_templates.report_reason import ReportReason, ReportType
+from message_util import next_message
 
 
-class ModerationRequest():
-    block_or_mute: BlockOrMuteType = None
-    spam_request: SpamRequestType = None
-    report_type: ReportType = None
+# TODO: Add logic to this class for keeping track of score
+#class ModerationRequest():
+    #block_or_mute: BlockOrMuteType = None
+    #spam_request: SpamRequestType = None
+    #report_type: ReportType = None
 
-    def __init__(self, message):
-        self.message_author = message.author.name
-        self.message_content = message.content
+    #def __init__(self, message):
+        #self.message_author = message.author.name
+        #self.message_content = message.content
+
+    #def return_report():
 
 class State(Enum):
     REPORT_START = auto()
@@ -23,6 +27,7 @@ class State(Enum):
     BLOCK = auto()
     IS_SPAM = auto()
     REPORT_COMPLETE = auto()
+    REPORT_CANCELED = auto()
 
 class Report:
     START_KEYWORD = "report"
@@ -31,7 +36,7 @@ class Report:
 
     def __init__(self, client):
         # TODO: Change back to report start
-        self.state = State.MESSAGE_IDENTIFIED
+        self.state = State.REPORT_START
         self.client = client
         self.message = None
     
@@ -41,40 +46,45 @@ class Report:
         prompts to offer at each of those states. You're welcome to change anything you want; this skeleton is just here to
         get you started and give you a model for working with Discord. 
         '''
-
-        if message.content == self.CANCEL_KEYWORD:
-            self.state = State.REPORT_COMPLETE
-            return ["Report cancelled."]
         
         if self.state == State.REPORT_START:
             reply =  "Thank you for starting the reporting process. "
             reply += "Say `help` at any time for more information.\n\n"
             reply += "Please copy paste the link to the message you want to report.\n"
             reply += "You can obtain this link by right-clicking the message and clicking `Copy Message Link`."
-            self.state = State.AWAITING_MESSAGE
-            return [reply]
-        
-        if self.state == State.AWAITING_MESSAGE:
-            # Parse out the three ID strings from the message link
-            m = re.search('/(\d+)/(\d+)/(\d+)', message.content)
-            if not m:
-                return ["I'm sorry, I couldn't read that link. Please try again or say `cancel` to cancel."]
-            guild = self.client.get_guild(int(m.group(1)))
-            if not guild:
-                return ["I cannot accept reports of messages from guilds that I'm not in. Please have the guild owner add me to the guild and try again."]
-            channel = guild.get_channel(int(m.group(2)))
-            if not channel:
-                return ["It seems this channel was deleted or never existed. Please try again or say `cancel` to cancel."]
-            try:
-                message = await channel.fetch_message(int(m.group(3)))
-            except discord.errors.NotFound:
-                return ["It seems this message was deleted or never existed. Please try again or say `cancel` to cancel."]
+            await ctx.channel.send(''.join(reply))
 
-            # Here we've found the message - it's up to you to decide what to do next!
+            wait_for_message = True
+            while (wait_for_message):
+                msg = await next_message()
+                if msg.content == self.CANCEL_KEYWORD:
+                    self.state == self.CANCEL_KEYWORD
+                    return
+                # Parse out the three ID strings from the message link
+                m = re.search('/(\d+)/(\d+)/(\d+)', msg.content)
+                if not m:
+                    await ctx.channel.send("I'm sorry, I couldn't read that link. Please try again or say `cancel` to cancel.")
+                    continue
+                guild = self.client.get_guild(int(m.group(1)))
+                if not guild:
+                    await ctx.channel.send("I cannot accept reports of messages from guilds that I'm not in. Please have the guild owner add me to the guild and try again.")
+                    continue
+                channel = guild.get_channel(int(m.group(2)))
+                if not channel:
+                    await ctx.channel.send("It seems this channel was deleted or never existed. Please try again or say `cancel` to cancel.")
+                    continue
+                try:
+                    message = await channel.fetch_message(int(m.group(3)))
+                    #TODO: Add message to our report
+                    await ctx.channel.send(''.join(["I found this message:", "```" + message.author.name + ": " + message.content + "```"]))
+                    wait_for_message = False
+                except discord.errors.NotFound:
+                    await ctx.channel.send("It seems this message was deleted or never existed.")
+
             self.state = State.MESSAGE_IDENTIFIED
-            return ["I found this message:", "```" + message.author.name + ": " + message.content + "```"]
         
         if self.state == State.MESSAGE_IDENTIFIED:
+            await ctx.channel.send("Please choose a reason for you report.")
             # 30 second timeout wait
             report_reason = ReportReason(timeout=30)
 
@@ -85,7 +95,9 @@ class Report:
             await report_reason.wait()
 
             if report_reason.report_type == None:
-                self.state = State.REPORT_START
+                self.state = State.REPORT_CANCELED
+            elif report_reason.report_type == ReportType.CANCEL:
+                self.state = State.REPORT_CANCELED
             elif report_reason.report_type == ReportType.OTHER:
                 self.state = State.BLOCK
             elif report_reason.report_type == ReportType.SPAM:
@@ -104,16 +116,16 @@ class Report:
 
             checking_spam.message = msg
 
-            await checking_spam.wait()
+            res = await checking_spam.wait()
 
-            #TODO: Check return value of class
-
-            self.state = State.BLOCK
-
+            if checking_spam.spam_type == None or checking_spam.spam_type == SpamRequestType.CANCEL:
+                self.state = State.REPORT_CANCELED
+            else:
+                self.state = State.BLOCK
 
         if self.state == State.BLOCK:
             await ctx.channel.send("Would you like to block or mute this user?")
-
+            print("entered is block")
             block_or_mute = BlockOrMute(timeout=30)
 
             msg = await ctx.channel.send(view=block_or_mute)
@@ -122,12 +134,17 @@ class Report:
 
             await block_or_mute.wait()
 
-            #TODO: Check return value of class
+            self.state = State.REPORT_COMPLETE
 
+            #TODO: Check return value of class
+            #if block_or_mute.requested_response_type == BlockOrMuteType.BLOCK:
+            # TODO: In this case we would add that the users requesting blocking someone to the report
+
+        # TODO: Return our completed report class
         return []
 
     def report_complete(self):
-        return self.state == State.REPORT_COMPLETE
+        return self.state == State.REPORT_COMPLETE or self.state == State.REPORT_CANCELED
     
 
 

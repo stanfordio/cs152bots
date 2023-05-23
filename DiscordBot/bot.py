@@ -73,6 +73,16 @@ class ModBot(context.ContextClient, discord.Client):
         await self.handle_dm(message)
 
     async def handle_dm(self, message):
+        print("entering handle dm")
+        author_id = message.author.id
+        if author_id in self.reports and self.reports[author_id].report_complete():
+            # If the report is complete we want to send it to our 
+            self.reports.pop(author_id)
+        
+
+        # TODO: Super important: We ignore messages that are currently filling out reports
+        if author_id in self.reports:
+            return
         # Handle a help message
         if message.content == Report.HELP_KEYWORD:
             reply =  "Use the `report` command to begin the reporting process.\n"
@@ -91,13 +101,13 @@ class ModBot(context.ContextClient, discord.Client):
         if author_id not in self.reports:
             self.reports[author_id] = Report(self)
 
-        # Let the report class handle this message; forward all the messages it returns to uss
-        responses = await self.reports[author_id].handle_message(message)
-        for r in responses:
-            await message.channel.send(r)
+        ## Let the report class handle this message
+        report = await self.reports[author_id].handle_message(message)
 
         # If the report is complete or cancelled, remove it from our map
+        #TODO: Send report in an easy to read format to our moderator channel
         if self.reports[author_id].report_complete():
+            # If the report is complete we want to send it to our 
             self.reports.pop(author_id)
 
     async def handle_channel_message(self, message):
