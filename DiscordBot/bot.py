@@ -9,6 +9,7 @@ from typing import Union
 import discord
 import emoji
 from report import Report
+from moderate import Moderate
 from unidecode import unidecode
 
 # Set up logging to the console
@@ -37,6 +38,7 @@ class ModBot(discord.Client):
         self.group_num = None
         self.mod_channels = {}  # Map from guild to the mod channel id for that guild
         self.reports = {}  # Map from user IDs to the state of their report
+        self.moderating = None # The moderation session that is currently running
 
     async def on_ready(self):
         print(f"{self.user.name} has connected to Discord! It is these guilds:")
@@ -118,8 +120,8 @@ class ModBot(discord.Client):
     async def handle_dm(self, message):
         # Handle a help message
         if message.content == Report.HELP_KEYWORD:
-            reply = "Use the `report` command to begin the reporting process.\n"
-            reply += "Use the `cancel` command to cancel the report process.\n"
+            reply = f"Use the `{Report.START_KEYWORD}` command to begin the reporting process.\n"
+            reply += f"Use the `{Report.CANCEL_KEYWORD}` command to cancel the report process.\n"
             await message.channel.send(reply)
             return
 
@@ -155,18 +157,33 @@ class ModBot(discord.Client):
             self.reports.pop(author_id)
 
     async def handle_channel_message(self, message):
-        # Only handle messages sent in the "group-#" channel
-        if not message.channel.name == f"group-{self.group_num}":
-            return
+        # Handle messages sent in the "group-#" channel
+        if message.channel.name == f"group-{self.group_num}":
 
-        # Forward the message to the mod channel
-        mod_channel = self.mod_channels[message.guild.id]
-        await mod_channel.send(
-            f"Forwarded message:\n{message.author.name}:"
-            f" {self.clean_text(message.content)}"
-        )
-        scores = self.eval_text(message.content)
-        await mod_channel.send(self.code_format(scores))
+            # Forward the message to the mod channel
+            mod_channel = self.mod_channels[message.guild.id]
+            await mod_channel.send(
+                f"Forwarded message:\n{message.author.name}:"
+                f" {self.clean_text(message.content)}"
+            )
+            scores = self.eval_text(message.content)
+            await mod_channel.send(self.code_format(scores))
+        
+        # Handle messages sent in the "group-#-mod" channel
+        # Nandini, im adding stuff here!
+        elif message.channel.name == f"group-{self.group_num}-mod":
+
+            # Handle a help message
+            if message.content == Moderate.HELP_KEYWORD:
+                reply = f"Use the `{Moderate.START_KEYWORD}` command to list all outstanding reports.\n"
+                reply += f"Use the `{Moderate.CANCEL_KEYWORD}` command to cancel the report process.\n"
+                await message.channel.send(reply)
+                return
+
+            # Handle starting a new moderation session
+            if self.moderating == None and message.content == Moderate.START_KEYWORD:
+                self.moderating = Moderate(self)
+
 
     async def handle_channel_message_edit(
         self, before: Union[discord.Message, None], after: discord.Message
