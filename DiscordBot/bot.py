@@ -216,14 +216,16 @@ class ModBot(discord.Client):
             if self.manual_check_queue.empty():
                 await mod_channel.send("Nothing to review")
             else:
-                #TODO: Handle report.reported_msg is encoded in some way
+                #TODO: Handle report.reported_msg is encoded in some way - milestone 3
                 pri, report = self.manual_check_queue.get()
-                #TODO for milestone 2: format this text prettier
-                msg = "Reported user " + str(report.reported_user_id) + " for \n"
+                msg = "Report:" + "\n"
+                msg += "\t" + "Report against user: " + str(report.reported_user_id) + "\n"
+                msg += "\t" + "Report by user: " + str(report.reporting_user_id) + "\n"
+                msg += "\t" + "Reported issues: " + "\n"
                 for i in report.reported_issues:
-                    msg += str(i) + "\n"
-                msg += "Reported message\n" + str(report.reported_msg) + "\n"
-                msg += "React with 1, 2, 3 for ban, suspend, no action"
+                    msg += "\t" + "\t" + str(i) + "\n"
+                msg += "\t" + "Reported message: " + str(report.reported_msg) + "\n"
+                msg += "React with 1 to ban, 2 to suspend, 3 to warn, 4 for no action."
                 sent = await mod_channel.send(msg)
                 self.in_prog_reviews[sent.id] = report
 
@@ -238,8 +240,6 @@ class ModBot(discord.Client):
 
     async def handle_mod_react(self, payload):
         # once a mod reacts to a manual review message, this should send the suspended/banned user a message simulating the bad
-        # TODO: Also send the reporter a message with the decision/report? as in case 3 where we do nothing
-        # TODO: Make this match the flowchart words wise
         msg_id = payload.message_id
         if msg_id not in self.in_prog_reviews:
             return
@@ -249,20 +249,40 @@ class ModBot(discord.Client):
         reporting_user = report.reporting_user_id
         emoji = payload.emoji
 
-        #TODO: make these messages match flow chart and send messages to both users in each case
-        if str(emoji.name) == '1️⃣':
-            user = await self.fetch_user(reported_user)
-            await user.send("You have been banned due to user reports")
+        if str(emoji.name) == '1️⃣':  # Remove account
+            user_reported = await self.fetch_user(reported_user)
+            user_making_report = await self.fetch_user(reporting_user)
+            await user_reported.send("We detected fraudulent activity on your account. We will be banning your account.")
+            await user_making_report.send("We took action against" + user_reported.name + "who you recently reported. "
+                                          "Thank you for keeping our platform safe.")
             self.in_prog_reviews.pop(msg_id)
-        elif str(emoji.name) == '2️⃣':
-            user = await self.fetch_user(reported_user)
-            await user.send("You have been suspended for 15 days due to user reports")
+
+        elif str(emoji.name) == '2️⃣':  # Suspend for 15 days
+            user_reported = await self.fetch_user(reported_user)
+            user_making_report = await self.fetch_user(reporting_user)
+            await user_reported.send("We detected fraudulent activity on your account. "
+                                     "We will be suspending your account for 15 days.")
+            await user_making_report.send("We took action against" + user_reported.name + "who you recently reported. "
+                                          "Thank you for keeping our platform safe.")
             self.in_prog_reviews.pop(msg_id)
-        elif str(emoji.name) == '3️⃣':
-            user = await self.fetch_user(reporting_user)
-            await user.send("We have reviewed this case and will not be taking action")
+
+        elif str(emoji.name) == '3️⃣':  # Warning
+            user_reported = await self.fetch_user(reported_user)
+            user_making_report = await self.fetch_user(reporting_user)
+            await user_reported.send("We detected fraudulent activity on your account. "
+                                     "This is a warning; continuation of fraudulent activity will result in escalated action.")
+            await user_making_report.send("We took action against" + user_reported.name + "who you recently reported. "
+                                          "Thank you for keeping our platform safe.")
             self.in_prog_reviews.pop(msg_id)
-        
+
+        elif str(emoji.name) == '4️⃣':  # No action
+            user_reported = await self.fetch_user(reported_user)
+            user_making_report = await self.fetch_user(reporting_user)
+            await user_making_report.send("We did not detect any fraudulent information in the message/profile submitted. "
+                                          "The next course of action to protect yourself can include: " + "\n"
+                                          "\t" + "Blocking" + user_reported.name + "\n"
+                                          "\t" + "Calling 911 if this is an emergency.")
+            self.in_prog_reviews.pop(msg_id)
         
         
         
