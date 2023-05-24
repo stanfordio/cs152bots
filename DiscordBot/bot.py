@@ -6,7 +6,7 @@ import json
 import logging
 import re
 import requests
-from report import Report
+from report import Report, State
 import pdb
 
 # Set up logging to the console
@@ -27,9 +27,13 @@ with open(token_path) as f:
 
 
 class ModBot(discord.Client):
+
+    NUMBERS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣"]
+
     def __init__(self): 
         intents = discord.Intents.default()
         intents.message_content = True
+        intents.members = True # required to perceive user reactions in DMs for some weird reason. i spent so long on this. RIP.
         super().__init__(command_prefix='.', intents=intents)
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
@@ -92,7 +96,28 @@ class ModBot(discord.Client):
         # Let the report class handle this message; forward all the messages it returns to uss
         responses = await self.reports[author_id].handle_message(message)
         for r in responses:
-            await message.channel.send(r)
+            bot_message = await message.channel.send(r)
+        
+        # handle reactions
+        if self.reports[author_id].reaction_mode:
+            
+            if (self.reports[author_id].state == State.AWAITING_REASON):
+                for _ in range(len(self.reports[author_id].REASONS)):
+                    await bot_message.add_reaction(self.NUMBERS[_])
+            elif (self.reports[author_id].state == State.AWAITING_SUBREASON):
+                for _ in range(len(self.reports[author_id].SUB_REASONS[self.reports[author_id].reason])):
+                    await bot_message.add_reaction(self.NUMBERS[_])
+
+            while not self.reports[author_id].report_complete():
+                reaction, user = await self.wait_for('reaction_add')
+
+                if user.id != self.user.id and reaction.message == bot_message:
+                    if reaction.emoji in self.NUMBERS:
+                        print("reaction received")
+                        responses = await self.reports[author_id].handle_reaction(reaction)
+                        for r in responses:
+                            await message.channel.send(r)
+                        break
 
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():
