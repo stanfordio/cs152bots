@@ -59,7 +59,7 @@ Moderator Notes:
         self.blocked_user = None
 
     @property
-    def priority(self) -> str:
+    def raw_priority(self) -> int:
         """
         Naive priority calculation based on certain fields.
         """
@@ -75,10 +75,17 @@ Moderator Notes:
             ]
         )
 
-        if risk <= 1:
+        return risk
+
+    @property
+    def priority(self) -> str:
+        """
+        Naive priority calculation based on certain fields.
+        """
+        if self.raw_priority <= 1:
             return "Low"
 
-        if risk == 2:
+        if self.raw_priority == 2:
             return "Medium"
 
         return "High"

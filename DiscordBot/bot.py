@@ -172,19 +172,40 @@ class ModBot(discord.Client):
         
         # Handle messages sent in the "group-#-mod" channel
         # Nandini, im adding stuff here!
+        # Very similar to the handle_dm() function for handling reports
         elif message.channel.name == f"group-{self.group_num}-mod":
 
             # Handle a help message
             if message.content == Moderate.HELP_KEYWORD:
-                reply = f"Use the `{Moderate.START_KEYWORD}` command to list all outstanding reports.\n"
-                reply += f"Use the `{Moderate.CANCEL_KEYWORD}` command to cancel the report process.\n"
+                reply = f"Use the `{Moderate.LIST_KEYWORD}` command to list all outstanding reports.\n"
+                reply += f"Use the `{Moderate.CANCEL_KEYWORD}` command to cancel the moderation session.\n"
                 await message.channel.send(reply)
                 return
+            
+            # List all outstanding reports
+            if message.content == Moderate.LIST_KEYWORD:
+                for r in self.list_all_reports():
+                    sent_message = await message.channel.send(r)
 
             # Handle starting a new moderation session
             if self.moderating == None and message.content == Moderate.START_KEYWORD:
                 self.moderating = Moderate(self)
+            
+            """
+            # Let the moderate class handle this message; forward all the messages it returns to us
+            responses = await self.moderating.handle_message(message)
 
+            # If the moderate class returned a string, convert it to a list to make it easier
+            if isinstance(responses, str):
+                responses = [responses]
+
+            for r in responses:
+                sent_message = await message.channel.send(r)
+            
+            # If the moderate session is complete or cancelled, remove it
+            if self.moderating.moderation_complete():
+                self.moderating = None
+            """
 
     async def handle_channel_message_edit(
         self, before: Union[discord.Message, None], after: discord.Message
@@ -204,6 +225,19 @@ class ModBot(discord.Client):
         )
         scores = self.eval_text(after.content)
         await mod_channel.send(self.code_format(scores))
+
+    def list_all_reports(self) -> [str]:
+        """
+        Returns a list of all reports, but formatted as strings.
+        Includes a header.
+        """
+        if len(self.open_reports) == 0:
+            return ["No open reports right now!"]
+        response = ["Report ID\t\tPriority\t\tReported by\t\tReported against"]
+        self.open_reports.sort(key=lambda x: x.raw_priority, reverse=True)
+        for r in self.open_reports:
+            response.append(f"{r.id}\t\t{r.raw_priority}\t\t{r.reporter.name}\t\t{r.message.author.name}")
+        return response
 
     def clean_text(self, text: str) -> str:
         """

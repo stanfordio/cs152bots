@@ -73,7 +73,8 @@ class State(Enum):
 
 
 class Moderate:
-    START_KEYWORD = "reports"
+    LIST_KEYWORD = "list"
+    START_KEYWORD = "handle"
     CANCEL_KEYWORD = "cancel"
     HELP_KEYWORD = "help"
     YES_KEYWORDS = {"yes", "y"}
