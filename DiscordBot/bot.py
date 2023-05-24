@@ -101,6 +101,11 @@ class ModBot(discord.Client):
 
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():
+            abuse_report = self.reports[author_id].return_abuse_report()
+            # send each string in the abuse report to the mod channel
+            mod_channel = self.mod_channels[message.guild.id]
+            for abuse_report_string in abuse_report:
+                await mod_channel.send(abuse_report_string)
             self.reports.pop(author_id)
 
     async def handle_channel_message(self, message):

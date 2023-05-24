@@ -20,7 +20,7 @@ class Report:
         self.block_stage = 0
         self.stage = 0
         self.report_type = None
-        self.abuse_report = []
+        self.abuse_report = ["\n\n!!!STARTING A NEW ABUSE REPORT !!!\n\n"]
         self.client = client
         self.message = None
 
@@ -47,6 +47,10 @@ class Report:
             reply += "4. Spam\n"
             reply += "5. Sensitive or Offensive Content\n"
             reply += "6. Other\n"
+            self.abuse_report += ["Reported Message: " + message.content + "\n"]
+            self.abuse_report += ["Reported User: " + message.author.name + "\n"]
+            self.abuse_report += ["Reported User ID: " + str(message.author.id) + "\n"]
+            self.abuse_report += [reply + "\n"]
             return [reply]
         if (self.stage == 1):
             
@@ -63,8 +67,10 @@ class Report:
                 self.stage = 2
                 self.report_type = types[message.content]
                 self.abuse_report += ["Report Type: " + self.report_type + "\n"]
+            self.abuse_report += [reply + "\n"]
             return [reply]
         if (self.stage == 2):
+            self.abuse_report += ["Response: " + message.content + "\n"]
             if (self.report_type == "Violence"):
                 self.state = State.REPORT_COMPLETE
                 self.stage = 3
@@ -81,6 +87,7 @@ class Report:
             else:
                 return ["Invalid input. Please try again."]
         if (self.stage == 3):
+            self.abuse_report += ["User Response: " + message.content + "\n"]
             if (message.content == "confirm"):
                 self.stage = 0
                 self.state = State.REPORT_COMPLETE
@@ -90,17 +97,22 @@ class Report:
                 self.state = State.REPORT_COMPLETE
                 return ["Report cancelled."]
         if (self.stage == 4):
+            self.abuse_report += ["User Response: " + message.content + "\n"]
             return self.age_verification_action(message)      
         if (self.stage == 5):
+            self.abuse_report += ["User Response: " + message.content + "\n"]
             return self.CSAM_action(message)
         if (self.stage == 6):
+            self.abuse_report += ["User Response: " + message.content + "\n"]
             return self.block_action(message)
             
     def age_verification_action(self, message):
         if (self.age_stage == 0):
+            self.abuse_report += ["Are you over 18?\n1. Yes\n2. No \n"]
             self.age_stage = 1
             return ["Are you over 18?\n1. Yes\n2. No"]
         if (self.age_stage == 1):
+            self.abuse_report += ["User Response: " + message.content + "\n"]
             if (message.content == "1"):
                 self.age_stage = 2
                 return ["1. The user is trying to get close to me, asking me personal information, or showing signs of “grooming,” asking me for sexual material.\n2. Does not apply"]
@@ -122,9 +134,11 @@ class Report:
 
     def CSAM_action(self, message):
         if (self.CSAM_stage == 0):
+            self.abuse_report += ["What type of material?\n1. Images or Videos\n2. External Links\n3. Other\n"]
             self.CSAM_stage = 1
             return ["What type of material?\n1. Images or Videos\n2. External Links\n3. Other"]
         if (self.CSAM_stage == 1):
+            self.abuse_report += ["User Response: " + message.content + "\n"]
             if (message.content == "1"):
                 self.CSAM_stage = 2
                 return ["Please provide a description of the material."]
@@ -137,6 +151,7 @@ class Report:
             else:
                 return ["Invalid input. Please try again."]
         if (self.CSAM_stage == 2):
+            self.abuse_report += ["Description: " + message.content + "\n"]
             print(message.content)
             self.CSAM_stage = 0
             self.stage = 6
@@ -146,9 +161,11 @@ class Report:
 
     def block_action(self, message):
         if (self.block_stage == 0):
+            self.abuse_report += ["Would you like to block the user?\n1. Yes\n2. No\n"]
             self.block_stage = 1
             return ["Would you like to block the user?\n1. Yes\n2. No"]
         if (self.block_stage == 1):
+            self.abuse_report += ["User Response: " + message.content + "\n"]
             reply = "Thank you for reporting this content. Our moderation team will review and decide on an appropriate course of action, which could include post/content removal, a warning, account removal, or even notifying local authorities if necessary.\n\n"
             if (message.content == "1"):
                 #TODO: Store info from message 
@@ -209,7 +226,8 @@ class Report:
 
         return []
     
-    
+    def return_abuse_report(self):
+        return self.abuse_report
 
     async def handle_mod_message(self, message):
         '''
