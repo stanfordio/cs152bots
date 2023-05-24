@@ -171,7 +171,6 @@ class ModBot(discord.Client):
             await mod_channel.send(self.code_format(scores))
         
         # Handle messages sent in the "group-#-mod" channel
-        # Nandini, im adding stuff here!
         # Very similar to the handle_dm() function for handling reports
         elif message.channel.name == f"group-{self.group_num}-mod":
 
@@ -192,6 +191,7 @@ class ModBot(discord.Client):
                 self.moderating = Moderate(self)
             
             """
+            # @nandini
             # Let the moderate class handle this message; forward all the messages it returns to us
             responses = await self.moderating.handle_message(message)
 
@@ -233,10 +233,10 @@ class ModBot(discord.Client):
         """
         if len(self.open_reports) == 0:
             return ["No open reports right now!"]
-        response = ["Report ID\t\tPriority\t\tReported by\t\tReported against"]
+        response = [f"`{'Report ID':30} {'Priority':10} {'Reported by':20} {'Reported against':25}`"]
         self.open_reports.sort(key=lambda x: x.raw_priority, reverse=True)
         for r in self.open_reports:
-            response.append(f"{r.id}\t\t{r.raw_priority}\t\t{r.reporter.name}\t\t{r.message.author.name}")
+            response.append(f"`{str(r.id):30} {str(r.raw_priority):10} {str(r.reporter.name):20} {str(r.message.author.name):25}`")
         return response
 
     def clean_text(self, text: str) -> str:
