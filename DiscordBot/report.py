@@ -7,6 +7,8 @@ class State(Enum):
     AWAITING_MESSAGE = auto()
     MESSAGE_IDENTIFIED = auto()
     REPORT_COMPLETE = auto()
+    LAST_USER_INPUT = auto()
+    MISLEADING_INFO = auto()
 
 class Report:
     START_KEYWORD = "report"
@@ -55,12 +57,54 @@ class Report:
 
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.MESSAGE_IDENTIFIED
-            return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
-                    "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
+            # make self.message the offensive message
+            self.message = message
+            reply = "I found this message:" + "```" + message.author.name + ": " + message.content + "```"
+            reply += "Please select the reason for reporting this message by entering the corresponding number. If you are in immediate danger, please contact your local emergency services in addition to reporting.\n"
+            reply += "`1`: Spam\n"
+            reply += "`2`: Harassment\n"
+            reply += "`3`: Disturbing Content\n"
+            reply += "`4`: Misleading Information"
+            
+            return [reply]
         
         if self.state == State.MESSAGE_IDENTIFIED:
-            return ["<insert rest of reporting flow here>"]
+            # error catching 
+            reply = "I'm sorry, but I don't recognize that input. Please enter a number from 1 to 4."
+            # You will probably need to define extra states for the misleading information flow
+            if message.content == '1':
+                reply = "Please select the type of spam by entering the corresponding number.\n"
+                reply += "`1`: Phishing\n"
+                reply += "`2`: Overwhelming amount of unwanted messages\n"
+                reply += "`3`: Solicitation"
+                self.state = State.LAST_USER_INPUT
+            elif message.content == '2':
+                reply = "Please provide more details about the harassment by entering the corresponding number.\n"
+                reply += "`1`: Attacks based on my identity\n"
+                reply += "`2`: Advocating for violence against me\n"
+                reply += "`3`: Threatening to reveal my private information\n"
+                reply += "`4`: Coordinated attacks against me by multiple individuals"
+                self.state = State.LAST_USER_INPUT
+            elif message.content == '3':
+                reply = "Please select the kind of disturbing content by entering the corresponding number.\n"
+                reply += "`1`: Child sexual exploitation\n"
+                reply += "`2`: Content that depicts or advocates for self harm\n"
+                reply += "`3`: Gore\n"
+                reply += "`4`: Hate speech\n"
+                reply += "`5`: Content that advocates for or glorifies violence"
+                self.state = State.LAST_USER_INPUT
+            return [reply]
+            # todo: misleading info flow
 
+        if self.state == State.LAST_USER_INPUT:
+            reply = "Thank you for reporting. Our content moderation team will review the message and decide on an appropriate course of action. This may include post removal, account suspension, or placement of the account in read-only mode.\n\n"
+            # because you can't edit other people's messages, the bot will delete the offensive message instead
+            await self.message.delete()
+            reply += "In the meantime, we've hid the reported message from your view.\n"
+            # I'll leave the buttons for this to you
+            reply += "Would you like to mute or block the offending user?"
+            self.state = State.REPORT_COMPLETE
+            return [reply]
         return []
 
     def report_complete(self):
