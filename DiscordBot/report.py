@@ -24,6 +24,17 @@ class Report:
         "Imminent Danger": ["Violence to Others", "Self-Harm"]
     }
     HELP_KEYWORD = "help"
+    NUM_TO_IND = {
+        "1️⃣": 0, 
+        "2️⃣": 1, 
+        "3️⃣": 2, 
+        "4️⃣": 3, 
+        "5️⃣": 4, 
+        "6️⃣": 5, 
+        "7️⃣": 6, 
+        "8️⃣": 7, 
+        "9️⃣": 8
+    }
 
     def __init__(self, client):
         self.state = State.REPORT_START
@@ -31,6 +42,7 @@ class Report:
         self.message = None
         self.reason = None
         self.sub_reason = None
+        self.reaction_mode = False
         self.flagged_messages = []
     
     async def handle_message(self, message):
@@ -75,8 +87,9 @@ class Report:
         if self.state == State.MESSAGE_IDENTIFIED:
             if self.reason == None:
                 self.state = State.AWAITING_REASON
+                self.reaction_mode = True
                 return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
-                    "Please select the reason for reporting this message: Harassment, Offensive Content, Spam, Imminent Danger"]
+                    "Please select the reason for reporting this message:\n1️⃣: Harassment\n2️⃣: Offensive Content\n3️⃣: Spam\n4️⃣: Imminent Danger"]
             else:
                 self.state = State.ADDING_CONTEXT
                 message_count = len(self.flagged_messages)
@@ -84,25 +97,24 @@ class Report:
                         f"Would you like to add further context with relevant chat messages? You have currently submitted {message_count} message(s). Yes or No"]
 
         if self.state == State.AWAITING_REASON:
-            if message.content not in self.REASONS:
-                return ["Please select a valid reason for reporting: Harassment, Offensive Content, Spam, Imminent Danger"]
+            if self.reason == None:
+                return ["Please select the reaction corresponding to your valid reason for reporting."]
             else:
-                self.reason = message.content
+                self.reaction_mode = True
                 self.state = State.AWAITING_SUBREASON
-                if message.content == "Harassment":
-                    return ["Please select the type of Harassment: Doxxing, Cyberstalking, Threats, Hate Speech, Sexual Harrasement, Bullying, Extortion, or Other"]
-                if message.content == "Offensive Content":
-                    return ["Please select the type of Offensive Content: Child Sexual Abuse Material, Adult Sexually Explicit Content, Violence, Hate Speech, or Copyright Infringement"]
-                if message.content == "Spam":
-                    return ["Please select the type of Spam: Impersonation, Solicitation, or Malware"]
-                if message.content == "Imminent Danger":
-                    return ["Please select the type of Danger: Violence to Others or Self-Harm"]
+                if self.reason == "Harassment":
+                    return ["Please select the type of Harassment:\n1️⃣: Doxxing\n2️⃣: Cyberstalking\n3️⃣: Threats\n4️⃣: Hate Speech\n5️⃣: Sexual Harrasement\n6️⃣: Bullying\n7️⃣: Extortion\n8️⃣: Other"]
+                if self.reason == "Offensive Content":
+                    return ["Please select the type of Offensive Content:\n1️⃣: Child Sexual Abuse Material\n2️⃣: Adult Sexually Explicit Content\n3️⃣: Violence\n4️⃣: Hate Speech\n5️⃣: Copyright Infringement"]
+                if self.reason == "Spam":
+                    return ["Please select the type of Spam:\n1️⃣: Impersonation\n2️⃣: Solicitation\n3️⃣: Malware"]
+                if self.reason == "Imminent Danger":
+                    return ["Please select the type of Danger:\n1️⃣: Violence to Others\n2️⃣: Self-Harm"]
 
         if self.state == State.AWAITING_SUBREASON:
-            if message.content not in self.SUB_REASONS[self.reason]:
-                return [f"Please select a valid type of {self.reason}: {', '.join(self.SUB_REASONS[self.reason])}"]
+            if self.sub_reason == None:
+                return ["Please select the reaction corresponding to your subreason."]
             else:
-                self.sub_reason = message.content
                 if self.reason in self.NON_FOCUS_REASONS:
                     self.state = State.CHOOSE_BLOCK
                     return ["Thank you for reporting. Our content moderation team will review the report and decide on appropriate action. Would you like to block the offending user(s)? Yes or No"]
@@ -131,6 +143,16 @@ class Report:
                     authors = self.get_authors()
                     reply += f"The offending authors of the flagged messages have been blocked:\n{authors}"
             return [reply]
+
+    async def handle_reaction(self, reaction):
+        self.reaction_mode = False
+        if self.state == State.AWAITING_REASON:
+            self.reason = self.REASONS[self.NUM_TO_IND[reaction.emoji]] 
+            return["You selected " + self.reason + " as your reason.",  "Type anything to continue."]
+        if self.state == State.AWAITING_SUBREASON:
+            self.sub_reason = self.SUB_REASONS[self.reason][self.NUM_TO_IND[reaction.emoji]]
+            return["You selected " + self.sub_reason + " as your subreason.",  "Type anything to continue."]
+        
     
     def get_authors(self):
         authors = [msg.author.name for msg in self.flagged_messages]
