@@ -6,6 +6,8 @@ import json
 import logging
 import re
 import requests
+from itertools import count
+
 
 # from DiscordBot import mod_flow
 from report import Report, BotReactMessage
@@ -49,6 +51,7 @@ class ModBot(discord.Client):
         self.reports_about_user = {}  # Map from user to list of reports against them
         self.manual_check_queue = PriorityQueue()  # Queue of reports to be manually reviewed prioritized by severity
         self.in_prog_reviews = {}  # Map of mod-channel message ids to reports for reports currently in review
+        self.unique = count()
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -190,12 +193,12 @@ class ModBot(discord.Client):
             severity2 = [Report.FRAUD, Report.REQUESTED_MONEY, Report.IMPERSONATION]
             severity3 = [Report.OBTAINED_MONEY, Report.IMMINENT_DANGER]
             if any(x in severity1 for x in completed_report.reported_issues):
-                severity = 1
+                severity = 3
             if any(x in severity2 for x in completed_report.reported_issues):
                 severity = 2
             if any(x in severity3 for x in completed_report.reported_issues):
-                severity = 3
-            self.manual_check_queue.put((severity, completed_report))
+                severity = 1
+            self.manual_check_queue.put((severity, next(self.unique), completed_report))
 
         # for r in responses:
         #   await message.channel.send(r)
@@ -220,7 +223,7 @@ class ModBot(discord.Client):
                 await mod_channel.send("Nothing to review")
             else:
                 # TODO: Handle report.reported_msg is encoded in some way - milestone 3
-                pri, report = self.manual_check_queue.get()
+                pri, _, report = self.manual_check_queue.get()
                 msg = "Report:" + "\n"
                 msg += "\t" + "Report against user: " + str(report.reported_user_id) + "\n"
                 msg += "\t" + "Report by user: " + str(report.reporting_user_id) + "\n"
