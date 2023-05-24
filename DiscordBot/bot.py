@@ -6,7 +6,7 @@ import json
 import logging
 import re
 import requests
-from report import Report
+from report import Report, State
 import pdb
 
 # Set up logging to the console
@@ -34,6 +34,9 @@ class ModBot(discord.Client):
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
+        self.curr_report = None # Sets the Report currently being handled by moderator
+        self.curr_reporter = None
+        self.warned_users = set()  # Set of users who have been warned for adult nudity
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -78,6 +81,61 @@ class ModBot(discord.Client):
             await message.channel.send(reply)
             return
 
+        elif message.content == Report.QUEUE_KEYWORD:
+            reply = "Moderation process started.\n\n"
+            reply += "Here are the current reported messages in the queue:\n"
+            for idx, report in enumerate(self.reports.values()):
+                reply += f"{idx}: `{report.message.content}`\n"
+            reply += "\nPlease enter the number for the message you wish to address."
+            await message.channel.send(reply)
+            return
+
+        # moderator choosing a message to address
+        elif message.content.isnumeric():
+            idx = int(message.content)
+            if len(self.reports) != 0 and 0 <= idx < len(self.reports):
+                reporter, target = list(self.reports.items())[idx]
+
+                # designate current message being moderated
+                self.curr_report = target
+                self.curr_reporter = reporter
+                responses = await target.moderate(target.message)
+                for r in responses:
+                    await message.channel.send(r)
+        
+        # moderator addressing a message
+        elif message.content == "valid":
+            if self.curr_report.state == State.CSAM:
+                await mod_channel.send(f"Deleted: \n{self.curr_report.message.author}: `{self.curr_report.message.content}`")
+                await self.curr_report.message.delete()
+                reply = "The message has been removed, the user has been banned, and NCMEC has been notified. Thank you!"
+                await message.channel.send(reply)
+                self.curr_report = None
+                self.reports.pop(self.curr_reporter)
+                return
+            
+            if self.curr_report.state == State.ADULT:
+                await self.curr_report.message.delete()
+                offender = self.curr_report.message.author
+                if offender in self.warned_users:
+                    reply = "The message has been removed and the user has been banned. Thank you!"
+                    await message.channel.send(reply)
+                else:
+                    self.warned_users.add(offender)
+                    reply = "The message has been removed and the user has been warned. Thank you!"
+                    await message.channel.send(reply)
+                
+                self.curr_report = None
+                self.reports.pop(self.curr_reporter)
+                return
+        
+        elif message.content == "invalid":
+            self.curr_report = None
+            self.reports.pop(self.curr_reporter)
+            reply = "Report discarded. Thank you!"
+            await message.channel.send(reply)
+            return
+
         author_id = message.author.id
         responses = []
 
@@ -89,7 +147,7 @@ class ModBot(discord.Client):
         if author_id not in self.reports:
             self.reports[author_id] = Report(self)
 
-        # Let the report class handle this message; forward all the messages it returns to uss
+        # Let the report class handle this message; forward all the messages it returns to us
         responses = await self.reports[author_id].handle_message(message)
         for r in responses:
             await message.channel.send(r)
@@ -97,6 +155,7 @@ class ModBot(discord.Client):
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():
             self.reports.pop(author_id)
+
 
     async def handle_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel
