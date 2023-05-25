@@ -33,9 +33,10 @@ class ModBot(discord.Client):
         super().__init__(command_prefix='.', intents=intents)
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
-        self.reports = {} # Map from user IDs to the state of their report
+        # self.reports = {} # Map from user IDs to the state of their report
+        self.reports = [] # list of outstanding reports
         self.curr_report = None # Sets the Report currently being handled by moderator
-        self.curr_reporter = None
+        self.curr_report_idx = None
         self.warned_users = set()  # Set of users who have been warned for adult nudity
 
     async def on_ready(self):
@@ -84,8 +85,8 @@ class ModBot(discord.Client):
         elif message.content == Report.QUEUE_KEYWORD:
             reply = "Moderation process started.\n\n"
             reply += "Here are the current reported messages in the queue:\n"
-            for idx, report in enumerate(self.reports.values()):
-                reply += f"{idx}: `{report.message.content}`\n"
+            for idx, report in enumerate(self.reports):
+                reply += f"{idx}: `{report.message.content}` \n"
             reply += "\nPlease enter the number for the message you wish to address."
             await message.channel.send(reply)
             return
@@ -94,11 +95,11 @@ class ModBot(discord.Client):
         elif message.content.isnumeric():
             idx = int(message.content)
             if len(self.reports) != 0 and 0 <= idx < len(self.reports):
-                reporter, target = list(self.reports.items())[idx]
+                target = self.reports[idx]
 
                 # designate current message being moderated
                 self.curr_report = target
-                self.curr_reporter = reporter
+                self.curr_report_idx = idx
                 responses = await target.moderate(target.message)
                 for r in responses:
                     await message.channel.send(r)
@@ -111,7 +112,8 @@ class ModBot(discord.Client):
                 reply = "The message has been removed, the user has been banned, and NCMEC has been notified. Thank you!"
                 await message.channel.send(reply)
                 self.curr_report = None
-                self.reports.pop(self.curr_reporter)
+                self.curr_report_idx = None
+                # self.reports.pop(self.curr_reporter)
                 return
             
             if self.curr_report.state == State.ADULT:
@@ -126,35 +128,37 @@ class ModBot(discord.Client):
                     await message.channel.send(reply)
                 
                 self.curr_report = None
-                self.reports.pop(self.curr_reporter)
+                self.curr_report_idx = None
+                # self.reports.pop(self.curr_reporter)
                 return
         
         elif message.content == "invalid":
             self.curr_report = None
-            self.reports.pop(self.curr_reporter)
+            self.curr_report_idx = None
+            # self.reports.pop(self.curr_reporter)
             reply = "Report discarded. Thank you!"
             await message.channel.send(reply)
             return
 
-        author_id = message.author.id
-        responses = []
+        else:
+            responses = []
+            # Only respond to messages if they're part of a reporting flow
+            # if not message.content.startswith(Report.START_KEYWORD):
+            #     return
 
-        # Only respond to messages if they're part of a reporting flow
-        if author_id not in self.reports and not message.content.startswith(Report.START_KEYWORD):
-            return
+            if message.content.startswith(Report.START_KEYWORD):
+                self.reports.append(Report(self))
+            
+            # Let the report class handle this message; forward all the messages it returns to us
+            if len(self.reports) > 0:
+                responses = await self.reports[-1].handle_message(message)
+                for r in responses:
+                    await message.channel.send(r)
 
-        # If we don't currently have an active report for this user, add one
-        if author_id not in self.reports:
-            self.reports[author_id] = Report(self)
-
-        # Let the report class handle this message; forward all the messages it returns to us
-        responses = await self.reports[author_id].handle_message(message)
-        for r in responses:
-            await message.channel.send(r)
-
-        # If the report is complete or cancelled, remove it from our map
-        if self.reports[author_id].report_complete():
-            self.reports.pop(author_id)
+            # If the report is complete or cancelled, remove it from our map
+            for idx, report in enumerate(self.reports):
+                if report.report_complete():
+                    del self.reports[idx]
 
 
     async def handle_channel_message(self, message):
