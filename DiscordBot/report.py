@@ -10,7 +10,8 @@ class State(Enum):
     AWAITING_SUBREASON = auto()
     ADDING_CONTEXT = auto()
     CHOOSE_BLOCK = auto()
-    REPORT_COMPLETE = auto()
+    REPORT_CANCELED = auto()
+    REPORT_FILED = auto()
 
 class Report:
     START_KEYWORD = "report"
@@ -53,7 +54,7 @@ class Report:
         '''
 
         if message.content == self.CANCEL_KEYWORD:
-            self.state = State.REPORT_COMPLETE
+            self.state = State.REPORT_CANCELED
             return ["Report cancelled."]
         
         if self.state == State.REPORT_START:
@@ -137,7 +138,7 @@ class Report:
             if message.content not in ["Yes", "No"]:
                 return ["Thank you for reporting. Our content moderation team will review the report and decide on appropriate action. Would you like to block the offending user(s)? Yes or No"]
             else:
-                self.state = State. REPORT_COMPLETE
+                self.state = State. REPORT_FILED
                 reply = f"Your report has been submitted for review.\n Reason: {self.reason}.\n Subreason: {self.sub_reason}.\n"
                 if message.content == "Yes":
                     authors = self.get_authors()
@@ -159,9 +160,11 @@ class Report:
         unique_authors = list(set(authors))
         return "\n".join(unique_authors)
 
+    def report_canceled(self):
+        return self.state == State.REPORT_CANCELED
 
-    def report_complete(self):
-        return self.state == State.REPORT_COMPLETE
+    def report_filed(self):
+        return self.state == State.REPORT_FILED
     
 
 
