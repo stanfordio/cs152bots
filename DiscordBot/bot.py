@@ -89,20 +89,15 @@ class ModBot(discord.Client):
         blahblahblah.
         '''
         # Ignore reactions from the bot
-        print(user.id)
         if user.id == self.user.id:
-            print("pee")
             return
 
         if user.id not in self.reports or reaction.message.guild: # Probably a moderator in this case?
-            print("hi")
             return
 
         report = self.reports[user.id]
-        print(reaction.message)
-        print(report.message)
         if reaction.message == report.message:
-            print("reaction detected!")
+            #print("reaction detected!")
             await self.reports[user.id].handle_reaction(reaction)
             
             # "fake" a message from the user (this is a hack to use handle_dm)
