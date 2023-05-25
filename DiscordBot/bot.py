@@ -171,6 +171,17 @@ class ModBot(discord.Client):
             heapq.heappush(self.reports_to_review, (priority, self.report_counter, (author_id, index)))
             self.report_counter += 1
 
+             # Send a message in the mod channel
+            for guild in self.guilds:
+                for channel in guild.text_channels:
+                    if channel.name == f'group-{self.group_num}-mod':
+                        mod_channel = channel
+            report_summary = self.reports[author_id].summary()
+            reply = f"New report added to the queue:\n{report_summary}"
+            reply +=  "Use the `peek` command to look at the most urgent report.\n"
+            reply += "Use the `count` command to see how many reports are in the review queue.\n"
+            reply += "Use the `review` command to review the most urgent report.\n"
+            await mod_channel.send(reply)
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():
             self.reports.pop(author_id)
