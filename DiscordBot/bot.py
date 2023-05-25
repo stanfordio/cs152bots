@@ -147,6 +147,7 @@ class ModBot(discord.Client):
                 for _ in range(len(self.reports[author_id].SUB_REASONS[self.reports[author_id].reason])):
                     await bot_message.add_reaction(self.NUMBERS[_])
             elif (self.reports[author_id].state == State.ADDING_CONTEXT or 
+                    self.reports[author_id].state == State.ADDING_MESSAGES or 
                     self.reports[author_id].state == State.CHOOSE_BLOCK):
                 await bot_message.add_reaction("✅")
                 await bot_message.add_reaction("❌")

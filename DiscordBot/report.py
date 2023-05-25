@@ -9,6 +9,8 @@ class State(Enum):
     AWAITING_REASON = auto()
     AWAITING_SUBREASON = auto()
     ADDING_CONTEXT = auto()
+    ADDING_MESSAGES = auto()
+    AWAITING_CONTEXT = auto()
     CHOOSE_BLOCK = auto()
     REPORT_CANCELED = auto()
     REPORT_FILED = auto()
@@ -48,10 +50,12 @@ class Report:
         self.message = None # keeps track of last sent message (useful for handling reactions)
         self.reason = None
         self.sub_reason = None
+        self.additional_messages = False
         self.additional_context = False
         self.choose_block = False
         self.reaction_mode = False
         self.flagged_messages = []
+        self.user_context = None # user inputted context
     
     async def handle_message(self, message):
         '''
@@ -99,11 +103,11 @@ class Report:
                 return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
                     "Please select the reason for reporting this message:\n1️⃣: Harassment\n2️⃣: Offensive Content\n3️⃣: Spam\n4️⃣: Imminent Danger"]
             else:
-                self.state = State.ADDING_CONTEXT
+                self.state = State.ADDING_MESSAGES
                 message_count = len(self.flagged_messages)
                 self.reaction_mode = True
                 return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
-                        f"Would you like to add further context with relevant chat messages? You have currently submitted {message_count} message(s). Yes or No"]
+                        f"Would you like to add more relevant chat messages? You have currently submitted {message_count} message(s). Yes or No"]
 
         if self.state == State.AWAITING_REASON:
             if self.reason == None:
@@ -129,43 +133,59 @@ class Report:
                     self.state = State.CHOOSE_BLOCK
                     return ["You selected " + self.sub_reason + ". Thank you for reporting. Our content moderation team will review the report and decide on appropriate action. Would you like to block the offending user(s)? Yes or No"]
                 else:
-                    self.state = State.ADDING_CONTEXT
-                    return ["Would you like to add further context or select relevant chat messages? Yes or No"]
-        
-        if self.state == State.ADDING_CONTEXT:
-            if self.additional_context:
+                    self.state = State.ADDING_MESSAGES
+                    return ["Would you like to include any relevant chat messages that may help us process your report?"]
+
+        if self.state == State.ADDING_MESSAGES:
+            if self.additional_messages:
                 self.state = State.AWAITING_MESSAGE
                 return ["Please provide the links of the relevant chat messages you want to add."]
+            else:
+                self.state = State.ADDING_CONTEXT
+                self.reaction_mode = True
+                return ["Would you like to provide any further context that may help us process your report?"]
+
+
+        if self.state == State.ADDING_CONTEXT:
+            if self.additional_context:
+                self.state = State.AWAITING_CONTEXT
+                return["Please provide any further context for your report."]
             else:
                 self.state = State.CHOOSE_BLOCK
                 self.reaction_mode = True
                 return ["Thank you for reporting. Our content moderation team will review the report and decide on appropriate action. Would you like to block the offending user(s)? Yes or No"]
-        
+
+        if self.state == State.AWAITING_CONTEXT:
+            self.user_context = message.content
+            self.state = State.CHOOSE_BLOCK
+            self.reaction_mode = True
+            return ["Thank you for reporting. Our content moderation team will review the report and decide on appropriate action. Would you like to block the offending user(s)? Yes or No"]
+            
         if self.state == State.CHOOSE_BLOCK:
             if self.reaction_mode:
                 return ["Thank you for reporting. Our content moderation team will review the report and decide on appropriate action. Would you like to block the offending user(s)? Yes or No"]
             else:
                 self.state = State.REPORT_FILED
-                reply = f"Your report has been submitted for review.\n Reason: {self.reason}.\n Subreason: {self.sub_reason}.\n"
+                reply = f"Your report has been submitted for review.\n  Reason: {self.reason}.\n  Subreason: {self.sub_reason}.\n"
+                if self.additional_context:
+                    reply += f"  You included the following relevant context: {self.user_context}\n"
                 if self.choose_block:
                     authors = self.get_authors()
-                    reply += f"The offending authors of the flagged messages have been blocked:\n{authors}"
+                    reply += f"  The offending authors of the flagged messages have been blocked:\n{authors}"
             return [reply]
 
     async def handle_reaction(self, reaction):
         self.reaction_mode = False
         if self.state == State.AWAITING_REASON:
             self.reason = self.REASONS[self.NUM_TO_IND[reaction.emoji]] 
-            #return["You selected " + self.reason + " as your reason."]
         if self.state == State.AWAITING_SUBREASON:
             self.sub_reason = self.SUB_REASONS[self.reason][self.NUM_TO_IND[reaction.emoji]]
-            #return["You selected " + self.sub_reason + " as your subreason."]
+        if self.state == State.ADDING_MESSAGES:
+            self.additional_messages = self.EMOJI_YN[reaction.emoji]
         if self.state == State.ADDING_CONTEXT:
             self.additional_context = self.EMOJI_YN[reaction.emoji]
-            #return ["Type anything to continue."]
         if self.state == State.CHOOSE_BLOCK:
             self.choose_block = self.EMOJI_YN[reaction.emoji]
-            #return ["Type anything to continue."]
         return
 
         
@@ -173,7 +193,6 @@ class Report:
         authors = [msg.author.name for msg in self.flagged_messages]
         unique_authors = list(set(authors))
         return "\n".join(unique_authors)
-
 
     def report_complete(self):
         return self.state in [State.REPORT_CANCELED, State.REPORT_FILED]
