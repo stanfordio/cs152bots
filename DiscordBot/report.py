@@ -12,6 +12,7 @@ class State(Enum):
     CHOOSE_BLOCK = auto()
     REPORT_CANCELED = auto()
     REPORT_FILED = auto()
+    AWAITING_REVIEW = auto()
 
 class Report:
     START_KEYWORD = "report"
@@ -152,6 +153,14 @@ class Report:
                     reply += f"The offending authors of the flagged messages have been blocked:\n{authors}"
             return [reply]
 
+        if self.state == State.AWAITING_REVIEW:
+            if self.severity == None:
+                return ["Please select the corresponding severity level."]
+            else:
+                self.reaction_mode = True
+                return ["You selected " + self.severity + ". Thank you for reviewing."]
+
+
     async def handle_reaction(self, reaction):
         self.reaction_mode = False
         if self.state == State.AWAITING_REASON:
@@ -166,6 +175,8 @@ class Report:
         if self.state == State.CHOOSE_BLOCK:
             self.choose_block = self.EMOJI_YN[reaction.emoji]
             #return ["Type anything to continue."]
+        if self.state == State.AWAITING_REVIEW:
+            self.severity = self.NUM_TO_IND[reaction.emoji]
         return
 
         

@@ -30,7 +30,9 @@ with open(token_path) as f:
 class Moderator:
     HELP_KEYWORD = "help"
     PEEK_KEYWORD = "peek"
+    REVIEW_KEYWORD = "review"
     COUNT_KEYWORD = "count"
+    SEVERITY_LEVELS = 4
 
 class ModBot(discord.Client):
 
@@ -85,12 +87,13 @@ class ModBot(discord.Client):
 
     async def on_reaction_add(self, reaction, user):
         '''
-        This function is called whenever a reaction is addded in a channel that the bot can see.
-        blahblahblah.
+        This function is called whenever a reaction is added in a channel that the bot can see.
         '''
         # Ignore reactions from the bot
         if user.id == self.user.id:
             return
+
+        print(f"User id: {user.id}")
 
         if user.id not in self.reports or reaction.message.guild: # Probably a moderator in this case?
             return
@@ -150,6 +153,9 @@ class ModBot(discord.Client):
                     self.reports[author_id].state == State.CHOOSE_BLOCK):
                 await bot_message.add_reaction("✅")
                 await bot_message.add_reaction("❌")
+            elif (self.reports[author_id].state == State.AWAITING_REVIEW):
+                for _ in range(Moderator.SEVERITY_LEVELS):
+                    await bot_message.add_reaction(self.NUMBERS[_])
             print(self.reports[author_id].state)
 
         # If the report is filed, save it, cache it in a priority queue, and alert #mod channel for review.
@@ -188,20 +194,51 @@ class ModBot(discord.Client):
                 await message.channel.send(reply)
                 return
 
+            if message.content == Moderator.COUNT_KEYWORD:
+                reply = f"There are currently {len(self.reports_to_review)} reports to review.\n"
+                await message.channel.send(reply)
+                return
+
             if message.content == Moderator.PEEK_KEYWORD:
                 if len(self.reports_to_review) == 0:
                     reply = "No reports to review!"
                 else:
                     reply = f"1 of {len(self.reports_to_review)} reports:\n"
                     _, _, info = self.reports_to_review[0]
-                    report = self.filed_reports[info[0]][info[1]]
+                    author_id, index = info
+                    report = self.filed_reports[author_id][index]
                     reply += report.summary()
                 await message.channel.send(reply)
                 return
 
-            if message.content == Moderator.COUNT_KEYWORD:
-                reply = f"There are currently {len(self.reports_to_review)} reports to review.\n"
+            if message.content == Moderator.REVIEW_KEYWORD:
+                if len(self.reports_to_review) == 0:
+                    reply = "No reports to review!"
+                    await message.channel.send(reply)
+                    return
+
+                # Review top item
+                reply = f"1 of {len(self.reports_to_review)} reports:\n"
+                _, _, info = self.reports_to_review[0]
+                author_id, index = info
+                report = self.filed_reports[author_id][index]
+                reply += report.summary()
                 await message.channel.send(reply)
+
+                report.state = State.AWAITING_REVIEW
+
+                responses = await self.reports[author_id].handle_message(message)
+                for r in responses:
+                    bot_message = await message.channel.send(r)
+                
+                self.reports[author_id].message = bot_message
+
+                # handle reactions
+                if self.reports[author_id].reaction_mode:
+                    if (self.reports[author_id].state == State.AWAITING_REVIEW):
+                        for _ in range(Moderator.SEVERITY_LEVELS):
+                            await bot_message.add_reaction(self.NUMBERS[_])
+
                 return
 
     
