@@ -27,15 +27,15 @@ class Report:
     }
     HELP_KEYWORD = "help"
     NUM_TO_IND = {
-        "1️⃣": 0, 
-        "2️⃣": 1, 
-        "3️⃣": 2, 
-        "4️⃣": 3, 
-        "5️⃣": 4, 
-        "6️⃣": 5, 
-        "7️⃣": 6, 
-        "8️⃣": 7, 
-        "9️⃣": 8
+        "1️⃣": 1, 
+        "2️⃣": 2, 
+        "3️⃣": 3, 
+        "4️⃣": 4, 
+        "5️⃣": 5, 
+        "6️⃣": 6, 
+        "7️⃣": 7, 
+        "8️⃣": 8, 
+        "9️⃣": 9
     }
     
     EMOJI_YN = {
@@ -180,22 +180,28 @@ class Report:
             self.severity = self.NUM_TO_IND[reaction.emoji]
             print(f"Severity level is {self.severity}")
             if self.severity == 1:
+                offendingUser = self.flagged_messages[0].author
+                reply = "No action has been taken against " + offendingUser.name
+                await self.message.channel.send(reply)
+            if self.severity == 2:
                 # Warn offending user
                 offendingUser = self.flagged_messages[0].author
                 await offendingUser.send("You have been reported for violating the server rules. Please be respectful and follow the guidelines.")
                 reply = offendingUser.name + " has been warned."
                 await self.message.channel.send(reply)
-            if self.severity == 2:
+            if self.severity == 3:
                 # Delete message and warn offending user
                 message = self.flagged_messages[0]
                 offendingUser = message.author
+                await message.delete()
                 await offendingUser.send("You have been reported for violating the server rules. Your message has been removed. Please be respectful and follow the guidelines.")
                 reply = offendingUser.name + " has been warned. The message has been deleted."
                 await self.message.channel.send(reply)
-            if self.severity == 3:
+            if self.severity == 4:
                 # Delete message and kick offending user
                 message = self.flagged_messages[0]
                 offendingUser = message.author
+                await message.delete()
                 reply = offendingUser.name + " has been kicked from the server. The message has been deleted."
                 await self.message.channel.send(reply)
         return
