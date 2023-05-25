@@ -99,6 +99,7 @@ class ModBot(discord.Client):
                 report = self.reports_in_review[reaction.message.id]
                 await report.handle_reaction(reaction)
 
+
         elif user.id in self.reports: # User flow
             report = self.reports[user.id]
             if reaction.message == report.message:
@@ -231,7 +232,7 @@ class ModBot(discord.Client):
                 reply = f"1 of {len(self.reports_to_review)} reports:\n"
                 _, _, info = self.reports_to_review[0]
                 author_id, index = info
-                report = self.filed_reports[author_id][index]
+                report = self.filed_reports[author_id].pop(index)
                 reply += report.summary()
                 await message.channel.send(reply)
 
