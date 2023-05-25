@@ -148,18 +148,6 @@ class ModBot(discord.Client):
                 await bot_message.add_reaction("❌")
             print(self.reports[author_id].state)
 
-            """
-            while not self.reports[author_id].report_complete():
-                reaction, user = await self.wait_for('reaction_add')
-
-                if user.id != self.user.id and reaction.message == bot_message:
-                    print("reaction received")
-                    responses = await self.reports[author_id].handle_reaction(reaction)
-                    for r in responses:
-                        await message.channel.send(r)
-                    break
-            """
-
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():
             self.reports.pop(author_id)
