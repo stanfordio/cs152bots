@@ -139,10 +139,6 @@ class ModBot(discord.Client):
             else:
                 self.filed_reports[author_id] = [self.reports[author_id]]
             
-            # Alert the mod channel
-            mod_channel = self.mod_channels[message.guild.id]
-            await mod_channel.send(f'Report filed by {author_id} awaiting review:\n  Reason: {self.reports[author_id].reason}.\n  Subreason: {self.reports[author_id].sub_reason}.\n"')
-
             # Add to priority queue
             priority = self.reports[author_id].priority()
             index = len(self.filed_reports[author_id]) - 1
