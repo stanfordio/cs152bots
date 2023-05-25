@@ -83,6 +83,34 @@ class ModBot(discord.Client):
         else:
             await self.handle_dm(message)
 
+    async def on_reaction_add(self, reaction, user):
+        '''
+        This function is called whenever a reaction is addded in a channel that the bot can see.
+        blahblahblah.
+        '''
+        # Ignore reactions from the bot
+        if user.id == self.user.id:
+            return
+
+        if user.id not in self.reports or reaction.message.guild: # Probably a moderator in this case?
+            return
+
+        report = self.reports[user.id]
+        if reaction.message == report.message:
+            #print("reaction detected!")
+            await self.reports[user.id].handle_reaction(reaction)
+            
+            # "fake" a message from the user (this is a hack to use handle_dm)
+            # (trust me.  this is so hacky and stupid but it works!!!. im smart #womeinSTEM)
+            # <3
+            bot_id = self.user.id
+            fake_message = reaction.message
+            fake_message.author.id = user.id
+
+            await self.handle_dm(fake_message)
+            self.user.id = bot_id
+        
+
     async def handle_dm(self, message):
         # Handle a help message
         if message.content == Report.HELP_KEYWORD:
@@ -107,6 +135,8 @@ class ModBot(discord.Client):
         for r in responses:
             bot_message = await message.channel.send(r)
         
+        self.reports[author_id].message = bot_message
+
         # handle reactions
         if self.reports[author_id].reaction_mode:
             
@@ -118,20 +148,9 @@ class ModBot(discord.Client):
                     await bot_message.add_reaction(self.NUMBERS[_])
             elif (self.reports[author_id].state == State.ADDING_CONTEXT or 
                     self.reports[author_id].state == State.CHOOSE_BLOCK):
-                print("???")
                 await bot_message.add_reaction("✅")
                 await bot_message.add_reaction("❌")
             print(self.reports[author_id].state)
-
-            while not self.reports[author_id].report_complete():
-                reaction, user = await self.wait_for('reaction_add')
-
-                if user.id != self.user.id and reaction.message == bot_message:
-                    print("reaction received")
-                    responses = await self.reports[author_id].handle_reaction(reaction)
-                    for r in responses:
-                        await message.channel.send(r)
-                    break
 
         # If the report is filed, save it, cache it in a priority queue, and alert #mod channel for review.
         if self.reports[author_id].report_filed():
