@@ -49,6 +49,7 @@ class ModBot(discord.Client):
         self.filed_reports = {} # Map from user IDs to the state of their filed report
         self.reports_to_review = [] # Priority queue of (user IDs, index)  state of their filed report
         self.report_counter = 0 # Count of filed reports
+        self.reports_in_review = {} # Map from bot_message id to report
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -93,25 +94,26 @@ class ModBot(discord.Client):
         if user.id == self.user.id:
             return
 
-        print(f"User id: {user.id}")
+        if reaction.message.guild: # Moderator flow
+            if reaction.message.id in self.reports_in_review:
+                report = self.reports_in_review
+                await report.handle_reaction(reaction)
 
-        if user.id not in self.reports or reaction.message.guild: # Probably a moderator in this case?
-            return
+        elif user.id in self.reports: # User flow
+            report = self.reports[user.id]
+            if reaction.message == report.message:
+                #print("reaction detected!")
+                await self.reports[user.id].handle_reaction(reaction)
+                
+                # "fake" a message from the user (this is a hack to use handle_dm)
+                # (trust me.  this is so hacky and stupid but it works!!!. im smart #womeinSTEM)
+                # <3
+                bot_id = self.user.id
+                fake_message = reaction.message
+                fake_message.author.id = user.id
 
-        report = self.reports[user.id]
-        if reaction.message == report.message:
-            #print("reaction detected!")
-            await self.reports[user.id].handle_reaction(reaction)
-            
-            # "fake" a message from the user (this is a hack to use handle_dm)
-            # (trust me.  this is so hacky and stupid but it works!!!. im smart #womeinSTEM)
-            # <3
-            bot_id = self.user.id
-            fake_message = reaction.message
-            fake_message.author.id = user.id
-
-            await self.handle_dm(fake_message)
-            self.user.id = bot_id
+                await self.handle_dm(fake_message)
+                self.user.id = bot_id
         
 
     async def handle_dm(self, message):
@@ -153,9 +155,6 @@ class ModBot(discord.Client):
                     self.reports[author_id].state == State.CHOOSE_BLOCK):
                 await bot_message.add_reaction("✅")
                 await bot_message.add_reaction("❌")
-            elif (self.reports[author_id].state == State.AWAITING_REVIEW):
-                for _ in range(Moderator.SEVERITY_LEVELS):
-                    await bot_message.add_reaction(self.NUMBERS[_])
             print(self.reports[author_id].state)
 
         # If the report is filed, save it, cache it in a priority queue, and alert #mod channel for review.
@@ -237,6 +236,7 @@ class ModBot(discord.Client):
                 for _ in range(Moderator.SEVERITY_LEVELS):
                     await bot_message.add_reaction(self.NUMBERS[_])
 
+                self.reports_in_review[report.message.id] = report
                 return
 
     
