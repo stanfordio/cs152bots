@@ -44,7 +44,7 @@ class Report:
     def __init__(self, client):
         self.state = State.REPORT_START
         self.client = client
-        self.message = None
+        self.message = None # keeps track of last sent message (useful for handling reactions)
         self.reason = None
         self.sub_reason = None
         self.additional_context = False
@@ -111,7 +111,7 @@ class Report:
                 self.reaction_mode = True
                 self.state = State.AWAITING_SUBREASON
                 if self.reason == "Harassment":
-                    return ["Please select the type of Harassment:\n1️⃣: Doxxing\n2️⃣: Cyberstalking\n3️⃣: Threats\n4️⃣: Hate Speech\n5️⃣: Sexual Harrasement\n6️⃣: Bullying\n7️⃣: Extortion\n8️⃣: Other"]
+                    return ["Please select the type of Harassment:\n1️⃣: Doxxing\n2️⃣: Cyberstalking\n3️⃣: Threats\n4️⃣: Hate Speech\n5️⃣: Sexual Harassment\n6️⃣: Bullying\n7️⃣: Extortion\n8️⃣: Other"]
                 if self.reason == "Offensive Content":
                     return ["Please select the type of Offensive Content:\n1️⃣: Child Sexual Abuse Material\n2️⃣: Adult Sexually Explicit Content\n3️⃣: Violence\n4️⃣: Hate Speech\n5️⃣: Copyright Infringement"]
                 if self.reason == "Spam":
@@ -126,7 +126,7 @@ class Report:
                 self.reaction_mode = True
                 if self.reason in self.NON_FOCUS_REASONS:
                     self.state = State.CHOOSE_BLOCK
-                    return ["Thank you for reporting. Our content moderation team will review the report and decide on appropriate action. Would you like to block the offending user(s)? Yes or No"]
+                    return ["You selected " + self.sub_reason + ". Thank you for reporting. Our content moderation team will review the report and decide on appropriate action. Would you like to block the offending user(s)? Yes or No"]
                 else:
                     self.state = State.ADDING_CONTEXT
                     return ["Would you like to add further context or select relevant chat messages? Yes or No"]
@@ -152,16 +152,17 @@ class Report:
         self.reaction_mode = False
         if self.state == State.AWAITING_REASON:
             self.reason = self.REASONS[self.NUM_TO_IND[reaction.emoji]] 
-            return["You selected " + self.reason + " as your reason.",  "Type anything to continue."]
+            #return["You selected " + self.reason + " as your reason."]
         if self.state == State.AWAITING_SUBREASON:
             self.sub_reason = self.SUB_REASONS[self.reason][self.NUM_TO_IND[reaction.emoji]]
-            return["You selected " + self.sub_reason + " as your subreason.",  "Type anything to continue."]
+            #return["You selected " + self.sub_reason + " as your subreason."]
         if self.state == State.ADDING_CONTEXT:
             self.additional_context = self.EMOJI_YN[reaction.emoji]
-            return ["Type anything to continue."]
+            #return ["Type anything to continue."]
         if self.state == State.CHOOSE_BLOCK:
             self.choose_block = self.EMOJI_YN[reaction.emoji]
-            return ["Type anything to continue."]
+            #return ["Type anything to continue."]
+        return
 
         
     
