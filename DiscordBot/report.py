@@ -182,10 +182,17 @@ class Report:
         return self.state == State.REPORT_FILED
     
 
+    # Lower number == Higher priority
+    def priority(self):
+        if self.reason == "Imminent Danger" or self.sub_reason in ["Doxxing", "Extortion", "Other"]:
+            return 1
+        return 2
+
+
     def summary(self):
         summary = ""
         summary += f"Reason: {self.reason}\n"
-        summary += f"Subreason: {self.subreason}\n"
+        summary += f"Subreason: {self.sub_reason}\n"
         for i, message in enumerate(self.flagged_messages):
             summary += f"\n({i+1} of {len(self.flagged_messages)} flagged messages:\n"
             summary += f"```{message.author.name}: {message.content}```"
