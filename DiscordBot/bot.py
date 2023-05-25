@@ -96,7 +96,7 @@ class ModBot(discord.Client):
 
         if reaction.message.guild: # Moderator flow
             if reaction.message.id in self.reports_in_review:
-                report = self.reports_in_review
+                report = self.reports_in_review[reaction.message.id]
                 await report.handle_reaction(reaction)
 
         elif user.id in self.reports: # User flow
