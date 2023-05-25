@@ -53,6 +53,7 @@ class Report:
         self.choose_block = False
         self.reaction_mode = False
         self.flagged_messages = []
+        self.severity = None
     
     async def handle_message(self, message):
         '''
