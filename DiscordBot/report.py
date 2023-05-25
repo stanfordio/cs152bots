@@ -110,7 +110,7 @@ class Report:
                     "Please classify the message as one of the following: ", \
                     "Use the command `spam` to classify the message as spam.", \
                     "Use the command `harassment` to classify the message as harassment.", \
-                    "Use the command `offensive` to classify the message as being offensive.", \
+                    "Use the command `offensive` to classify the message as containing offensive content or nudity.", \
                     "Use the command `harm` if the message threatens to cause harm.\n"]
 
         # Classifying the message.
