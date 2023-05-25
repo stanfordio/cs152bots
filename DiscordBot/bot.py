@@ -169,12 +169,18 @@ class ModBot(discord.Client):
                 return
 
             if message.content == Moderator.PEEK_KEYWORD:
-                reply = "This should be a summary of the most urgent report.\n"
+                if len(self.reports_to_review) == 0:
+                    reply = "No reports to review!"
+                else:
+                    reply = f"1 of {len(self.reports_to_review)} reports:\n"
+                    _, _, info = self.reports_to_review[0]
+                    report = self.filed_reports[info[0]][info[1]]
+                    reply += report.summary()
                 await message.channel.send(reply)
                 return
 
             if message.content == Moderator.COUNT_KEYWORD:
-                reply += f"There are currently {len(self.reports_to_review)} reports to review.\n"
+                reply = f"There are currently {len(self.reports_to_review)} reports to review.\n"
                 await message.channel.send(reply)
                 return
 

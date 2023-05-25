@@ -168,19 +168,27 @@ class Report:
             return ["Type anything to continue."]
 
         
-    
     def get_authors(self):
         authors = [msg.author.name for msg in self.flagged_messages]
         unique_authors = list(set(authors))
         return "\n".join(unique_authors)
 
+
     def report_complete(self):
         return self.state in [State.REPORT_CANCELED, State.REPORT_FILED]
+
 
     def report_filed(self):
         return self.state == State.REPORT_FILED
     
 
-
+    def summary(self):
+        summary = ""
+        summary += f"Reason: {self.reason}\n"
+        summary += f"Subreason: {self.subreason}\n"
+        for i, message in enumerate(self.flagged_messages):
+            summary += f"\n({i+1} of {len(self.flagged_messages)} flagged messages:\n"
+            summary += f"```{message.author.name}: {message.content}```"
+        return summary
     
 
