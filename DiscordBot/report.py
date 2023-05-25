@@ -179,6 +179,25 @@ class Report:
         if self.state == State.AWAITING_REVIEW:
             self.severity = self.NUM_TO_IND[reaction.emoji]
             print(f"Severity level is {self.severity}")
+            if self.severity == 1:
+                # Warn offending user
+                offendingUser = self.flagged_messages[0].author
+                await offendingUser.send("You have been reported for violating the server rules. Please be respectful and follow the guidelines.")
+                reply = offendingUser.name + " has been warned."
+                await self.message.channel.send(reply)
+            if self.severity == 2:
+                # Delete message and warn offending user
+                message = self.flagged_messages[0]
+                offendingUser = message.author
+                await offendingUser.send("You have been reported for violating the server rules. Your message has been removed. Please be respectful and follow the guidelines.")
+                reply = offendingUser.name + " has been warned. The message has been deleted."
+                await self.message.channel.send(reply)
+            if self.severity == 3:
+                # Delete message and kick offending user
+                message = self.flagged_messages[0]
+                offendingUser = message.author
+                reply = offendingUser.name + " has been kicked from the server. The message has been deleted."
+                await self.message.channel.send(reply)
         return
 
         
