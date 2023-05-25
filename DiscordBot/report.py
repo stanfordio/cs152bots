@@ -165,10 +165,10 @@ class Report:
     async def handle_reaction(self, reaction):
         self.reaction_mode = False
         if self.state == State.AWAITING_REASON:
-            self.reason = self.REASONS[self.NUM_TO_IND[reaction.emoji]] 
+            self.reason = self.REASONS[self.NUM_TO_IND[reaction.emoji]-1] 
             #return["You selected " + self.reason + " as your reason."]
         if self.state == State.AWAITING_SUBREASON:
-            self.sub_reason = self.SUB_REASONS[self.reason][self.NUM_TO_IND[reaction.emoji]]
+            self.sub_reason = self.SUB_REASONS[self.reason][self.NUM_TO_IND[reaction.emoji]-1]
             #return["You selected " + self.sub_reason + " as your subreason."]
         if self.state == State.ADDING_CONTEXT:
             self.additional_context = self.EMOJI_YN[reaction.emoji]
