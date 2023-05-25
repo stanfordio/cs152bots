@@ -75,6 +75,7 @@ class ModBot(discord.Client):
             await self.handle_dm(message)
 
     async def handle_dm(self, message):
+        # mod_channel = self.mod_channels[message.guild.id]
         # Handle a help message
         if message.content == Report.HELP_KEYWORD:
             reply =  "Use the `report` command to begin the reporting process.\n"
@@ -108,10 +109,11 @@ class ModBot(discord.Client):
         # moderator addressing a message
         elif message.content == "valid":
             if self.curr_report.state == State.CSAM:
-                await mod_channel.send(f"Deleted: \n{self.curr_report.message.author}: `{self.curr_report.message.content}`")
+                # await mod_channel.send(f"Deleted: \n{self.curr_report.message.author}: `{self.curr_report.message.content}`")
                 await self.curr_report.message.delete()
                 reply = "The message has been removed, the user has been banned, and NCMEC has been notified. Thank you!"
                 await message.channel.send(reply)
+                del self.reports[self.curr_report_idx]
                 self.curr_report = None
                 self.curr_report_idx = None
                 # self.reports.pop(self.curr_reporter)
@@ -128,12 +130,14 @@ class ModBot(discord.Client):
                     reply = "The message has been removed and the user has been warned. Thank you!"
                     await message.channel.send(reply)
                 
+                del self.reports[self.curr_report_idx]
                 self.curr_report = None
                 self.curr_report_idx = None
                 # self.reports.pop(self.curr_reporter)
                 return
         
         elif message.content == "invalid":
+            del self.reports[self.curr_report_idx]
             self.curr_report = None
             self.curr_report_idx = None
             # self.reports.pop(self.curr_reporter)
