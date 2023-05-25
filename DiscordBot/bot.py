@@ -227,15 +227,15 @@ class ModBot(discord.Client):
 
                 report.state = State.AWAITING_REVIEW
 
-                responses = await self.reports[author_id].handle_message(message)
+                responses = await report.handle_message(message)
                 for r in responses:
                     bot_message = await message.channel.send(r)
                 
-                self.reports[author_id].message = bot_message
+                report.message = bot_message
 
                 # handle reactions
-                if self.reports[author_id].reaction_mode:
-                    if (self.reports[author_id].state == State.AWAITING_REVIEW):
+                if report.reaction_mode:
+                    if (report.state == State.AWAITING_REVIEW):
                         for _ in range(Moderator.SEVERITY_LEVELS):
                             await bot_message.add_reaction(self.NUMBERS[_])
 
