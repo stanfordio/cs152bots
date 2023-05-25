@@ -142,12 +142,12 @@ class Report:
                 return ["Thank you for reporting. Our content moderation team will review the report and decide on appropriate action. Would you like to block the offending user(s)? Yes or No"]
         
         if self.state == State.CHOOSE_BLOCK:
-            if message.content not in ["Yes", "No"]:
+            if self.reaction_mode:
                 return ["Thank you for reporting. Our content moderation team will review the report and decide on appropriate action. Would you like to block the offending user(s)? Yes or No"]
             else:
                 self.state = State.REPORT_FILED
                 reply = f"Your report has been submitted for review.\n Reason: {self.reason}.\n Subreason: {self.sub_reason}.\n"
-                if message.content == "Yes":
+                if self.choose_block:
                     authors = self.get_authors()
                     reply += f"The offending authors of the flagged messages have been blocked:\n{authors}"
             return [reply]
