@@ -259,8 +259,8 @@ class ModBot(discord.Client):
             user_reported = await self.fetch_user(reported_user)
             user_making_report = await self.fetch_user(reporting_user)
             await user_reported.send(
-                "We detected fraudulent activity on your account. We will be banning your account.")
-            await user_making_report.send("We took action against" + user_reported.name + "who you recently reported. "
+                "We detected fraudulent activity on your account. We will be banning your account. ")
+            await user_making_report.send("We took action against " + user_reported.name + " who you recently reported. "
                                                                                           "Thank you for keeping our platform safe.")
             self.in_prog_reviews.pop(msg_id)
 
@@ -269,7 +269,7 @@ class ModBot(discord.Client):
             user_making_report = await self.fetch_user(reporting_user)
             await user_reported.send("We detected fraudulent activity on your account. "
                                      "We will be suspending your account for 15 days.")
-            await user_making_report.send("We took action against" + user_reported.name + "who you recently reported. "
+            await user_making_report.send("We took action against " + user_reported.name + " who you recently reported. "
                                                                                           "Thank you for keeping our platform safe.")
             self.in_prog_reviews.pop(msg_id)
 
@@ -278,7 +278,7 @@ class ModBot(discord.Client):
             user_making_report = await self.fetch_user(reporting_user)
             await user_reported.send("We detected fraudulent activity on your account. "
                                      "This is a warning; continuation of fraudulent activity will result in escalated action.")
-            await user_making_report.send("We took action against" + user_reported.name + "who you recently reported. "
+            await user_making_report.send("We took action against " + user_reported.name + " who you recently reported. "
                                                                                           "Thank you for keeping our platform safe.")
             self.in_prog_reviews.pop(msg_id)
 
@@ -288,7 +288,7 @@ class ModBot(discord.Client):
             await user_making_report.send(
                 "We did not detect any fraudulent information in the message/profile submitted. "
                 "The next course of action to protect yourself can include: " + "\n"
-                                                                                "\t" + "Blocking" + user_reported.name + "\n"
+                                                                                "\t" + "Blocking " + user_reported.name + "\n"
                                                                                                                          "\t" + "Calling 911 if this is an emergency.")
             self.in_prog_reviews.pop(msg_id)
 

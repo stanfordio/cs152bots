@@ -95,7 +95,7 @@ class Report:
             return ["I found this message:", "```" + message.author.name + ": " + message.content + "```" + reply]
 
         if self.state == State.MESSAGE_IDENTIFIED and message.content == self.DONE_KEYWORD:
-            reply = "Thank you for reporting."
+            reply = "Thank you for reporting. "
             reply += "Our moderation team will review the profile and/or interaction and decide on appropriate action. "
             reply += "This may include profile warning, suspension, or removal for the reported party. "
             reply += "We will follow up with the status of the report within 72 hours.\n\n"
