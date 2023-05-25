@@ -35,6 +35,11 @@ class Report:
         "8️⃣": 7, 
         "9️⃣": 8
     }
+    
+    EMOJI_YN = {
+        "✅": True,
+        "❌": False
+    }
 
     def __init__(self, client):
         self.state = State.REPORT_START
@@ -42,6 +47,8 @@ class Report:
         self.message = None
         self.reason = None
         self.sub_reason = None
+        self.additional_context = False
+        self.choose_block = False
         self.reaction_mode = False
         self.flagged_messages = []
     
@@ -93,6 +100,7 @@ class Report:
             else:
                 self.state = State.ADDING_CONTEXT
                 message_count = len(self.flagged_messages)
+                self.reaction_mode = True
                 return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
                         f"Would you like to add further context with relevant chat messages? You have currently submitted {message_count} message(s). Yes or No"]
 
@@ -115,6 +123,7 @@ class Report:
             if self.sub_reason == None:
                 return ["Please select the reaction corresponding to your subreason."]
             else:
+                self.reaction_mode = True
                 if self.reason in self.NON_FOCUS_REASONS:
                     self.state = State.CHOOSE_BLOCK
                     return ["Thank you for reporting. Our content moderation team will review the report and decide on appropriate action. Would you like to block the offending user(s)? Yes or No"]
@@ -123,25 +132,20 @@ class Report:
                     return ["Would you like to add further context or select relevant chat messages? Yes or No"]
         
         if self.state == State.ADDING_CONTEXT:
-            if message.content not in ["Yes", "No"]:
-                return ["Would you like to add further context with relevant chat messages? Yes or No"]
+            if self.additional_context:
+                self.state = State.AWAITING_MESSAGE
+                return ["Please provide the links of the relevant chat messages you want to add."]
             else:
-                if message.content == "Yes":
-                    self.state = State.AWAITING_MESSAGE
-                    return ["Please provide the links of the relevant chat messages you want to add."]
-                else:
-                    self.state = State.CHOOSE_BLOCK
-                    return ["Thank you for reporting. Our content moderation team will review the report and decide on appropriate action. Would you like to block the offending user(s)? Yes or No"]
+                self.state = State.CHOOSE_BLOCK
+                self.reaction_mode = True
+                return ["Thank you for reporting. Our content moderation team will review the report and decide on appropriate action. Would you like to block the offending user(s)? Yes or No"]
         
         if self.state == State.CHOOSE_BLOCK:
-            if message.content not in ["Yes", "No"]:
-                return ["Thank you for reporting. Our content moderation team will review the report and decide on appropriate action. Would you like to block the offending user(s)? Yes or No"]
-            else:
-                self.state = State. REPORT_COMPLETE
-                reply = f"Your report has been submitted for review.\n Reason: {self.reason}.\n Subreason: {self.sub_reason}.\n"
-                if message.content == "Yes":
-                    authors = self.get_authors()
-                    reply += f"The offending authors of the flagged messages have been blocked:\n{authors}"
+            self.state = State.REPORT_COMPLETE
+            reply = f"Your report has been submitted for review.\n Reason: {self.reason}.\n Subreason: {self.sub_reason}.\n"
+            if self.choose_block:
+                authors = self.get_authors()
+                reply += f"The offending authors of the flagged messages have been blocked:\n{authors}"
             return [reply]
 
     async def handle_reaction(self, reaction):
@@ -152,6 +156,13 @@ class Report:
         if self.state == State.AWAITING_SUBREASON:
             self.sub_reason = self.SUB_REASONS[self.reason][self.NUM_TO_IND[reaction.emoji]]
             return["You selected " + self.sub_reason + " as your subreason.",  "Type anything to continue."]
+        if self.state == State.ADDING_CONTEXT:
+            self.additional_context = self.EMOJI_YN[reaction.emoji]
+            return ["Type anything to continue."]
+        if self.state == State.CHOOSE_BLOCK:
+            self.choose_block = self.EMOJI_YN[reaction.emoji]
+            return ["Type anything to continue."]
+
         
     
     def get_authors(self):

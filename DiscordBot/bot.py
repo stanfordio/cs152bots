@@ -107,17 +107,22 @@ class ModBot(discord.Client):
             elif (self.reports[author_id].state == State.AWAITING_SUBREASON):
                 for _ in range(len(self.reports[author_id].SUB_REASONS[self.reports[author_id].reason])):
                     await bot_message.add_reaction(self.NUMBERS[_])
+            elif (self.reports[author_id].state == State.ADDING_CONTEXT or 
+                    self.reports[author_id].state == State.CHOOSE_BLOCK):
+                print("???")
+                await bot_message.add_reaction("✅")
+                await bot_message.add_reaction("❌")
+            print(self.reports[author_id].state)
 
             while not self.reports[author_id].report_complete():
                 reaction, user = await self.wait_for('reaction_add')
 
                 if user.id != self.user.id and reaction.message == bot_message:
-                    if reaction.emoji in self.NUMBERS:
-                        print("reaction received")
-                        responses = await self.reports[author_id].handle_reaction(reaction)
-                        for r in responses:
-                            await message.channel.send(r)
-                        break
+                    print("reaction received")
+                    responses = await self.reports[author_id].handle_reaction(reaction)
+                    for r in responses:
+                        await message.channel.send(r)
+                    break
 
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():
