@@ -174,8 +174,8 @@ class Report:
         unique_authors = list(set(authors))
         return "\n".join(unique_authors)
 
-    def report_canceled(self):
-        return self.state == State.REPORT_CANCELED
+    def report_complete(self):
+        return self.state in [State.REPORT_CANCELED, State.REPORT_FILED]
 
     def report_filed(self):
         return self.state == State.REPORT_FILED

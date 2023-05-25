@@ -150,7 +150,7 @@ class ModBot(discord.Client):
             report_counter += 1
 
         # If the report is complete or cancelled, remove it from our map
-        if self.reports[author_id].report_canceled() or self.reports[author_id].report_filed():
+        if self.reports[author_id].report_complete():
             self.reports.pop(author_id)
 
 
