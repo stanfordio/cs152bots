@@ -100,6 +100,7 @@ class Moderate:
         self.state = State.REPORT_START
         self.client = client
         self.data = ReportData()
+        self.curr_report = None
 
     async def handle_message(self, message: discord.Message) -> List[str]:
         """
@@ -122,36 +123,51 @@ class Moderate:
         if self.state == State.REPORT_START:
             self.data.reporter = message.author
             self.state = State.AWAITING_MESSAGE
-            return [ReportStartMessage.START, ReportStartMessage.REQUEST_MSG]
+            return [ReportStartMessage.START, ReportStartMessage.MODERATE_REQUEST]
 
         if self.state == State.AWAITING_MESSAGE:
             # Parse out the three ID strings from the message link
-            m = re.search("/(\d+)/(\d+)/(\d+)", message.content)
-            if not m:
-                return ReportStartMessage.INVALID_LINK
-            guild = self.client.get_guild(int(m.group(1)))
-            if not guild:
-                return ReportStartMessage.NOT_IN_GUILD
-            channel = guild.get_channel(int(m.group(2)))
-            if not channel:
-                return ReportStartMessage.CHANNEL_DELETED
-            try:
-                message = await channel.fetch_message(int(m.group(3)))
-            except discord.errors.NotFound:
-                return ReportStartMessage.MESSAGE_DELETED
+            m = message.content
+            found_report = None
+            accused = ""
+            for r in self.client.open_reports:
+                if m == r.id:
+                    found_report = r
+
+
+            print(found_report)
+            print(found_report.message.author.name)
+
+            print("report: ", found_report.summary)
+            
+            self.curr_report = found_report
+            if not found_report:
+                return ReportStartMessage.INVALID_REPORTID
+            #guild = self.client.get_guild(int(m.group(1)))
+            #if not guild:
+                #return ReportStartMessage.NOT_IN_GUILD
+            #channel = guild.get_channel(int(m.group(2)))
+           #if not channel:
+                #return ReportStartMessage.CHANNEL_DELETED
+            #try:
+                #message = await channel.fetch_message(int(m.group(3)))
+            #except discord.errors.NotFound:
+                #return ReportStartMessage.MESSAGE_DELETED
 
             self.state = State.MESSAGE_IDENTIFIED
 
             # save the message for later
             self.data.message = message
 
-            return ReportStartMessage.MESSAGE_IDENTIFIED.format(
-                author=message.author.name, content=message.content
+            return ReportStartMessage.REPORT_IDENTIFIED.format(
+                report_id=m, content=found_report.message.author.name
             )
 
         if self.state == State.MESSAGE_IDENTIFIED:
             if message.content.lower() in self.YES_KEYWORDS:
                 self.state = State.AWAITING_ABUSE_TYPE
+                print("curr report", self.curr_report.summary)
+                await message.channel.send(self.curr_report.summary)
                 return ReportDetailsMessage.MODERATOR_ABUSE_TYPE
             elif message.content.lower() in self.NO_KEYWORDS:
                 self.state = State.AWAITING_MESSAGE
@@ -167,7 +183,7 @@ class Moderate:
                 self.data.blocked_user = True
                 response.append(
                     ReportDetailsMessage.BLOCKED.format(
-                        author=self.data.message.author.name
+                        author=self.curr_report.message.author.name
                     )
                 )
                 self.state = State.AWAITING_CONFIRMATION

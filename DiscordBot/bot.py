@@ -335,9 +335,13 @@ class ModBot(discord.Client):
         if reactor_id == self.user.id:
             return
 
-        # Ignore reactions that aren't sent in a DM or group-8-mod channel
+        # Ignore reactions that aren't sent in a DM channel
         channel = await self.fetch_channel(payload.channel_id)
-        if channel.name != f"group-{self.group_num}-mod":
+        if isinstance(channel, discord.TextChannel):
+            if channel.name != f"group-{self.group_num}-mod":
+                return
+        # Ignore reactions that aren't sent in a DM channel
+        if isinstance(channel, discord.DMChannel):
             if payload.guild_id is not None:
                 return
 
@@ -353,8 +357,9 @@ class ModBot(discord.Client):
         fetched_message = await channel.fetch_message(payload.message_id)
 
         # Let the report class handle this reaction
-        if channel.name == f"group-{self.group_num}-mod":
-            responses = await self.moderating.handle_reaction_add(payload.emoji, fetched_message)
+        if isinstance(channel, discord.TextChannel):
+            if channel.name == f"group-{self.group_num}-mod":
+                responses = await self.moderating.handle_reaction_add(payload.emoji, fetched_message)
         else:
             responses = await self.reports[reactor_id].handle_reaction_add(
                 payload.emoji, fetched_message

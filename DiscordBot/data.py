@@ -67,7 +67,8 @@ Moderator Notes:
             [
                 # can be None
                 self.multiple_requests * 2 if self.multiple_requests else 0,
-                self.minor_participation * 3,
+                # can be None
+                self.minor_participation * 3 if self.encourage_self_harm else 0,
                 self.contain_yourself,
                 # can be None (skipped)
                 self.encourage_self_harm * 3 if self.encourage_self_harm else 0,

@@ -32,8 +32,15 @@ class ReportStartMessage:
         "Please copy paste the link to the message you want to report.\nYou can obtain"
         " this link by right-clicking the message and clicking `Copy Message Link`."
     )
+    MODERATE_REQUEST = (
+        "Please type the report id of the report you want to handle."
+    )
     INVALID_LINK = (
         "I'm sorry, I couldn't read that link. Please try again or type `cancel` to"
+        " cancel."
+    )
+    INVALID_REPORTID = (
+        "I'm sorryt there is no open report associated with that report id. Please try again or type `cancel` to"
         " cancel."
     )
     NOT_IN_GUILD = (
@@ -51,6 +58,10 @@ class ReportStartMessage:
     MESSAGE_IDENTIFIED = (
         "I found this message:\n```{author}: {content}```\nIs"
         " this the message you want to report? Please type `yes` or `no`."
+    )
+    REPORT_IDENTIFIED = (
+        "I found this report:\n```{report_id}: {content}```\nIs"
+        " this the report you want to handle? Please type `yes` or `no`."
     )
 
 
