@@ -178,6 +178,7 @@ class Report:
             #return ["Type anything to continue."]
         if self.state == State.AWAITING_REVIEW:
             self.severity = self.NUM_TO_IND[reaction.emoji]
+            print(f"Severity level is {self.severity}")
         return
 
         
