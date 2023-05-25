@@ -8,6 +8,7 @@ import re
 import requests
 from report import Report, State
 import pdb
+import heapq
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -26,6 +27,11 @@ with open(token_path) as f:
     discord_token = tokens['discord']
 
 
+class Moderator:
+    HELP_KEYWORD = "help"
+    PEEK_KEYWORD = "peek"
+    COUNT_KEYWORD = "count"
+
 class ModBot(discord.Client):
 
     NUMBERS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣"]
@@ -38,6 +44,9 @@ class ModBot(discord.Client):
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
+        self.filed_reports = {} # Map from user IDs to the state of their filed report
+        self.reports_to_review = [] # Priority queue of (user IDs, index)  state of their filed report
+        self.report_counter = 0 # Count of filed reports
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -148,20 +157,57 @@ class ModBot(discord.Client):
                 await bot_message.add_reaction("❌")
             print(self.reports[author_id].state)
 
+        # If the report is filed, save it, cache it in a priority queue, and alert #mod channel for review.
+        if self.reports[author_id].report_filed():
+            if author_id in self.filed_reports:
+                self.filed_reports[author_id].append(self.reports[author_id])
+            else:
+                self.filed_reports[author_id] = [self.reports[author_id]]
+            
+            # Add to priority queue
+            priority = self.reports[author_id].priority()
+            index = len(self.filed_reports[author_id]) - 1
+            heapq.heappush(self.reports_to_review, (priority, self.report_counter, (author_id, index)))
+            self.report_counter += 1
+
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():
             self.reports.pop(author_id)
 
-    async def handle_channel_message(self, message):
-        # Only handle messages sent in the "group-#" channel
-        if not message.channel.name == f'group-{self.group_num}':
-            return
 
-        # Forward the message to the mod channel
-        mod_channel = self.mod_channels[message.guild.id]
-        await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-        scores = self.eval_text(message.content)
-        await mod_channel.send(self.code_format(scores))
+    async def handle_channel_message(self, message):
+        # Only handle messages sent in the "group-#" or "group-#-mod" channel
+        if message.channel.name == f'group-{self.group_num}':
+            # Forward the message to the mod channel
+            mod_channel = self.mod_channels[message.guild.id]
+            await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
+            scores = self.eval_text(message.content)
+            await mod_channel.send(self.code_format(scores))
+            return 
+
+        # Moderator flow
+        if message.channel.name == f'group-{self.group_num}-mod':
+            if message.content == Moderator.HELP_KEYWORD:
+                reply =  "Use the `peek` command to look at the most urgent report.\n"
+                reply += "Use the `count` command to see how many reports are in the review queue.\n"
+                await message.channel.send(reply)
+                return
+
+            if message.content == Moderator.PEEK_KEYWORD:
+                if len(self.reports_to_review) == 0:
+                    reply = "No reports to review!"
+                else:
+                    reply = f"1 of {len(self.reports_to_review)} reports:\n"
+                    _, _, info = self.reports_to_review[0]
+                    report = self.filed_reports[info[0]][info[1]]
+                    reply += report.summary()
+                await message.channel.send(reply)
+                return
+
+            if message.content == Moderator.COUNT_KEYWORD:
+                reply = f"There are currently {len(self.reports_to_review)} reports to review.\n"
+                await message.channel.send(reply)
+                return
 
     
     def eval_text(self, message):
