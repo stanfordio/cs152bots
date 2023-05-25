@@ -14,6 +14,7 @@ class State(Enum):
     CHOOSE_BLOCK = auto()
     REPORT_CANCELED = auto()
     REPORT_FILED = auto()
+    AWAITING_REVIEW = auto()
 
 class Report:
     START_KEYWORD = "report"
@@ -56,6 +57,7 @@ class Report:
         self.reaction_mode = False
         self.flagged_messages = []
         self.user_context = None # user inputted context
+        self.severity = None
     
     async def handle_message(self, message):
         '''
@@ -174,6 +176,14 @@ class Report:
                     reply += f"  The offending authors of the flagged messages have been blocked:\n{authors}"
             return [reply]
 
+        if self.state == State.AWAITING_REVIEW:
+            if self.severity == None:
+                return ["Please select the corresponding severity level."]
+            else:
+                self.reaction_mode = True
+                return ["You selected " + self.severity + ". Thank you for reviewing."]
+
+
     async def handle_reaction(self, reaction):
         self.reaction_mode = False
         if self.state == State.AWAITING_REASON:
@@ -186,6 +196,9 @@ class Report:
             self.additional_context = self.EMOJI_YN[reaction.emoji]
         if self.state == State.CHOOSE_BLOCK:
             self.choose_block = self.EMOJI_YN[reaction.emoji]
+        if self.state == State.AWAITING_REVIEW:
+            self.severity = self.NUM_TO_IND[reaction.emoji]
+            print(f"Severity level is {self.severity}")
         return
 
         
@@ -213,8 +226,8 @@ class Report:
         summary = ""
         summary += f"Reason: {self.reason}\n"
         summary += f"Subreason: {self.sub_reason}\n"
+        summary += f"\n{len(self.flagged_messages)} flagged messages:\n"
         for i, message in enumerate(self.flagged_messages):
-            summary += f"\n({i+1} of {len(self.flagged_messages)} flagged messages:\n"
             summary += f"```{message.author.name}: {message.content}```"
         return summary
     

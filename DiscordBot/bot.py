@@ -30,7 +30,9 @@ with open(token_path) as f:
 class Moderator:
     HELP_KEYWORD = "help"
     PEEK_KEYWORD = "peek"
+    REVIEW_KEYWORD = "review"
     COUNT_KEYWORD = "count"
+    SEVERITY_LEVELS = 4
 
 class ModBot(discord.Client):
 
@@ -47,6 +49,7 @@ class ModBot(discord.Client):
         self.filed_reports = {} # Map from user IDs to the state of their filed report
         self.reports_to_review = [] # Priority queue of (user IDs, index)  state of their filed report
         self.report_counter = 0 # Count of filed reports
+        self.reports_in_review = {} # Map from bot_message id to report
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -85,30 +88,32 @@ class ModBot(discord.Client):
 
     async def on_reaction_add(self, reaction, user):
         '''
-        This function is called whenever a reaction is addded in a channel that the bot can see.
-        blahblahblah.
+        This function is called whenever a reaction is added in a channel that the bot can see.
         '''
         # Ignore reactions from the bot
         if user.id == self.user.id:
             return
 
-        if user.id not in self.reports or reaction.message.guild: # Probably a moderator in this case?
-            return
+        if reaction.message.guild: # Moderator flow
+            if reaction.message.id in self.reports_in_review:
+                report = self.reports_in_review[reaction.message.id]
+                await report.handle_reaction(reaction)
 
-        report = self.reports[user.id]
-        if reaction.message == report.message:
-            #print("reaction detected!")
-            await self.reports[user.id].handle_reaction(reaction)
-            
-            # "fake" a message from the user (this is a hack to use handle_dm)
-            # (trust me.  this is so hacky and stupid but it works!!!. im smart #womeinSTEM)
-            # <3
-            bot_id = self.user.id
-            fake_message = reaction.message
-            fake_message.author.id = user.id
+        elif user.id in self.reports: # User flow
+            report = self.reports[user.id]
+            if reaction.message == report.message:
+                #print("reaction detected!")
+                await self.reports[user.id].handle_reaction(reaction)
+                
+                # "fake" a message from the user (this is a hack to use handle_dm)
+                # (trust me.  this is so hacky and stupid but it works!!!. im smart #womeinSTEM)
+                # <3
+                bot_id = self.user.id
+                fake_message = reaction.message
+                fake_message.author.id = user.id
 
-            await self.handle_dm(fake_message)
-            self.user.id = bot_id
+                await self.handle_dm(fake_message)
+                self.user.id = bot_id
         
 
     async def handle_dm(self, message):
@@ -189,20 +194,50 @@ class ModBot(discord.Client):
                 await message.channel.send(reply)
                 return
 
+            if message.content == Moderator.COUNT_KEYWORD:
+                reply = f"There are currently {len(self.reports_to_review)} reports to review.\n"
+                await message.channel.send(reply)
+                return
+
             if message.content == Moderator.PEEK_KEYWORD:
                 if len(self.reports_to_review) == 0:
                     reply = "No reports to review!"
                 else:
                     reply = f"1 of {len(self.reports_to_review)} reports:\n"
                     _, _, info = self.reports_to_review[0]
-                    report = self.filed_reports[info[0]][info[1]]
+                    author_id, index = info
+                    report = self.filed_reports[author_id][index]
                     reply += report.summary()
                 await message.channel.send(reply)
                 return
 
-            if message.content == Moderator.COUNT_KEYWORD:
-                reply = f"There are currently {len(self.reports_to_review)} reports to review.\n"
+            if message.content == Moderator.REVIEW_KEYWORD:
+                if len(self.reports_to_review) == 0:
+                    reply = "No reports to review!"
+                    await message.channel.send(reply)
+                    return
+
+                # Review top item
+                reply = f"1 of {len(self.reports_to_review)} reports:\n"
+                _, _, info = self.reports_to_review[0]
+                author_id, index = info
+                report = self.filed_reports[author_id][index]
+                reply += report.summary()
                 await message.channel.send(reply)
+
+                report.state = State.AWAITING_REVIEW
+
+                responses = await report.handle_message(message)
+                for r in responses:
+                    bot_message = await message.channel.send(r)
+                
+                report.message = bot_message
+
+                # handle reactions
+                for _ in range(Moderator.SEVERITY_LEVELS):
+                    await bot_message.add_reaction(self.NUMBERS[_])
+
+                self.reports_in_review[report.message.id] = report
                 return
 
     
