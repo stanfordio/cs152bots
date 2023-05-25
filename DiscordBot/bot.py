@@ -46,6 +46,7 @@ class ModBot(discord.Client):
         self.reports = {} # Map from user IDs to the state of their report
         self.filed_reports = {} # Map from user IDs to the state of their filed report
         self.reports_to_review = [] # Priority queue of (user IDs, index)  state of their filed report
+        self.report_counter = 0 # Count of filed reports
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -142,8 +143,8 @@ class ModBot(discord.Client):
             # Add to priority queue
             priority = self.reports[author_id].priority()
             index = len(self.filed_reports[author_id]) - 1
-            heapq.heappush(self.reports_to_review, (priority, report_counter, (author_id, index)))
-            report_counter += 1
+            heapq.heappush(self.reports_to_review, (priority, self.report_counter, (author_id, index)))
+            self.report_counter += 1
 
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():
