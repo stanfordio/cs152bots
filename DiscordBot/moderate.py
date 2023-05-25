@@ -103,11 +103,10 @@ class Moderate:
 
     async def handle_message(self, message: discord.Message) -> List[str]:
         """
-        This function makes up the meat of the user-side reporting flow. It defines how
-        we transition between states and what prompts to offer at each of those states.
-        You're welcome to change anything you want; this skeleton is just here to get
-        you started and give you a model for working with Discord.
+        This function makes up the meat of the moderator-side reporting flow. reports only on
+        setortion violations.
         """
+        
         if message.content == self.SKIP_KEYWORD:
             if self.state in self.SKIP_STAGES:
                 prev_state = self.state
@@ -152,151 +151,40 @@ class Moderate:
 
         if self.state == State.MESSAGE_IDENTIFIED:
             if message.content.lower() in self.YES_KEYWORDS:
-                self.state = State.AWAITING_USER_DETAILS
-                return UserDetailsMessage.ON_BEHALF_OF
+                self.state = State.AWAITING_ABUSE_TYPE
+                return ReportDetailsMessage.MODERATOR_ABUSE_TYPE
             elif message.content.lower() in self.NO_KEYWORDS:
                 self.state = State.AWAITING_MESSAGE
                 return ReportStartMessage.REQUEST_MSG
             else:
                 return GenericMessage.INVALID_YES_NO
 
-        if self.state == State.AWAITING_USER_DETAILS:
-            if message.content.lower() in self.YES_KEYWORDS:
-                self.state = State.AWAITING_ON_BEHALF_OF
-                return UserDetailsMessage.WHO_ON_BEHALF_OF
-            elif message.content.lower() in self.NO_KEYWORDS:
-                self.state = State.AWAITING_REASON
-                return ReportDetailsMessage.REASON_FOR_REPORT
-            else:
-                return GenericMessage.INVALID_YES_NO
-
-        if self.state == State.AWAITING_ON_BEHALF_OF:
-            self.data.on_behalf_of = message.content
-            self.state = State.AWAITING_REASON
-            return ReportDetailsMessage.REASON_FOR_REPORT
-
-        if self.state == State.AWAITING_REASON:
-            return []
 
         if self.state == State.AWAITING_ABUSE_TYPE:
-            return []
-
-        if self.state == State.AWAITING_ABUSE_DESCRIPTION:
-            return []
-
-        if self.state == State.AWAITING_UNWANTED_REQUESTS:
-            return []
-
-        if self.state == State.AWAITING_MULTIPLE_REQUESTS:
             if message.content.lower() in self.YES_KEYWORDS:
-                self.data.multiple_requests = True
-                self.state = State.AWAITING_APPROXIMATE_REQUESTS
-                return ReportDetailsMessage.APPROXIMATE_REQUESTS
-            elif message.content.lower() in self.NO_KEYWORDS:
-                self.data.multiple_requests = False
-                self.state = State.AWAITING_COMPLIED_WITH_REQUESTS
-                return ReportDetailsMessage.COMPLIED_WITH_REQUESTS
-            else:
-                return GenericMessage.INVALID_YES_NO
-
-        if self.state == State.AWAITING_APPROXIMATE_REQUESTS:
-            try:
-                self.data.approximate_requests = int(message.content)
-            except ValueError:
-                return GenericMessage.INVALID_NUMBER
-            self.state = State.AWAITING_COMPLIED_WITH_REQUESTS
-            return ReportDetailsMessage.COMPLIED_WITH_REQUESTS
-
-        if self.state == State.AWAITING_COMPLIED_WITH_REQUESTS:
-            message_content = message.content.lower()
-            if (
-                message_content in self.YES_KEYWORDS
-                or message_content in self.NO_KEYWORDS
-            ):
-                self.data.complied_with_requests = message_content in self.YES_KEYWORDS
-                self.state = State.AWAITING_MINOR_PARTICIPATION
-                return ReportDetailsMessage.MINOR_PARTICIPATION
-            else:
-                return GenericMessage.INVALID_YES_NO
-
-        if self.state == State.AWAITING_MINOR_PARTICIPATION:
-            message_content = message.content.lower()
-            if (
-                message_content in self.YES_KEYWORDS
-                or message_content in self.NO_KEYWORDS
-            ):
-                self.data.minor_participation = message_content in self.YES_KEYWORDS
-                self.state = State.AWAITING_CONTAIN_YOURSELF
-                return ReportDetailsMessage.CONTAIN_YOURSELF
-            else:
-                return GenericMessage.INVALID_YES_NO
-
-        if self.state == State.AWAITING_CONTAIN_YOURSELF:
-            message_content = message.content.lower()
-            if (
-                message_content in self.YES_KEYWORDS
-                or message_content in self.NO_KEYWORDS
-            ):
-                self.data.contain_yourself = message_content in self.YES_KEYWORDS
-                self.state = State.AWAITING_ENCOURAGE_SELF_HARM
-                return ReportDetailsMessage.ENCOURAGE_SELF_HARM
-            else:
-                return GenericMessage.INVALID_YES_NO
-
-        if self.state == State.AWAITING_ENCOURAGE_SELF_HARM:
-            message_content = message.content.lower()
-            if (
-                message_content in self.YES_KEYWORDS
-                or message_content in self.NO_KEYWORDS
-            ):
+                self.data.abuse_type = "Sexually explicit harassment"
                 response = []
-                if message_content in self.YES_KEYWORDS:
-                    self.data.encourage_self_harm = True
-                    response.append(ReportDetailsMessage.SELF_HELP_RESOURCES)
-                else:
-                    self.data.encourage_self_harm = False
-                self.state = State.AWAITING_ADDITIONAL_INFO
-                response.append(ReportDetailsMessage.ADDITIONAL_INFO)
-                return response
-            else:
-                return GenericMessage.INVALID_YES_NO
-
-        if self.state == State.AWAITING_ADDITIONAL_INFO:
-            if message.content.lower() in self.YES_KEYWORDS:
-                self.state = State.AWAITING_PLEASE_SPECIFY
-                return ReportDetailsMessage.PLEASE_SPECIFY
-            elif message.content.lower() in self.NO_KEYWORDS:
-                self.state = State.AWAITING_BLOCK_USER
-                return ReportDetailsMessage.BLOCK_USER
-            else:
-                return GenericMessage.INVALID_YES_NO
-
-        if self.state == State.AWAITING_PLEASE_SPECIFY:
-            self.data.additional_info = message.content
-            self.state = State.AWAITING_BLOCK_USER
-            return ReportDetailsMessage.BLOCK_USER
-
-        if self.state == State.AWAITING_BLOCK_USER:
-            if (
-                message.content.lower() in self.YES_KEYWORDS
-                or message.content.lower() in self.NO_KEYWORDS
-            ):
-                response = []
-                if message.content.lower() in self.YES_KEYWORDS:
-                    self.data.blocked_user = True
-                    response.append(
-                        ReportDetailsMessage.BLOCKED.format(
-                            author=self.data.message.author.name
-                        )
+                self.data.blocked_user = True
+                response.append(
+                    ReportDetailsMessage.BLOCKED.format(
+                        author=self.data.message.author.name
                     )
-                else:
-                    self.data.blocked_user = False
-
+                )
                 self.state = State.AWAITING_CONFIRMATION
                 response.extend(
                     [self.data.user_summary, ReportDetailsMessage.CONFIRMATION]
                 )
                 return response
+                
+            elif message.content.lower() in self.NO_KEYWORDS:
+                #investigate for adversarial reporting
+                self.state = State.REPORT_COMPLETE
+                self.state = State.AWAITING_CONFIRMATION
+                response.extend(
+                    [self.data.user_summary, ReportDetailsMessage.CONFIRMATION]
+                )
+                return response
+                
             else:
                 return GenericMessage.INVALID_YES_NO
 
@@ -306,6 +194,7 @@ class Moderate:
 
                 # Send the report to the mod channel
                 await self.client.send_to_mod_channels(self.data.moderator_summary)
+                self.client.open_reports.append(self.data)
 
                 self.state = State.REPORT_COMPLETE
                 return GenericMessage.REPORT_COMPLETE
@@ -317,94 +206,7 @@ class Moderate:
 
         return []
 
-    async def handle_reaction_add(
-        self, emoji: discord.PartialEmoji, message: discord.Message
-    ) -> List[str]:
-        """
-        This function handles reactions to the message that the bot sends.
-        """
-        # Reaction was added to a message that didn't require a reaction
-        if self.state not in self.REACT_STAGES:
-            return []
+       
 
-        if self.state == State.AWAITING_REASON:
-            # reaction was added to a different message
-            if message.content != ReportDetailsMessage.REASON_FOR_REPORT:
-                return []  # TODO ?: tell them to react to the current message?
-
-            if str(emoji.name) not in {"1️⃣", "2️⃣", "3️⃣", "4️⃣"}:
-                return [
-                    GenericMessage.INVALID_REACTION,
-                ]
-            elif str(emoji.name) != "1️⃣":
-                self.state = State.REPORT_COMPLETE
-                return GenericMessage.REPORT_COMPLETE
-            else:
-                self.data.reason = "Harassment or offensive content"
-                self.state = State.AWAITING_ABUSE_TYPE
-                return ReportDetailsMessage.ABUSE_TYPE
-
-        if self.state == State.AWAITING_ABUSE_TYPE:
-            # reaction was added to a different message
-            if message.content != ReportDetailsMessage.ABUSE_TYPE:
-                return []
-
-            if str(emoji.name) not in {"1️⃣", "2️⃣", "3️⃣", "4️⃣"}:
-                return [
-                    GenericMessage.INVALID_REACTION,
-                ]
-            elif str(emoji.name) != "1️⃣":
-                self.state = State.REPORT_COMPLETE
-                return GenericMessage.REPORT_COMPLETE
-            else:
-                self.data.abuse_type = "Sexually explicit harassment"
-                self.state = State.AWAITING_ABUSE_DESCRIPTION
-                return ReportDetailsMessage.ABUSE_DESCRIPTION
-
-        if self.state == State.AWAITING_ABUSE_DESCRIPTION:
-            # reaction was added to a different message
-            if message.content != ReportDetailsMessage.ABUSE_DESCRIPTION:
-                return []
-
-            if str(emoji.name) not in {"1️⃣", "2️⃣"}:
-                return [
-                    GenericMessage.INVALID_REACTION,
-                ]
-            elif str(emoji.name) == "1️⃣":
-                self.data.abuse_description = (
-                    "The reporting user is receiving sexually explicit content (images,"
-                    " text)"
-                )
-                self.state = State.AWAITING_MINOR_PARTICIPATION
-                return ReportDetailsMessage.MINOR_PARTICIPATION
-            else:
-                self.data.abuse_description = (
-                    "The reporting user is receiving unwanted requests involving"
-                    " sexually explicit content"
-                )
-                self.state = State.AWAITING_UNWANTED_REQUESTS
-                return ReportDetailsMessage.UNWANTED_REQUESTS
-
-        if self.state == State.AWAITING_UNWANTED_REQUESTS:
-            # reaction was added to a different message
-            if message.content != ReportDetailsMessage.UNWANTED_REQUESTS:
-                return []
-
-            if str(emoji.name) not in {"1️⃣", "2️⃣", "3️⃣"}:
-                return [
-                    GenericMessage.INVALID_REACTION,
-                ]
-            else:
-                if str(emoji.name) == "1️⃣":
-                    self.data.unwanted_requests = "Money"
-                elif str(emoji.name) == "2️⃣":
-                    self.data.unwanted_requests = "Additional sexually explicit content"
-                else:
-                    self.data.unwanted_requests = "Other"
-                self.state = State.AWAITING_MULTIPLE_REQUESTS
-                return ReportDetailsMessage.MULTIPLE_REQUESTS
-
-        return []
-
-    def report_complete(self):
+    def moderation_complete(self):
         return self.state == State.REPORT_COMPLETE

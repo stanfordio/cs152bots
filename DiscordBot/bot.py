@@ -187,6 +187,35 @@ class ModBot(discord.Client):
                     sent_message = await message.channel.send(r)
                 return
 
+            author_id = message.author.id
+            responses = []
+            
+
+            if self.moderating == None and message.content.startswith(Moderate.START_KEYWORD):
+                self.moderating = Moderate(self)
+                reply = f"I'm moderating right now.\n"
+                await message.channel.send(reply)
+            
+
+            # Let the moderate class handle this message; forward all the messages it returns to uss
+            responses = await self.moderating.handle_message(message)
+
+
+            # If the report class returned a string, convert it to a list to make it easier
+            if isinstance(responses, str):
+                responses = [responses]
+
+            for r in responses:
+                sent_message = await message.channel.send(r)
+                # if the moderate class returned a message with reactions, add those reactions to the message
+                emojis = emoji.emoji_list(r)
+                for e in emojis:
+                    await sent_message.add_reaction(e["emoji"])
+
+            # If the report/moderation is complete or cancelled, remove it from our map
+            if self.moderating.moderation_complete():
+                self.moderating = None
+
             """
             # @nandini
             # Line 175 starts our section: reading messages in group-8-mod. The other parts read messages in group-8
@@ -220,7 +249,7 @@ class ModBot(discord.Client):
                 self.moderating = Moderate(self)
 
             # Let the moderate class handle this message; forward all the messages it returns to us
-            responses = await self.moderating.handle_message(message)
+            
 
             # If the moderate class returned a string, convert it to a list to make it easier
             if isinstance(responses, str):
@@ -233,6 +262,9 @@ class ModBot(discord.Client):
             if self.moderating.moderation_complete():
                 self.moderating = None
             """
+
+            
+
 
     async def handle_channel_message_edit(
         self, before: Union[discord.Message, None], after: discord.Message
@@ -303,26 +335,30 @@ class ModBot(discord.Client):
         if reactor_id == self.user.id:
             return
 
-        # Ignore reactions that aren't sent in a DM
-        if payload.guild_id is not None:
-            return
+        # Ignore reactions that aren't sent in a DM or group-8-mod channel
+        channel = await self.fetch_channel(payload.channel_id)
+        if channel.name != f"group-{self.group_num}-mod":
+            if payload.guild_id is not None:
+                return
 
         # We only care about adding reactions
         if payload.event_type != "REACTION_ADD":
             return
-
-        # Ignore reactions that aren't part of a reporting flow
-        if reactor_id not in self.reports:
+        print(self.moderating)
+        # Ignore reactions that aren't part of a reporting flow or part of the moderating flow
+        if reactor_id not in self.reports and self.moderating == None:
             return
-
-        # Get the channel that the reaction was added in
-        channel = await self.fetch_channel(payload.channel_id)
+        # Get the message that the reaction was added in
+      
         fetched_message = await channel.fetch_message(payload.message_id)
 
         # Let the report class handle this reaction
-        responses = await self.reports[reactor_id].handle_reaction_add(
-            payload.emoji, fetched_message
-        )
+        if channel.name == f"group-{self.group_num}-mod":
+            responses = await self.moderating.handle_reaction_add(payload.emoji, fetched_message)
+        else:
+            responses = await self.reports[reactor_id].handle_reaction_add(
+                payload.emoji, fetched_message
+            )
 
         # If the report class returned a string, convert it to a list to make it easier
         if isinstance(responses, str):
@@ -338,6 +374,10 @@ class ModBot(discord.Client):
         # If the report is complete or cancelled, remove it from our map
         if self.reports[reactor_id].report_complete():
             self.reports.pop(reactor_id)
+        
+        # If moderation is complete
+        if self.moderate.moderation_complete():
+            self.moderating = None
 
 
 client = ModBot()

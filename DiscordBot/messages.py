@@ -67,6 +67,10 @@ class ReportDetailsMessage:
         " with the corresponding emoji.\n1️⃣ - Harassment or offensive content \n2️⃣ - Spam"
         " \n3️⃣ - Immediate danger\n4️⃣ - Other"
     )
+    MODERATOR_ABUSE_TYPE = (
+        "Is this message a sextortion violation? Please type `yes` or"
+        " `no`."
+    )
     ABUSE_TYPE = (
         "What type of abuse are you reporting? React to this message with the"
         " corresponding emoji.\n1️⃣ - Sexually explicit harassment\n2️⃣ - Encouraging"
