@@ -64,6 +64,7 @@ class Report:
         self.client = client
         self.message = None
         self.reportedUser = None
+        self.link = None
     
     async def handle_message(self, message):
         '''
@@ -86,6 +87,8 @@ class Report:
         
         if self.state == State.AWAITING_MESSAGE:
             # Parse out the three ID strings from the message link
+            self.link = message.content
+
             m = re.search('/(\d+)/(\d+)/(\d+)', message.content)
             if not m:
                 return ["I'm sorry, I couldn't read that link. Please try again or say `cancel` to cancel."]

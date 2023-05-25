@@ -86,7 +86,8 @@ class ModBot(discord.Client):
             reply = "Moderation process started.\n\n"
             reply += "Here are the current reported messages in the queue:\n"
             for idx, report in enumerate(self.reports):
-                reply += f"{idx}: `{report.message.content}` \n"
+                # reply += f"{idx}: `{report.message.content}`\n"
+                reply += f"{idx}: `{report.message.content}` {report.link}\n"
             reply += "\nPlease enter the number for the message you wish to address."
             await message.channel.send(reply)
             return
