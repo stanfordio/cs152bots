@@ -234,10 +234,8 @@ class ModBot(discord.Client):
                 report.message = bot_message
 
                 # handle reactions
-                if report.reaction_mode:
-                    if (report.state == State.AWAITING_REVIEW):
-                        for _ in range(Moderator.SEVERITY_LEVELS):
-                            await bot_message.add_reaction(self.NUMBERS[_])
+                for _ in range(Moderator.SEVERITY_LEVELS):
+                    await bot_message.add_reaction(self.NUMBERS[_])
 
                 return
 
