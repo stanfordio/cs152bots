@@ -193,8 +193,8 @@ class Report:
         summary = ""
         summary += f"Reason: {self.reason}\n"
         summary += f"Subreason: {self.sub_reason}\n"
+        summary += f"\n{len(self.flagged_messages)} flagged messages:\n"
         for i, message in enumerate(self.flagged_messages):
-            summary += f"\n({i+1} of {len(self.flagged_messages)} flagged messages:\n"
             summary += f"```{message.author.name}: {message.content}```"
         return summary
     
