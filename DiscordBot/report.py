@@ -25,7 +25,7 @@ class State(Enum):
     AWAITING_MESSAGE = auto()
     MESSAGE_IDENTIFIED = auto()
     BLOCK = auto()
-    IS_POSSIBLE_SCAM = auto()
+    IS_SPAM = auto()
     REPORT_COMPLETE = auto()
     REPORT_CANCELED = auto()
 
@@ -100,14 +100,14 @@ class Report:
                 self.state = State.REPORT_CANCELED
             elif report_reason.report_type == ReportType.OTHER:
                 self.state = State.BLOCK
-            elif report_reason.report_type == ReportType.POSSIBLE_SCAM:
-                self.state = State.IS_POSSIBLE_SCAM
             elif report_reason.report_type == ReportType.SPAM:
+                self.state = State.IS_SPAM
+            elif report_reason.report_type == ReportType.POSSIBLE_SCAM:
                 self.state = State.BLOCK
             else:
                 self.state = State.REPORT_COMPLETE
 
-        if self.state == State.IS_POSSIBLE_SCAM:
+        if self.state == State.IS_SPAM:
             await ctx.channel.send("Is this user asking you for something?")
 
             checking_spam = CheckingSpam(timeout=30)
