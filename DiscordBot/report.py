@@ -20,6 +20,12 @@ class State(Enum):
     NOTIFY_OTHERS = auto()  
     REVIEW_OTHERS = auto()
 
+    USER_BAN_DECISION = auto()  
+    USER_BAN_DECISION_CONFIRM = auto()  
+    NOTIFY_DECISION = auto()  
+    REMOVAL_DECISION = auto()  
+    NO_ACTION = auto()  
+    
 
 
 class Report:
@@ -27,15 +33,20 @@ class Report:
     CANCEL_KEYWORD = "cancel"
     HELP_KEYWORD = "help"
 
-    def __init__(self, client):
+    def __init__(self, client, reporter_id, report_id):
         self.state = State.REPORT_START
         self.client = client
+        self.reporter_id = reporter_id
         self.message = None
         self.user_context = None
         self.is_misleading = None
         self.is_misattributed = None
         self.is_untrue = None
         self.report_code = ''
+        self.mod_review = False
+        self.ismisinfo = False
+        self.report_id = report_id
+
     
     
     async def handle_message(self, message):
@@ -77,6 +88,7 @@ class Report:
             self.state = State.MESSAGE_IDENTIFIED
             # make self.message the offensive message
             self.message = message 
+            self.guild = guild
             reply = "I found this message:" + "```" + message.author.name + ": " + message.content + "```"
             reply += "Please select the reason for reporting this message by entering the corresponding number. If you are in immediate danger, please contact your local emergency services in addition to reporting.\n"
             reply += "`1`: Spam\n"
@@ -118,6 +130,7 @@ class Report:
                 reply += "`2`: Misattributed (incorrect source or speaker)\n"
                 reply += "`3`: Untrue (deliberately false)"
                 self.state = State.IS_MISLEADING
+                self.ismisinfo = True
             return [reply]
             
         if self.state == State.IS_MISLEADING:
@@ -153,8 +166,6 @@ class Report:
             self.report_code += message.content 
             #here message is the user numerical input corresponding to the type of spam, harassment, disturbing content, or misleading info
             reply = "Thank you for reporting. Our content moderation team will review the message and decide on an appropriate course of action. This may include post removal, account suspension, or placement of the account in read-only mode.\n\n"
-            # because you can't edit other people's messages, the bot will delete the offensive message instead
-            await self.message.delete()
             reply += "In the meantime, we've hid the reported message from your view.\n"
             reply += "Would you like to mute or block the offending user?\n"
             reply += "`1`: Mute\n"
@@ -167,49 +178,139 @@ class Report:
             reply = "I'm sorry, but I don't recognize that input. Please enter a number from 1 to 3."
             if message.content == '1':
                 reply = "The user has been muted."
-                self.state = State.REPORT_COMPLETE
+                self.state = State.MOD_START
+                self.mod_review = True
             elif message.content == '2':
                 reply = "The user has been blocked."
-                self.state = State.REPORT_COMPLETE
+                self.state = State.MOD_START
+                self.mod_review = True
             elif message.content == '3':
                 reply = "The user has not been muted or blocked."
-                self.state = State.REPORT_COMPLETE
+                self.state = State.MOD_START
+                self.mod_review = True
             return [reply]
         
         return []
 
-    async def mod_flow(self, message):        
+    async def mod_flow(self, message):  
         if self.state == State.MOD_START:
-            reply = "Please select whether additional action is warranted in this case.\n"
-            reply += "`1`: Yes\n"
-            reply += "`2`: No\n"
-            self.state = State.ADDITIONAL_ACTION
+            if not self.ismisinfo:
+                reply = f"Report from user: {self.reporter_id}. Not in a category under our purview. This is the end of the process"
+                self.state = State.REPORT_COMPLETE
+                return [reply]
 
-            if message.content == '1':
-                reply = "Please select whether this post should be removed.\n"
+            misinfo_type_description = ""
+            if(self.is_misattributed):
+                misinfo_type_description = "Misattributed"
+            if(self.is_misleading):
+                misinfo_type_description = "Misleading"
+            if(self.is_untrue):
+                misinfo_type_description = "Untrue"
+
+            reply =  "We have received the following moderation request:"
+            reply += f"\nUser filing report: {self.reporter_id}"
+            reply += f"\nMessage reported:"+ "```" + self.message.author.name + ": " + self.message.content + "```"
+            reply += f"\nMessage category: " + misinfo_type_description
+            reply += f"\nContext provided by reporter: " + self.user_context
+            reply += f"\nWe have returned the following potentially related information from our automated fact-checker: \nExample Fact 1: The world is round. \nExample Fact 2: Joe Biden won the 2020 election. \nExample 3: The Cleveland Caveliers, a top tier team from a top tier city, have won more championships than the Denver Nuggets. "
+            reply += "\n\nIs additional context or further action necesarry?\n"
+            reply += f"\n REPORT_ID: {self.report_id}\n"
+            reply += f"`{self.report_id}:1`: Yes\n"
+            reply += f"`{self.report_id}:2`: No\n"
+            self.state = State.ADDITIONAL_ACTION
+            return [reply]
+              
+        if self.state == State.ADDITIONAL_ACTION:
+            reply = f"I'm sorry, but I don't recognize that input. Please enter {self.report_id}:1 or {self.report_id}:2"
+            if message.content == f'{self.report_id}:1':
+                reply = "We found the following other posts with similar language or from the same author: \n[Example 1] \n[Example 2]\n"
+                reply += "Should this post be removed?\n"
+                reply += f"\n REPORT_ID: {self.report_id}\n"
+                reply += f"`{self.report_id}:1`: Yes\n"
+                reply += f"`{self.report_id}:2`: No\n"
+                self.state = State.REMOVAL_DECISION
+                return [reply]
+            elif message.content == f'{self.report_id}:2':
+                reply = "No action taken. Please add a note explaining your decision to the reporter.\n"
+                self.state = State.NO_ACTION
+                return [reply]
+            return [reply]
+        
+        if self.state == State.NO_ACTION:
+            self.moderator_response = message.content
+            reply = "Thank you. Review complete."
+            self.state = State.REPORT_COMPLETE
+            return [reply]
+
+        if self.state == State.REMOVAL_DECISION:
+            reply = f"I'm sorry, but I don't recognize that input. Please enter {self.report_id}:1 or {self.report_id}:2"
+            if message.content == f'{self.report_id}:1':
+                await self.message.delete()
+                reply = "Post removed. \n"
+                reply += "Should others who saw this post be notified?\n"
+                reply += f"\n REPORT_ID: {self.report_id}\n"
+                reply += f"`{self.report_id}:1`: Yes\n"
+                reply += f"`{self.report_id}:2`: No\n"
+                self.state = State.NOTIFY_DECISION
+                return [reply]
+            elif message.content == f'{self.report_id}:2':
+                await self.message.reply("Potential cap alert! Here's some context")
+                reply = "Context added. "
+                reply += "Should others who saw this post be notified?\n"
+                reply += f"\n REPORT_ID: {self.report_id}\n"
+                reply += f"`{self.report_id}:1`: Yes\n"
+                reply += f"`{self.report_id}:2`: No\n"
+                self.state = State.NOTIFY_DECISION
+                return [reply]
+            return [reply]
+        
+        if self.state == State.NOTIFY_DECISION:
+            reply = f"I'm sorry, but I don't recognize that input. Please enter {self.report_id}:1 or {self.report_id}:2"
+            if message.content == f'{self.report_id}:1':
+                reply = "Affected users notified. "
+                reply += "Should this user, and associated users, be flagged for potential removal?\n"
+                reply += f"\n REPORT_ID: {self.report_id}\n"
+                reply += f"`{self.report_id}:1`: Yes\n"
+                reply += f"`{self.report_id}:2`: No\n"
+                self.state = State.USER_BAN_DECISION
+                return [reply]
+            elif message.content == f'{self.report_id}:2':
+                reply = "Should this user, and associated users, be flagged for potential removal?\n"
                 reply += "`1`: Yes\n"
                 reply += "`2`: No\n"
-                self.state = State.POST_REMOVAL
-                
-                if message.content == '1':
-                    reply = "This post has been removed. Please select whether users who engaged with this post should be notified.\n"
-                    reply += "`1`: Yes\n"
-                    reply += "`2`: No\n"
-                    self.state = State.NOTIFY_OTHERS
+                self.state = State.USER_BAN_DECISION
+                return [reply]
+            return [reply]
+        
 
-                    if message.content == '1':
-                        reply = "After careful review, our content moderation team has decided to remove this post.\n"
-                        reply = "Should this user, and associated users be flagged for review and potential removal?\n" 
-                        reply += "`1`: Yes\n"
-                        reply += "`2`: No\n"
-                        self.state = State.REVIEW_OTHERS
-			            
-                        if message.content == '1':
-				            #send to second reviewer?
-                            reply = "Thank you for your review. The moderation review process is now complete.\n"
-            else:
-                reply = "After careful review, our content moderators have decided not to take any action in this case. We appreciate your commitment to ensuring that Discord is a safe, healthy, and secure environment.\n"
-
+        if self.state == State.USER_BAN_DECISION:
+            reply = f"I'm sorry, but I don't recognize that input. Please enter {self.report_id}:1 or {self.report_id}:2"
+            if message.content == f'{self.report_id}:1':
+                reply = "\nRequesting Confirmation. "
+                reply += "\n [Confirmation from 2nd moderator] Should this user, and associated users, be flagged for potential removal?"
+                reply += f"\n REPORT_ID: {self.report_id}\n"
+                reply += f"`{self.report_id}:1`: Yes\n"
+                reply += f"`{self.report_id}:2`: No\n"
+                self.state = State.USER_BAN_DECISION_CONFIRM
+                return [reply]
+            elif message.content == f'{self.report_id}:2':
+                reply = "User not flagged. Review Complete"
+                self.state = State.REPORT_COMPLETE
+                return [reply]
+            return [reply]
+        
+        if self.state == State.USER_BAN_DECISION_CONFIRM:
+            reply = f"I'm sorry, but I don't recognize that input. Please enter {self.report_id}:1 or {self.report_id}:2"
+            if message.content == f'{self.report_id}:1':
+                reply = "User flagged. Review Complete"
+                self.state = State.REPORT_COMPLETE
+                return [reply]
+            elif message.content == f'{self.report_id}:2':
+                reply = "User not flagged. Review Complete"
+                self.state = State.REPORT_COMPLETE
+                return [reply]
+            return [reply]
+            
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
     

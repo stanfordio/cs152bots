@@ -31,9 +31,11 @@ class ModBot(discord.Client):
         intents = discord.Intents.default()
         intents.message_content = True
         super().__init__(command_prefix='.', intents=intents)
-        self.group_num = None
+        self.group_num = 13
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
+        self.report_id_to_author_id = {}
+        self.next_report_id = 1
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -88,16 +90,23 @@ class ModBot(discord.Client):
 
         # If we don't currently have an active report for this user, add one
         if author_id not in self.reports:
-            self.reports[author_id] = Report(self)
+            self.reports[author_id] = Report(self, author_id,self.next_report_id)
+            self.report_id_to_author_id[self.next_report_id] = author_id
+            self.next_report_id += 1
 
         # Let the report class handle this message; forward all the messages it returns to us
-        responses = await self.reports[author_id].handle_message(message)
-        for r in responses:
-            if not self.reports[author_id].mod_review:
+        if not self.reports[author_id].mod_review:
+            responses = await self.reports[author_id].handle_message(message)
+            for r in responses:
                 await message.channel.send(r)
-            else: 
-                mod_channel = self.mod_channels[self.reports[author_id].mod_channel]
-                await mod_channel.send(r)
+            
+            if self.reports[author_id].mod_review:
+                #initial mod flow
+                responses = await self.reports[author_id].mod_flow("")
+                mod_channel = self.mod_channels[self.reports[author_id].guild.id]
+                print(mod_channel.name)
+                for r in responses:
+                    await mod_channel.send(r)
 
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():
@@ -105,14 +114,29 @@ class ModBot(discord.Client):
 
     async def handle_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel
-        if not message.channel.name == f'group-{self.group_num}':
+        if not message.channel.name == f'group-{self.group_num}-mod':
+            print(message.channel.name)
             return
 
         # Forward the message to the mod channel
-        mod_channel = self.mod_channels[message.guild.id]
-        await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-        scores = self.eval_text(message.content)
-        await mod_channel.send(self.code_format(scores))
+        mod_channel = message.channel
+        
+        print("received")
+
+        match = re.match(r'^(\d+):', message.content)
+        if not match:
+            await mod_channel.send("Message must start with ```REPORT_ID:``` (ex: 3:1)")
+            return
+        
+        report_id = int(match.group()[:-1])
+        author_id = self.report_id_to_author_id[report_id]
+        
+        responses = await self.reports[author_id].mod_flow(message)
+        for r in responses:
+            await mod_channel.send(r)
+
+        # scores = self.eval_text(message.content)
+        # await mod_channel.send(self.code_format(scores))
 
     
     def eval_text(self, message):
