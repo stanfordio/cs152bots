@@ -276,8 +276,8 @@ class Report:
                 return [reply]
             elif message.content == f'{self.report_id}:2':
                 reply = "Should this user, and associated users, be flagged for potential removal?\n"
-                reply += "`1`: Yes\n"
-                reply += "`2`: No\n"
+                reply += f"`{self.report_id}:1`: Yes\n"
+                reply += f"`{self.report_id}:2`: No\n"
                 self.state = State.USER_BAN_DECISION
                 return [reply]
             return [reply]
