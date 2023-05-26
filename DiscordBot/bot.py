@@ -27,7 +27,7 @@ with open(token_path) as f:
     discord_token = tokens['discord']
 
 def csam_detector(message):
-    if "CSAM_HASH" in unidecode(message):
+    if "csam_hash" in unidecode(message).lower():
         return True
     return False
 
@@ -58,6 +58,7 @@ class ModBot(discord.Client):
             for channel in guild.text_channels:
                 if channel.name == f'group-{self.group_num}-mod':
                     self.mod_channels[guild.id] = channel
+                    self.mod_channel = channel
         
 
     async def on_message(self, message):
@@ -103,7 +104,7 @@ class ModBot(discord.Client):
         if self.reports[author_id].report_complete():
             abuse_report = self.reports[author_id].return_abuse_report()
             # send each string in the abuse report to the mod channel
-            mod_channel = self.mod_channels[message.guild.id]
+            mod_channel = self.mod_channel
             for abuse_report_string in abuse_report:
                 await mod_channel.send(abuse_report_string)
             self.reports.pop(author_id)
@@ -114,14 +115,15 @@ class ModBot(discord.Client):
         #     return
         responses = []
         # Forward the message to the mod channel if and only if it's not in the mod channel already.
-        if message.channel.name == f'group-{self.group_num}':
-            mod_channel = self.mod_channels[message.guild.id]
-            await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
+        # if message.channel.name == f'group-{self.group_num}':
+            # mod_channel = self.mod_channels[message.guild.id]
+            # await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
         banned_user = message.author.name
         # For now we are going to use this as a placeholder until Milestone 3. 
         if (csam_detector(message.content)): # REPLACE in milestone 3 with image hashset or link list etc.
             await message.delete()
-            await mod_channel.send(f"We have banned user {banned_user}, reported to NCMEC and removed the content.")
+            mod_channel = self.mod_channels[message.guild.id]
+            await mod_channel.send(f"We have banned user {banned_user} due to detected CSAM, reported to NCMEC and removed the content.")
             return
         
         # if (message.content.lower() == "report"):
