@@ -6,17 +6,58 @@ class State(Enum):
     REPORT_START = auto()
     AWAITING_MESSAGE = auto()
     MESSAGE_IDENTIFIED = auto()
-    REPORT_COMPLETE = auto()
+    AWAITING_REASON = auto()
+    AWAITING_SUBREASON = auto()
+    ADDING_CONTEXT = auto()
+    ADDING_MESSAGES = auto()
+    AWAITING_CONTEXT = auto()
+    CHOOSE_BLOCK = auto()
+    REPORT_CANCELED = auto()
+    REPORT_FILED = auto()
+    AWAITING_REVIEW = auto()
 
 class Report:
     START_KEYWORD = "report"
     CANCEL_KEYWORD = "cancel"
+    REASONS = ["Harassment", "Offensive Content", "Spam", "Imminent Danger"]
+    NON_FOCUS_REASONS = ["Offensive Content", "Spam", "Imminent Danger"]
+    SUB_REASONS = {
+        "Harassment": ["Doxxing", "Cyberstalking", "Threats", "Hate Speech", "Sexual Harassment", "Bullying", "Extortion", "Other"],
+        "Offensive Content": ["Child Sexual Abuse Material", "Adult Sexually Explicit Content", "Violence", "Hate Speech", "Copyright Infringement"],
+        "Spam": ["Impersonation", "Solicitation", "Malware"],
+        "Imminent Danger": ["Violence to Others", "Self-Harm"]
+    }
     HELP_KEYWORD = "help"
+    NUM_TO_IND = {
+        "1️⃣": 1, 
+        "2️⃣": 2, 
+        "3️⃣": 3, 
+        "4️⃣": 4, 
+        "5️⃣": 5, 
+        "6️⃣": 6, 
+        "7️⃣": 7, 
+        "8️⃣": 8, 
+        "9️⃣": 9
+    }
+    
+    EMOJI_YN = {
+        "✅": True,
+        "❌": False
+    }
 
     def __init__(self, client):
         self.state = State.REPORT_START
         self.client = client
-        self.message = None
+        self.message = None # keeps track of last sent message (useful for handling reactions)
+        self.reason = None
+        self.sub_reason = None
+        self.additional_messages = False
+        self.additional_context = False
+        self.choose_block = False
+        self.reaction_mode = False
+        self.flagged_messages = []
+        self.user_context = None # user inputted context
+        self.severity = None
     
     async def handle_message(self, message):
         '''
@@ -26,7 +67,7 @@ class Report:
         '''
 
         if message.content == self.CANCEL_KEYWORD:
-            self.state = State.REPORT_COMPLETE
+            self.state = State.REPORT_CANCELED
             return ["Report cancelled."]
         
         if self.state == State.REPORT_START:
@@ -50,23 +91,197 @@ class Report:
                 return ["It seems this channel was deleted or never existed. Please try again or say `cancel` to cancel."]
             try:
                 message = await channel.fetch_message(int(m.group(3)))
+                self.flagged_messages.append(message)
             except discord.errors.NotFound:
                 return ["It seems this message was deleted or never existed. Please try again or say `cancel` to cancel."]
 
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.MESSAGE_IDENTIFIED
-            return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
-                    "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
         
         if self.state == State.MESSAGE_IDENTIFIED:
-            return ["<insert rest of reporting flow here>"]
+            if self.reason == None:
+                self.state = State.AWAITING_REASON
+                self.reaction_mode = True
+                return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
+                    "Please select the reason for reporting this message:\n1️⃣: Harassment\n2️⃣: Offensive Content\n3️⃣: Spam\n4️⃣: Imminent Danger"]
+            else:
+                self.state = State.ADDING_MESSAGES
+                message_count = len(self.flagged_messages)
+                self.reaction_mode = True
+                return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
+                        f"Would you like to add more relevant chat messages? You have currently submitted {message_count} message(s). Yes or No"]
 
-        return []
+        if self.state == State.AWAITING_REASON:
+            if self.reason == None:
+                return ["Please select the reaction corresponding to your valid reason for reporting."]
+            else:
+                self.reaction_mode = True
+                self.state = State.AWAITING_SUBREASON
+                if self.reason == "Harassment":
+                    return ["Please select the type of Harassment:\n1️⃣: Doxxing\n2️⃣: Cyberstalking\n3️⃣: Threats\n4️⃣: Hate Speech\n5️⃣: Sexual Harassment\n6️⃣: Bullying\n7️⃣: Extortion\n8️⃣: Other"]
+                if self.reason == "Offensive Content":
+                    return ["Please select the type of Offensive Content:\n1️⃣: Child Sexual Abuse Material\n2️⃣: Adult Sexually Explicit Content\n3️⃣: Violence\n4️⃣: Hate Speech\n5️⃣: Copyright Infringement"]
+                if self.reason == "Spam":
+                    return ["Please select the type of Spam:\n1️⃣: Impersonation\n2️⃣: Solicitation\n3️⃣: Malware"]
+                if self.reason == "Imminent Danger":
+                    return ["Please select the type of Danger:\n1️⃣: Violence to Others\n2️⃣: Self-Harm"]
+
+        if self.state == State.AWAITING_SUBREASON:
+            if self.sub_reason == None:
+                return ["Please select the reaction corresponding to your subreason."]
+            else:
+                self.reaction_mode = True
+                if self.reason in self.NON_FOCUS_REASONS:
+                    self.state = State.CHOOSE_BLOCK
+                    return ["You selected " + self.sub_reason + ". Thank you for reporting. Our content moderation team will review the report and decide on appropriate action. Would you like to block the offending user(s)? Yes or No"]
+                else:
+                    self.state = State.ADDING_MESSAGES
+                    return ["Would you like to include any relevant chat messages that may help us process your report?"]
+
+        if self.state == State.ADDING_MESSAGES:
+            if self.additional_messages:
+                self.state = State.AWAITING_MESSAGE
+                return ["Please provide the links of the relevant chat messages you want to add."]
+            else:
+                self.state = State.ADDING_CONTEXT
+                self.reaction_mode = True
+                return ["Would you like to provide any further context that may help us process your report?"]
+
+
+        if self.state == State.ADDING_CONTEXT:
+            if self.additional_context:
+                self.state = State.AWAITING_CONTEXT
+                return["Please provide any further context for your report."]
+            else:
+                self.state = State.CHOOSE_BLOCK
+                self.reaction_mode = True
+                return ["Thank you for reporting. Our content moderation team will review the report and decide on appropriate action. Would you like to block the offending user(s)? Yes or No"]
+
+        if self.state == State.AWAITING_CONTEXT:
+            self.user_context = message.content
+            self.state = State.CHOOSE_BLOCK
+            self.reaction_mode = True
+            return ["Thank you for reporting. Our content moderation team will review the report and decide on appropriate action. Would you like to block the offending user(s)? Yes or No"]
+            
+        if self.state == State.CHOOSE_BLOCK:
+            if self.reaction_mode:
+                return ["Thank you for reporting. Our content moderation team will review the report and decide on appropriate action. Would you like to block the offending user(s)? Yes or No"]
+            else:
+                self.state = State.REPORT_FILED
+                reply = f"Your report has been submitted for review.\n  Reason: {self.reason}.\n  Subreason: {self.sub_reason}.\n"
+                if self.additional_context:
+                    reply += f"  You included the following relevant context: {self.user_context}\n"
+                if self.choose_block:
+                    authors = self.get_authors()
+                    reply += f"  The offending authors of the flagged messages have been blocked:\n{authors}"
+            return [reply]
+
+        if self.state == State.AWAITING_REVIEW:
+            if self.severity == None:
+                return ["Please select the corresponding severity level."]
+            else:
+                self.reaction_mode = True
+                return ["You selected " + self.severity + ". Thank you for reviewing."]
+
+
+    async def handle_reaction(self, reaction):
+        self.reaction_mode = False
+        if self.state == State.AWAITING_REASON:
+            self.reason = self.REASONS[self.NUM_TO_IND[reaction.emoji] - 1] 
+        if self.state == State.AWAITING_SUBREASON:
+            self.sub_reason = self.SUB_REASONS[self.reason][self.NUM_TO_IND[reaction.emoji] - 1]
+        if self.state == State.ADDING_MESSAGES:
+            self.additional_messages = self.EMOJI_YN[reaction.emoji]
+        if self.state == State.ADDING_CONTEXT:
+            self.additional_context = self.EMOJI_YN[reaction.emoji]
+        if self.state == State.CHOOSE_BLOCK:
+            self.choose_block = self.EMOJI_YN[reaction.emoji]
+        if self.state == State.AWAITING_REVIEW:
+            self.severity = self.NUM_TO_IND[reaction.emoji]
+            print(f"Severity level is {self.severity}")
+            if self.severity == 1:
+                offendingUsers = []
+                offendingUserNames = []
+                for message in self.flagged_messages:
+                    offendingUser = message.author
+                    if offendingUser not in offendingUsers:
+                        offendingUsers.append(offendingUser)
+                        offendingUserNames.append(offendingUser.name)
+                reply = "No action has been taken against " " ,".join(offendingUserNames) + "\n"
+                await self.message.channel.send(reply)
+            if self.severity == 2:
+                # Warn offending user
+                offendingUsers = []
+                offendingUserNames = []
+                for message in self.flagged_messages:
+                    offendingUser = message.author
+                    if offendingUser not in offendingUsers:
+                        offendingUsers.append(offendingUser)
+                        offendingUserNames.append(offendingUser.name)
+                for user in offendingUsers:
+                    await user.send("You have been reported for violating the server rules. Please be respectful and follow the guidelines.")
+                reply = "The following users have been warned: " + " ,".join(offendingUserNames) + "\n"
+                await self.message.channel.send(reply)
+            if self.severity == 3:
+                # Delete message and warn offending user
+                offendingUsers = []
+                offendingUserNames = []
+                for message in self.flagged_messages:
+                    await message.delete()
+                    offendingUser = message.author
+                    if offendingUser not in offendingUsers:
+                        offendingUsers.append(offendingUser)
+                        offendingUserNames.append(offendingUser.name)
+                for user in offendingUsers:
+                    await user.send("You have been reported for violating the server rules. Please be respectful and follow the guidelines.")
+                reply = "The following user(s) have been warned: " + " ,".join(offendingUserNames) + "\n"
+                reply = "The message(s) has been deleted."
+                await self.message.channel.send(reply)
+            if self.severity == 4:
+                # Delete message and kick offending user
+                offendingUsers = []
+                offendingUserNames = []
+                for message in self.flagged_messages:
+                    await message.delete()
+                    offendingUser = message.author
+                    if offendingUser not in offendingUsers:
+                        offendingUsers.append(offendingUser)
+                        offendingUserNames.append(offendingUser.name)
+                for user in offendingUsers:
+                    await user.send("You have been kicked for violating the server rules. Please be respectful and follow the guidelines.")
+                reply = "The following users have been kicked: " +  " ,".join(offendingUserNames) + "\n"
+                reply = "The messages have been deleted."
+                await self.message.channel.send(reply)
+        return
+
+        
+    def get_authors(self):
+        authors = [msg.author.name for msg in self.flagged_messages]
+        unique_authors = list(set(authors))
+        return "\n".join(unique_authors)
 
     def report_complete(self):
-        return self.state == State.REPORT_COMPLETE
+        return self.state in [State.REPORT_CANCELED, State.REPORT_FILED]
+
+
+    def report_filed(self):
+        return self.state == State.REPORT_FILED
     
 
+    # Lower number == Higher priority
+    def priority(self):
+        if self.reason == "Imminent Danger" or self.sub_reason in ["Doxxing", "Extortion", "Other"]:
+            return 1
+        return 2
 
+
+    def summary(self):
+        summary = ""
+        summary += f"Reason: {self.reason}\n"
+        summary += f"Subreason: {self.sub_reason}\n"
+        summary += f"\n{len(self.flagged_messages)} flagged messages:\n"
+        for i, message in enumerate(self.flagged_messages):
+            summary += f"```{message.author.name}: {message.content}```"
+        return summary
     
 
