@@ -142,6 +142,26 @@ class ModBot(discord.Client):
                 self.curr_report_idx = None
                 # self.reports.pop(self.curr_reporter)
                 return
+
+        elif message.content == "wrong-type":
+            if self.curr_report.state == State.CSAM:
+                await self.mod_channel.send(
+                    f"Deleted by moderator: \n{self.curr_report.message.author}: `{self.curr_report.message.content}`")
+                await self.curr_report.message.delete()
+                offender = self.curr_report.message.author
+                if offender in self.warned_users:
+                    reply = "The message has been removed and the user has been banned. Thank you!"
+                    await message.channel.send(reply)
+                else:
+                    self.warned_users.add(offender)
+                    reply = "The message has been removed and the user has been warned. Thank you!"
+                    await message.channel.send(reply)
+
+                del self.reports[self.curr_report_idx]
+                self.curr_report = None
+                self.curr_report_idx = None
+                # self.reports.pop(self.curr_reporter)
+                return
         
         elif message.content == "invalid":
             del self.reports[self.curr_report_idx]

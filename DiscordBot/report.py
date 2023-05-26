@@ -236,7 +236,8 @@ class Report:
             return [f"You are moderating the message `{message.content}` {self.link}, which has been reported for CSAM.", \
                      "Please state if the report is valid.", \
                      "Use the command `valid` if the message features CSAM.", \
-                     "Use the command `invalid` if the message does not actually feature CSAM."]
+                     "Use the command `invalid` if the message does not actually feature CSAM or nudity.", \
+                     "Use the command `wrong-type` if the message features nudity but is not CSAM."]
 
 
     def report_complete(self):
