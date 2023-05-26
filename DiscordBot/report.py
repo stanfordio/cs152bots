@@ -10,18 +10,16 @@ class State(Enum):
     IS_MISLEADING = auto()
     MISLEADING_RESPONSE_OBTAINED = auto()  
     LAST_USER_INPUT = auto() 
-<<<<<<< Updated upstream
+
     MESSAGE_BLOCKED = auto()   
-=======
     LAST_USER_INPUT_MISLEADING = auto()
-    MESSAGE_BLOCKED = auto()
 
     MOD_START = auto()
     ADDITIONAL_ACTION = auto() 
     POST_REMOVAL = auto()
     NOTIFY_OTHERS = auto()  
     REVIEW_OTHERS = auto()
->>>>>>> Stashed changes
+
 
 
 class Report:
