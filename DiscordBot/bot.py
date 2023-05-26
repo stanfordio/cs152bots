@@ -55,6 +55,7 @@ class ModBot(context.ContextClient, discord.Client):
                 if channel.name == f'group-{self.group_num}-mod':
                     self.mod_channels[guild.id] = channel
         
+        print (self.mod_channels)
 
     async def on_message(self, message):
         '''
@@ -109,6 +110,7 @@ class ModBot(context.ContextClient, discord.Client):
         if self.reports[author_id].report_complete():
             # If the report is complete we want to send it to our 
             self.reports.pop(author_id)
+            await self.handle_channel_message(message)
 
     async def handle_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel
@@ -117,7 +119,7 @@ class ModBot(context.ContextClient, discord.Client):
 
         # Forward the message to the mod channel
         mod_channel = self.mod_channels[message.guild.id]
-        await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
+        await mod_channel.send(f'The following message was reported for moderator review: \n{message.author.name}: "{message.content}"')
         scores = self.eval_text(message.content)
         await mod_channel.send(self.code_format(scores))
 
@@ -136,7 +138,7 @@ class ModBot(context.ContextClient, discord.Client):
         evaluated, insert your code here for formatting the string to be 
         shown in the mod channel. 
         '''
-        return "Evaluated: '" + text+ "'"
+        return "Please take immediate action against the user for the following message: '" + text+ "'"
 
 
 client = ModBot()
