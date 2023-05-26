@@ -227,13 +227,13 @@ class Report:
 
     async def moderate(self, message):
         if self.state == State.ADULT:
-            return [f"You are moderating the message `{message.content}`, which has been reported for adult nudity.", \
+            return [f"You are moderating the message `{message.content}` {self.link}, which has been reported for adult nudity.", \
                      "Please state if the report is valid.", \
                      "Use the command `valid` if the message features adult nudity.", \
                      "Use the command `invalid` if the message does not actually feature adult nudity."]
 
         if self.state == State.CSAM:
-            return [f"You are moderating the message `{message.content}`, which has been reported for CSAM.", \
+            return [f"You are moderating the message `{message.content}` {self.link}, which has been reported for CSAM.", \
                      "Please state if the report is valid.", \
                      "Use the command `valid` if the message features CSAM.", \
                      "Use the command `invalid` if the message does not actually feature CSAM."]
