@@ -10,7 +10,6 @@ class State(Enum):
     IS_MISLEADING = auto()
     MISLEADING_RESPONSE_OBTAINED = auto()  
     LAST_USER_INPUT = auto() 
-    LAST_USER_INPUT_MISLEADING = auto()
     MESSAGE_BLOCKED = auto()   
 
 
