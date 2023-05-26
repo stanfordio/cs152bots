@@ -26,7 +26,7 @@ class BlockOrMute(discord.ui.View):
                                                 in your inbox.\n Blocking a user will prevent them from sending messages to you.")
 
     @discord.ui.button(label="Block", style=discord.ButtonStyle.blurple)
-    async def spam_option(self, interaction, button):
+    async def scam_option(self, interaction, button):
         await interaction.response.send_message("Triggering block and adding to moderation queue for review")
         self.requested_response_type = BlockOrMuteType.BLOCK
         self.stop()

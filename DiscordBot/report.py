@@ -3,7 +3,7 @@ import discord
 import re
 from discord.ext.context import ctx
 from question_templates.block_or_mute import BlockOrMute, BlockOrMuteType
-from question_templates.checking_spam import CheckingSpam, SpamRequestType
+from question_templates.checking_scam import CheckingScam, ScamRequestType
 from question_templates.report_reason import ReportReason, ReportType
 from message_util import next_message
 
@@ -11,7 +11,7 @@ from message_util import next_message
 # TODO: Add logic to this class for keeping track of score
 #class ModerationRequest():
     #block_or_mute: BlockOrMuteType = None
-    #spam_request: SpamRequestType = None
+    #scam_request: ScamRequestType = None
     #report_type: ReportType = None
 
     #def __init__(self, message):
@@ -25,7 +25,7 @@ class State(Enum):
     AWAITING_MESSAGE = auto()
     MESSAGE_IDENTIFIED = auto()
     BLOCK = auto()
-    IS_SPAM = auto()
+    IS_SCAM = auto()
     REPORT_COMPLETE = auto()
     REPORT_CANCELED = auto()
 
@@ -100,25 +100,25 @@ class Report:
                 self.state = State.REPORT_CANCELED
             elif report_reason.report_type == ReportType.OTHER:
                 self.state = State.BLOCK
+            elif report_reason.report_type == ReportType.SCAM:
+                self.state = State.IS_SCAM
             elif report_reason.report_type == ReportType.SPAM:
-                self.state = State.IS_SPAM
-            elif report_reason.report_type == ReportType.POSSIBLE_SCAM:
                 self.state = State.BLOCK
             else:
                 self.state = State.REPORT_COMPLETE
 
-        if self.state == State.IS_SPAM:
+        if self.state == State.IS_SCAM:
             await ctx.channel.send("Is this user asking you for something?")
 
-            checking_spam = CheckingSpam(timeout=30)
+            checking_scam = CheckingScam(timeout=30)
 
-            msg = await ctx.channel.send(view=checking_spam)
+            msg = await ctx.channel.send(view=checking_scam)
 
-            checking_spam.message = msg
+            checking_scam.message = msg
 
-            res = await checking_spam.wait()
+            res = await checking_scam.wait()
 
-            if checking_spam.spam_type == None or checking_spam.spam_type == SpamRequestType.CANCEL:
+            if checking_scam.scam_type == None or checking_scam.scam_type == ScamRequestType.CANCEL:
                 self.state = State.REPORT_CANCELED
             else:
                 self.state = State.BLOCK

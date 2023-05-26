@@ -3,8 +3,8 @@ import discord
 
 class ReportType(Enum):
     OTHER = auto()
+    SCAM = auto()
     SPAM = auto()
-    POSSIBLE_SCAM = auto()
     CANCEL = auto()
 
 # Here we give user different button options to identify the abuse type
@@ -28,17 +28,17 @@ class ReportReason(discord.ui.View):
         await self.disable_all_items()
         self.stop()
 
-    @discord.ui.button(label="Spam", style=discord.ButtonStyle.blurple)
-    async def spam_option(self, interaction, button):
-        await interaction.response.send_message("Taking you to the reporting flow for Spam")
-        self.report_type = ReportType.SPAM
+    @discord.ui.button(label="Possible Scam", style=discord.ButtonStyle.blurple)
+    async def scam_option(self, interaction, button):
+        await interaction.response.send_message("Taking you to the reporting flow for Scam")
+        self.report_type = ReportType.SCAM
         await self.disable_all_items()
         self.stop()
 
-    @discord.ui.button(label="Possible Scam", style=discord.ButtonStyle.blurple)
-    async def possible_spam_option(self, interaction, button):
-        await interaction.response.send_message("Taking you to the reporting flow for possible scam")
-        self.report_type = ReportType.POSSIBLE_SCAM
+    @discord.ui.button(label="Spam", style=discord.ButtonStyle.blurple)
+    async def spam_option(self, interaction, button):
+        await interaction.response.send_message("Taking you to the reporting flow for spam")
+        self.report_type = ReportType.SPAM
         await self.disable_all_items()
         self.stop()
 

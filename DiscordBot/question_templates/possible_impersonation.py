@@ -58,7 +58,7 @@ class PossibleImpersonation(discord.ui.View):
     @discord.ui.button(label="Other", style=discord.ButtonStyle.blurple)
     async def other_option(self, interaction, button):
         await interaction.response.send_message("What is the user asking for?")
-        self.spam_type = PossibleImpersonationType.OTHER
+        self.scam_type = PossibleImpersonationType.OTHER
         msg = await next_message()
         if msg == None:
             self.impersonation_type = PossibleImpersonationType.CANCEL
