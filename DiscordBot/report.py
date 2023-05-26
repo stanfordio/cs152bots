@@ -57,7 +57,7 @@ class Report:
             wait_for_message = True
             while (wait_for_message):
                 msg = await next_message()
-                if msg.content == self.CANCEL_KEYWORD:
+                if not msg or msg.content == self.CANCEL_KEYWORD:
                     self.state == self.CANCEL_KEYWORD
                     return
                 # Parse out the three ID strings from the message link
