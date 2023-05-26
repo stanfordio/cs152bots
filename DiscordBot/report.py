@@ -1,20 +1,18 @@
 from enum import Enum, auto
 import discord
 import re
-#trivial change
+
 class State(Enum):
     REPORT_START = auto()
     AWAITING_MESSAGE = auto()
     MESSAGE_IDENTIFIED = auto()
     REPORT_COMPLETE = auto()
     IS_MISLEADING = auto()
-    #MISLEADING_RESPONSE_OBTAINED = auto()  
-    #USER_JUDGEMENT = auto()  
-    #EVENT_IDENTIFIED = auto()
+    MISLEADING_RESPONSE_OBTAINED = auto()  
     LAST_USER_INPUT = auto() 
-    LAST_USER_INPUT_MISLEADING = auto()   
-    CONCLUDE_REPORT = auto()
-    MOD_0 = auto()
+    LAST_USER_INPUT_MISLEADING = auto()
+    MESSAGE_BLOCKED = auto()   
+
 
 class Report:
     START_KEYWORD = "report"
@@ -22,20 +20,14 @@ class Report:
     HELP_KEYWORD = "help"
 
     def __init__(self, client):
-        self.mod_review = False
         self.state = State.REPORT_START
         self.client = client
         self.message = None
-        self.misleading_text = None
+        self.user_context = None
         self.is_misleading = None
         self.is_misattributed = None
         self.is_untrue = None
         self.report_code = ''
-
-        self.message_author = ''
-        self.message_content = ''
-        self.reporter = ''
-        self.mod_channel = None
     
     
     async def handle_message(self, message):
@@ -58,7 +50,6 @@ class Report:
             return [reply]
         
         if self.state == State.AWAITING_MESSAGE:
-            self.reporter = message.author.name
             # Parse out the three ID strings from the message link
             m = re.search('/(\d+)/(\d+)/(\d+)', message.content)
             if not m:
@@ -78,9 +69,6 @@ class Report:
             self.state = State.MESSAGE_IDENTIFIED
             # make self.message the offensive message
             self.message = message 
-            self.message_author = message.author.name
-            self.message_content = message.content
-            self.mod_channel = message.guild.id
             reply = "I found this message:" + "```" + message.author.name + ": " + message.content + "```"
             reply += "Please select the reason for reporting this message by entering the corresponding number. If you are in immediate danger, please contact your local emergency services in addition to reporting.\n"
             reply += "`1`: Spam\n"
@@ -93,6 +81,7 @@ class Report:
         if self.state == State.MESSAGE_IDENTIFIED:
             # error catching 
             reply = "I'm sorry, but I don't recognize that input. Please enter a number from 1 to 4."
+            # You will probably need to define extra states for the misleading information flow
             self.report_code += message.content
             if message.content == '1':
                 reply = "Please select the type of spam by entering the corresponding number.\n"
@@ -122,46 +111,36 @@ class Report:
                 reply += "`3`: Untrue (deliberately false)"
                 self.state = State.IS_MISLEADING
             return [reply]
-            # todo: misleading info flow
+            
         if self.state == State.IS_MISLEADING:
             reply = "I'm sorry, but I don't recognize that input. Please enter a number from 1 to 3."
             self.report_code += message.content
             if message.content == '1':
                 reply = "As concisely as possible, please provide any context you believe is missing. You may include links (news articles, original source) where appropriate."
                 self.is_misleading = True
-                self.state = State.LAST_USER_INPUT_MISLEADING
+                self.state = State.MISLEADING_RESPONSE_OBTAINED
             elif message.content == '2':
                 reply = "If you have access to the original quote or speaker, please provide it here."
                 self.is_misattributed = True
-                self.state = State.LAST_USER_INPUT_MISLEADING
+                self.state = State.MISLEADING_RESPONSE_OBTAINED
             elif message.content == '3':
                 reply = "Please copy-paste the portion of the text containing untruths. If it is the entire text, you may leave this blank."
                 self.is_untrue = True
-                self.state = State.LAST_USER_INPUT_MISLEADING
+                self.state = State.MISLEADING_RESPONSE_OBTAINED
             return [reply]
-        """
+        
         if self.state == State.MISLEADING_RESPONSE_OBTAINED:
-            self.misleading_text = message.content
-            reply = "Based on your judgement, should further action be taken against this user? We may investigate whether the user is involved in a coordinated campaign."
-            reply += "`1`: Yes\n"
-            reply += "`2`: No"
-            self.state = State.USER_JUDGEMENT
-            return [reply]
-        if self.state == State.USER_JUDGEMENT:
-            reply = "I'm sorry, but I don't recognize that input. Please enter a number from 1 to 2."
-            if message.content == '1':
-                reply = "Based on the location and text provided, we've identified the following potentially-related events: [protest, election]. If any are related, please type them here.\n"
-                self.state = State.EVENT_IDENTIFIED
-            elif message.content == '2':
-                reply = 'Please click the arrow to advance.'
-                self.state = State.LAST_USER_INPUT
-            return [reply]
-        if self.state == State.EVENT_IDENTIFIED:
-            self.event = message.content
-            reply = "Please click the arrow to advance."
+            self.user_context = message.content
+            self.report_code += '0'
+            reply = "Is this post related at all to any recent protests, elections, or government policies?"
+            reply += "`1`: Protests\n"
+            reply += "`2`: Elections\n"
+            reply += "`3`: Government policies\n"
+            reply += "`4`: None of the above"
             self.state = State.LAST_USER_INPUT
             return [reply]
-        """
+    
+
         if self.state == State.LAST_USER_INPUT:
             self.report_code += message.content 
             #here message is the user numerical input corresponding to the type of spam, harassment, disturbing content, or misleading info
@@ -173,37 +152,28 @@ class Report:
             reply += "`1`: Mute\n"
             reply += "`2`: Block\n"
             reply += "`3`: Neither"
-            self.state = State.CONCLUDE_REPORT
+            self.state = State.MESSAGE_BLOCKED
             return [reply]
-        if self.state == State.LAST_USER_INPUT_MISLEADING:
-            #here message is the user numerical input corresponding to the type of spam, harassment, disturbing content, or misleading info
-            reply = "Thank you for reporting. Our content moderation team will review the message and decide on an appropriate course of action. This may include post removal, account suspension, or placement of the account in read-only mode.\n\n"
-            # because you can't edit other people's messages, the bot will delete the offensive message instead
-            await self.message.delete()
-            reply += "In the meantime, we've hid the reported message from your view.\n"
-            reply += "Would you like to mute or block the offending user?\n"
-            reply += "`1`: Mute\n"
-            reply += "`2`: Block\n"
-            reply += "`3`: Neither"
-            self.state = State.CONCLUDE_REPORT
-            return [reply]
-        if self.state == State.CONCLUDE_REPORT:
+        
+        if self.state == State.MESSAGE_BLOCKED:
             reply = "I'm sorry, but I don't recognize that input. Please enter a number from 1 to 3."
             if message.content == '1':
-                reply = "The user has been muted. This conclues the reporting process."
-                self.state = State.MOD_0
+                reply = "The user has been muted."
+                self.state = State.REPORT_COMPLETE
             elif message.content == '2':
-                reply = "The user has been blocked. This concludes the reporting process."
-                self.state = State.MOD_0
+                reply = "The user has been blocked."
+                self.state = State.REPORT_COMPLETE
             elif message.content == '3':
-                reply = "This concludes the reporting process."
-                self.state = State.MOD_0
+                reply = "The user has not been muted or blocked."
+                self.state = State.REPORT_COMPLETE
             return [reply]
-        if self.state == State.MOD_0:
-            self.mod_review = True
-            reply = "Blah"
-            return [reply]
+        
         return []
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
+    
+
+
+    
+
