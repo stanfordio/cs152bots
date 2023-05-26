@@ -57,6 +57,7 @@ class ModBot(discord.Client):
             for channel in guild.text_channels:
                 if channel.name == f'group-{self.group_num}-mod':
                     self.mod_channels[guild.id] = channel
+                    self.mod_channel = channel
         
 
     async def on_message(self, message):
@@ -102,6 +103,7 @@ class ModBot(discord.Client):
                 # designate current message being moderated
                 self.curr_report = target
                 self.curr_report_idx = idx
+                await self.mod_channel.send(f"Report checked out: \n{self.curr_report.message.author}: `{self.curr_report.message.content}`")
                 responses = await target.moderate(target.message)
                 for r in responses:
                     await message.channel.send(r)
@@ -109,7 +111,7 @@ class ModBot(discord.Client):
         # moderator addressing a message
         elif message.content == "valid":
             if self.curr_report.state == State.CSAM:
-                # await mod_channel.send(f"Deleted: \n{self.curr_report.message.author}: `{self.curr_report.message.content}`")
+                await self.mod_channel.send(f"Deleted by moderator: \n{self.curr_report.message.author}: `{self.curr_report.message.content}`")
                 await self.curr_report.message.delete()
                 reply = "The message has been removed, the user has been banned, and NCMEC has been notified. Thank you!"
                 await message.channel.send(reply)
@@ -120,6 +122,7 @@ class ModBot(discord.Client):
                 return
             
             if self.curr_report.state == State.ADULT:
+                await self.mod_channel.send(f"Deleted by moderator: \n{self.curr_report.message.author}: `{self.curr_report.message.content}`")
                 await self.curr_report.message.delete()
                 offender = self.curr_report.message.author
                 if offender in self.warned_users:
@@ -153,7 +156,8 @@ class ModBot(discord.Client):
 
             if message.content.startswith(Report.START_KEYWORD):
                 self.reports.append(Report(self))
-            
+                await self.mod_channel.send(f"Report created - DM me `queue` to view the current report queue.")
+                
             # Let the report class handle this message; forward all the messages it returns to us
             if len(self.reports) > 0:
                 responses = await self.reports[-1].handle_message(message)
@@ -173,9 +177,9 @@ class ModBot(discord.Client):
 
         # Forward the message to the mod channel
         mod_channel = self.mod_channels[message.guild.id]
-        await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
+        # await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
         scores = self.eval_text(message.content)
-        await mod_channel.send(self.code_format(scores))
+        # await mod_channel.send(self.code_format(scores))
 
     
     def eval_text(self, message):
