@@ -153,7 +153,7 @@ class Report:
         if self.state == State.MISLEADING_RESPONSE_OBTAINED:
             self.user_context = message.content
             self.report_code += '0'
-            reply = "Is this post related at all to any recent protests, elections, or government policies?"
+            reply = "Is this post related at all to any recent protests, elections, or government policies?\n"
             reply += "`1`: Protests\n"
             reply += "`2`: Elections\n"
             reply += "`3`: Government policies\n"
