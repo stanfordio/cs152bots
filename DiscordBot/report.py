@@ -10,7 +10,18 @@ class State(Enum):
     IS_MISLEADING = auto()
     MISLEADING_RESPONSE_OBTAINED = auto()  
     LAST_USER_INPUT = auto() 
+<<<<<<< Updated upstream
     MESSAGE_BLOCKED = auto()   
+=======
+    LAST_USER_INPUT_MISLEADING = auto()
+    MESSAGE_BLOCKED = auto()
+
+    MOD_START = auto()
+    ADDITIONAL_ACTION = auto() 
+    POST_REMOVAL = auto()
+    NOTIFY_OTHERS = auto()  
+    REVIEW_OTHERS = auto()
+>>>>>>> Stashed changes
 
 
 class Report:
@@ -169,10 +180,38 @@ class Report:
         
         return []
 
+    async def mod_flow(self, message):        
+        if self.state == State.MOD_START:
+            reply = "Please select whether additional action is warranted in this case.\n"
+            reply += "`1`: Yes\n"
+            reply += "`2`: No\n"
+            self.state = State.ADDITIONAL_ACTION
+
+            if message.content == '1':
+                reply = "Please select whether this post should be removed.\n"
+                reply += "`1`: Yes\n"
+                reply += "`2`: No\n"
+                self.state = State.POST_REMOVAL
+                
+                if message.content == '1':
+                    reply = "This post has been removed. Please select whether users who engaged with this post should be notified.\n"
+                    reply += "`1`: Yes\n"
+                    reply += "`2`: No\n"
+                    self.state = State.NOTIFY_OTHERS
+
+                    if message.content == '1':
+                        reply = "After careful review, our content moderation team has decided to remove this post.\n"
+                        reply = "Should this user, and associated users be flagged for review and potential removal?\n" 
+                        reply += "`1`: Yes\n"
+                        reply += "`2`: No\n"
+                        self.state = State.REVIEW_OTHERS
+			            
+                        if message.content == '1':
+				            #send to second reviewer?
+                            reply = "Thank you for your review. The moderation review process is now complete.\n"
+            else:
+                reply = "After careful review, our content moderators have decided not to take any action in this case. We appreciate your commitment to ensuring that Discord is a safe, healthy, and secure environment.\n"
+
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
     
-
-
-    
-
