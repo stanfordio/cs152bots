@@ -1,7 +1,7 @@
 from enum import Enum, auto
 import discord
 import re
-
+#trivial change
 class State(Enum):
     REPORT_START = auto()
     AWAITING_MESSAGE = auto()
