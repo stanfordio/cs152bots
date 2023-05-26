@@ -79,6 +79,7 @@ class ModBot(discord.Client):
             return
 
         author_id = message.author.id
+        # mod_channel = self.mod_channels[message.guild.id]
         responses = []
 
         # Only respond to messages if they're part of a reporting flow
@@ -92,7 +93,11 @@ class ModBot(discord.Client):
         # Let the report class handle this message; forward all the messages it returns to us
         responses = await self.reports[author_id].handle_message(message)
         for r in responses:
-            await message.channel.send(r)
+            if not self.reports[author_id].mod_review:
+                await message.channel.send(r)
+            else: 
+                mod_channel = self.mod_channels[self.reports[author_id].mod_channel]
+                await mod_channel.send(r)
 
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():
