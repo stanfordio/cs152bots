@@ -35,9 +35,9 @@ class ReportReason(discord.ui.View):
         await self.disable_all_items()
         self.stop()
 
-    @discord.ui.button(label="Possible Spam", style=discord.ButtonStyle.blurple)
+    @discord.ui.button(label="Possible Scam", style=discord.ButtonStyle.blurple)
     async def possible_spam_option(self, interaction, button):
-        await interaction.response.send_message("Taking you to the reporting flow for possible spam")
+        await interaction.response.send_message("Taking you to the reporting flow for possible scam")
         self.report_type = ReportType.POSSIBLE_SCAM
         await self.disable_all_items()
         self.stop()
