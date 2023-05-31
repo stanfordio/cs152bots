@@ -1,0 +1,10 @@
+Subject: Tone Club Subscription Expired
+
+Dear Bob,
+
+Your Tone Club subscription has now expired. If you wish to renew your subscription, kindly reply with MONOC for monophones or POLYC for polyphones. The subscription will be 1 weekly at a rate of 150p per week. To cancel or stop this service, simply text STOP.
+
+Please note that this message is free. For any further information, contact Stream support at 0871212025016.
+
+Best regards,
+Alice

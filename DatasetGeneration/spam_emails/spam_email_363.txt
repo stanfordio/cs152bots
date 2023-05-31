@@ -1,0 +1,3 @@
+Subject: Inappropriate Content Warning
+
+Message: Hi Bob, I received an SMS with inappropriate content that won't be forwarded. Just a head's up, please avoid sending such messages. Thank you.

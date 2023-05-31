@@ -1,0 +1,8 @@
+Subject: Mailbox Messaging SMS Alert
+
+Hi Bob,
+
+This is an email to inform you about your Mailbox Messaging SMS alert. You currently have 40 matches. In order to retrieve your messages and matches, please call back on 09056242159. Note that the call charges are 100p/min.
+
+Best,
+Alice

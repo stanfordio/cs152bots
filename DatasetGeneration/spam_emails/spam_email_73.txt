@@ -1,0 +1,8 @@
+Subject: Your Horoscope for Today
+
+Dear Bob,
+
+Energy is high, but you may not know where to channel it. Today your leadership skills are strong. Are you feeling psychic? Reply with ANS along with your question. To end, reply with END JSCO.
+
+Best regards,
+Alice

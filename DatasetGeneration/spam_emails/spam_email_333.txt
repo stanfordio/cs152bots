@@ -1,0 +1,8 @@
+Subject: Mailbox Messaging SMS Alert
+
+Hi Bob,
+
+This is your Mailbox Messaging SMS alert. You have 4 messages and 21 matches. Please call back on 09056242159 to retrieve your messages and matches.
+
+Best regards,
+Alice

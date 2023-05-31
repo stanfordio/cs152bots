@@ -1,0 +1,12 @@
+Subject: Ringtone Order Confirmation X49
+
+Dear Bob,
+
+I hope this message finds you well. Alice has sent you an SMS with the following information:
+
+"Thanks for your ringtone order, reference number X49. Your mobile will be charged 4.50. Should your tone not arrive please call customer services 09065989182. From: textTXTstar"
+
+In case you encounter any issues with your order, please don't hesitate to get in touch with the mentioned customer service number.
+
+Best regards,
+Alice

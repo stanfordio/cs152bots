@@ -1,0 +1,11 @@
+Subject: New Message Received - Urgent Callback
+
+Dear Bob,
+
+I hope this email finds you well. Alice has sent you an SMS message:
+
+"You have 1 new message. Call 0207-083-6089."
+
+Please be sure to respond as soon as possible.
+
+Best regards,

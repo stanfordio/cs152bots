@@ -1,0 +1,8 @@
+Subject: New Voicemail Notification
+
+Message: Hi Bob,
+
+You have 1 new voicemail. Please call 08719181503 to listen to it.
+
+Best regards,
+Alice

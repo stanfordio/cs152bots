@@ -1,0 +1,8 @@
+Subject: Age and Gender Inquiry
+
+Hi Bob,
+
+Alice wants to know your age and gender to begin a conversation. Please reply with the required information, for example, '24M'.
+
+Best regards,
+Alice
