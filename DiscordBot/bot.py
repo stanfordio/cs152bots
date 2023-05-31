@@ -56,6 +56,11 @@ class ModBot(discord.Client):
         self.in_prog_reviews = {}  # Map of mod-channel message ids to reports for reports currently in review
         self.unique = count()
 
+        self.severity1 = [Report.THREAT, Report.SPAM, Report.HARASSMENT, Report.FALSE_INFO, Report.NOT_INTERESTED,
+                        Report.OTHER]
+        self.severity2 = [Report.FRAUD, Report.REQUESTED_MONEY, Report.IMPERSONATION]
+        self.severity3 = [Report.OBTAINED_MONEY, Report.IMMINENT_DANGER]
+
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
         for guild in self.guilds:
@@ -191,15 +196,11 @@ class ModBot(discord.Client):
 
             # Feel free to change any of these 
             severity = 1
-            severity1 = [Report.THREAT, Report.SPAM, Report.HARASSMENT, Report.FALSE_INFO, Report.NOT_INTERESTED,
-                         Report.OTHER]
-            severity2 = [Report.FRAUD, Report.REQUESTED_MONEY, Report.IMPERSONATION]
-            severity3 = [Report.OBTAINED_MONEY, Report.IMMINENT_DANGER]
-            if any(x in severity1 for x in completed_report.reported_issues):
+            if any(x in self.severity1 for x in completed_report.reported_issues):
                 severity = 3
-            if any(x in severity2 for x in completed_report.reported_issues):
+            if any(x in self.severity2 for x in completed_report.reported_issues):
                 severity = 2
-            if any(x in severity3 for x in completed_report.reported_issues):
+            if any(x in self.severity3 for x in completed_report.reported_issues):
                 severity = 1
             self.manual_check_queue.put((severity, next(self.unique), completed_report))
 
@@ -211,9 +212,16 @@ class ModBot(discord.Client):
             # Forward the messages from group channel to the mod channel
             mod_channel = self.mod_channels[message.guild.id]
             await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-            # Checks for URLS
-            scores = self.eval_text(message.content)
-            await mod_channel.send(self.code_format(scores))
+            
+            url, money = self.eval_text(message.content)
+            # TO-DO figure out how we want to use different and make report
+            if url:
+                severity = 2
+                #self.manual_check_queue.put((severity, next(self.unique), completed_report))
+            if money:
+                severity = 3
+                #self.manual_check_queue.put((severity, next(self.unique), completed_report))
+            #await mod_channel.send(self.code_format(scores))
 
         if message.channel.id == self.mod_channels[message.guild.id].id:
             # if a mod is chatting in the mod group:
@@ -358,7 +366,7 @@ class ModBot(discord.Client):
         url = self.check_for_url(message)
         money = self.money_message(message)
         # impersonate = self.impersonating(message)
-        return message
+        return url, money
 
     def code_format(self, text):
         ''''
