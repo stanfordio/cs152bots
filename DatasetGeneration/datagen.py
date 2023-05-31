@@ -34,3 +34,7 @@ with open(token_path) as f:
     ORGANIZATION = tokens["openai_organization"]
     API_KEY = tokens["openai_api_key"]
 
+NUM_SAMPLES_OF_EACH_CLASS = 500
+df = pd.read_csv("kaggle_sms_spam.csv", encoding = "ISO-8859-1")
+sms_not_spam_sample = df[df['v1'] == 'ham'].sample(n=NUM_SAMPLES_OF_EACH_CLASS, random_state=42)['v2'].tolist()
+sms_spam_sample = df[df['v1'] == 'spam'].sample(n=NUM_SAMPLES_OF_EACH_CLASS, random_state=42)['v2'].tolist()
