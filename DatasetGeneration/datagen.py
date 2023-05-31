@@ -54,27 +54,22 @@ sms_spam_sample = (
     .tolist()
 )
 
-# Convert SMS to email using OpenAI API
-email_non_spam_sample = [
-    sms_to_email(i, sms) for i, sms in enumerate(sms_non_spam_sample)
-]
-email_spam_sample = [
-    sms_to_email(len(sms_non_spam_sample) + i, sms)
-    for i, sms in enumerate(sms_spam_sample)
-]
-
 # Save non-spam and spam emails to files
 non_spam_directory = "non_spam_emails"
 if not os.path.exists(non_spam_directory):
     os.makedirs(non_spam_directory)
-for i, email in enumerate(email_non_spam_sample):
-    with open(
-        os.path.join(non_spam_directory, f"non_spam_email_{i + 1}.txt"), "w"
-    ) as f:
-        f.write(email)
 spam_directory = "spam_emails"
 if not os.path.exists(spam_directory):
     os.makedirs(spam_directory)
-for i, email in enumerate(email_spam_sample):
+
+print("Generating non-spam emails...")
+for i, sms in enumerate(sms_non_spam_sample):
+    with open(
+        os.path.join(non_spam_directory, f"non_spam_email_{i + 1}.txt"), "w"
+    ) as f:
+        f.write(sms_to_email(i, sms))
+
+print("Generating spam emails...")
+for i, sms in enumerate(sms_spam_sample):
     with open(os.path.join(spam_directory, f"spam_email_{i + 1}.txt"), "w") as f:
-        f.write(email)
+        f.write(sms_to_email(i, sms))
