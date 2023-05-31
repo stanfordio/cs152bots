@@ -41,7 +41,7 @@ with open(token_path) as f:
     openai.api_key = tokens["openai_api_key"]
 
 # Sample spam and non-spam entries from the Kaggle SMS spam dataset
-NUM_SAMPLES_OF_EACH_CLASS = 2
+NUM_SAMPLES_OF_EACH_CLASS = 500
 df = pd.read_csv("kaggle_sms_spam.csv", encoding="ISO-8859-1")
 sms_non_spam_sample = (
     df[df["v1"] == "ham"]
@@ -67,9 +67,26 @@ for i, sms in enumerate(sms_non_spam_sample):
     with open(
         os.path.join(non_spam_directory, f"non_spam_email_{i + 1}.txt"), "w"
     ) as f:
-        f.write(sms_to_email(i, sms))
+        success = False
+        while not success:
+            try:
+                f.write(sms_to_email(i, sms))
+                success = True
+            except Exception as e:
+                print(
+                    f"Failed to generate non_spam_email_{i + 1}.txt, retrying... Error: ",
+                    e,
+                )
 
 print("Generating spam emails...")
 for i, sms in enumerate(sms_spam_sample):
     with open(os.path.join(spam_directory, f"spam_email_{i + 1}.txt"), "w") as f:
-        f.write(sms_to_email(i, sms))
+        success = False
+        while not success:
+            try:
+                f.write(sms_to_email(i, sms))
+                success = True
+            except Exception as e:
+                print(
+                    f"Failed to generate spam_email_{i + 1}.txt, retrying... Error: ", e
+                )
