@@ -1,0 +1,8 @@
+Subject: Webpage Unavailable
+
+Hi Bob,
+
+I encountered an issue while trying to access a webpage, it's not available at the moment. Can you look into it and see if there's a problem on our end?
+
+Thanks,
+Alice

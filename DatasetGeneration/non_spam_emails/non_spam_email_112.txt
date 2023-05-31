@@ -1,0 +1,8 @@
+Subject: Call Delay
+
+Hi Bob,
+
+Sorry, I'll call later in about <#> minutes.
+
+Best,
+Alice

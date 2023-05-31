@@ -1,0 +1,8 @@
+Subject: Firmware Update Inquiry
+
+Hi Bob,
+
+I just learned about something that might not be working as expected. Do you think a firmware update could help improve the situation?
+
+Best regards,
+Alice

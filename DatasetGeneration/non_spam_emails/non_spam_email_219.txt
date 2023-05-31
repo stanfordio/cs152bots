@@ -1,0 +1,8 @@
+Subject: IP Address for Minecraft Server
+
+Hi Bob,
+
+I was wondering how my IP address would be able to test a connection if my computer isn't set up as a Minecraft server. Can you please explain the process to me or let me know if there is a different method for testing connections without having a Minecraft server?
+
+Thanks,
+Alice

@@ -1,0 +1,8 @@
+Subject: Email Address Confirmation
+
+Hi Bob,
+
+Just sent you an email to an address with 'incomm' in it. Is that the correct email address?
+
+Best,
+Alice

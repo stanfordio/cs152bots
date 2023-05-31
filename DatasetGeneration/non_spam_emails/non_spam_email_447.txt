@@ -1,0 +1,14 @@
+Subject: Math Calculation Instructions
+
+Message: Hi Bob,
+
+I hope this message finds you well. To perform the calculations, follow these steps:
+
+1. Multiply the numbers independently.
+2. Count the decimal points.
+3. For the division, push the decimal places as I showed you earlier.
+
+Let me know if you have any questions or need further clarification.
+
+Best,
+Alice

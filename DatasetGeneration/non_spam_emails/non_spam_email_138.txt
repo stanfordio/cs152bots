@@ -1,0 +1,11 @@
+Subject: Bank Transfer Details Inquiry
+
+Message:
+
+Hi Bob,
+
+I hope you're doing well. I was just wondering about the details you need for the bank transfer. Is the account number enough, or do you need more information?
+
+Best regards,
+
+Alice

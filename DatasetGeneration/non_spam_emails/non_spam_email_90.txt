@@ -1,0 +1,11 @@
+Subject: Sinco Payee Registration Confirmation
+
+Dear Bob,
+
+You have successfully registered Sinco as a payee on your banking account. To confirm this action, please log in to your account at icicibank.com and enter the following URN: <#>. 
+
+Please be aware of potential frauds and do not share or disclose your URN to anyone.
+
+Best regards,
+
+Alice

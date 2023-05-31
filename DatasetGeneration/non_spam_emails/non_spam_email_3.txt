@@ -1,0 +1,8 @@
+Subject: Wait Time
+
+Hi Bob,
+
+Wait <#> min.
+
+Best regards,
+Alice

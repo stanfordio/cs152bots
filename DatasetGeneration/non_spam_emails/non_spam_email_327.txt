@@ -1,0 +1,8 @@
+Subject: Money Transfer Request
+
+Dear Bob,
+
+Can you please transfer the amount to me?
+
+Best regards,
+Alice

@@ -1,0 +1,8 @@
+Subject: Phone Call Availability
+
+Hi Bob,
+
+I can't pick up the phone right now. Please send a message instead.
+
+Best regards,
+Alice

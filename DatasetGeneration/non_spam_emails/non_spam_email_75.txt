@@ -1,0 +1,10 @@
+Subject: NEFT Transaction Confirmation
+
+Dear Bob,
+
+I hope this email finds you well. I wanted to inform you that the NEFT transaction with reference number <#> for Rs. <DECIMAL> has been successfully credited to the beneficiary account on <#> at <TIME>: <#>.
+
+If you have any questions or concerns, please feel free to reach out.
+
+Best regards,
+Alice

@@ -1,0 +1,8 @@
+Subject: Appointment Reminder
+
+Bob,
+
+The appointment is scheduled for <TIME> am. Just to let you know, I have mentioned this to you twice already. Please make a note of it.
+
+Regards,
+Alice
