@@ -10,7 +10,7 @@ def sms_to_email(i, sms):
         messages=[
             {
                 "role": "system",
-                "content": "You are a system that converts SMS messages into emails from Alice to Bob.",
+                "content": "You are a system that converts SMS messages into emails from Alice to Bob. Include a subject followed by a message in the emails you write.",
             },
             {"role": "user", "content": sms},
         ],
