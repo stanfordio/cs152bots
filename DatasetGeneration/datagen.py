@@ -67,26 +67,35 @@ for i, sms in enumerate(sms_non_spam_sample):
     with open(
         os.path.join(non_spam_directory, f"non_spam_email_{i + 1}.txt"), "w"
     ) as f:
-        success = False
-        while not success:
+        max_retries = 5
+        for attempt in range(max_retries):
             try:
                 f.write(sms_to_email(i, sms))
-                success = True
+                break
             except Exception as e:
                 print(
-                    f"Failed to generate non_spam_email_{i + 1}.txt, retrying... Error: ",
+                    f"Failed to generate non_spam_email_{i + 1}.txt in attempt {attempt+1}, retrying... Error: ",
                     e,
                 )
+        else:
+            print(
+                f"Failed to generate non_spam_email_{i + 1}.txt after {max_retries} attempts."
+            )
 
 print("Generating spam emails...")
 for i, sms in enumerate(sms_spam_sample):
     with open(os.path.join(spam_directory, f"spam_email_{i + 1}.txt"), "w") as f:
-        success = False
-        while not success:
+        max_retries = 5
+        for attempt in range(max_retries):
             try:
                 f.write(sms_to_email(i, sms))
-                success = True
+                break
             except Exception as e:
                 print(
-                    f"Failed to generate spam_email_{i + 1}.txt, retrying... Error: ", e
+                    f"Failed to generate spam_email_{i + 1}.txt in attempt {attempt+1}, retrying... Error: ",
+                    e,
                 )
+        else:
+            print(
+                f"Failed to generate spam_email_{i + 1}.txt after {max_retries} attempts."
+            )
