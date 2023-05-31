@@ -10,6 +10,7 @@ frozenlist==1.3.3
 idna==3.4
 multidict==6.0.4
 openai==0.27.7
+pandas==1.3.4
 requests==2.30.0
 urllib3==2.0.2
 yarl==1.9.2
