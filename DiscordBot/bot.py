@@ -7,6 +7,8 @@ import logging
 import re
 import requests
 from itertools import count
+import openai
+openai.organization = "org-YVZe9QFuR0Ke0J0rqr7l2R2L"
 
 
 # from DiscordBot import mod_flow
@@ -29,6 +31,7 @@ with open(token_path) as f:
     # If you get an error here, it means your token is formatted incorrectly. Did you put it in quotes?
     tokens = json.load(f)
     discord_token = tokens['discord']
+    openai.api_key = tokens['open-api']
 
 
 class ModBot(discord.Client):
@@ -308,6 +311,44 @@ class ModBot(discord.Client):
         if url1 or url2:
             return True
         return False
+    
+    """
+    def money_related_message(self, message):
+        money_keywords = ['money', 'cash', 'financial support', 'donation', 'fund', 'fundraising', 'sponsorship']
+
+        message = message.lower()  # Convert message to lowercase for case-insensitive matching
+
+        for keyword in money_keywords:
+            if keyword in message:
+                return True
+        return False
+    """
+
+    def money_message(self, message):
+        prompt = "Is the person asking for money? \nMessage: " + message + "\nAnswer:"
+        response = openai.Completion.create(
+            engine="text-davinci-003",
+            prompt=prompt,
+            temperature=0.3,
+            max_tokens=1,
+            n=1,
+            stop=None,
+        )
+        answer = response.choices[0].text.strip()
+        return answer.lower() == "yes"
+
+    def impersonating(self, message):
+        prompt = "Do you believe this person is impersonating someone else? \nMessage: " + message + "\nAnswer:"
+        response = openai.Completion.create(
+            engine="text-davinci-003",
+            prompt=prompt,
+            temperature=0.3,
+            max_tokens=1,
+            n=1,
+            stop=None,
+        )
+        answer = response.choices[0].text.strip()
+        return answer.lower() == "yes"
 
     def eval_text(self, message):
         ''''
@@ -315,6 +356,8 @@ class ModBot(discord.Client):
         insert your code here! This will primarily be used in Milestone 3. 
         '''
         url = self.check_for_url(message)
+        money = self.money_message(message)
+        # impersonate = self.impersonating(message)
         return message
 
     def code_format(self, text):
