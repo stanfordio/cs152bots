@@ -3,16 +3,21 @@ import os
 import pandas as pd
 import json
 
+
 def sms_to_email(i, sms):
     response = openai.ChatCompletion.create(
         model="gpt-4",
         messages=[
-            {"role": "system", "content": "You are a system that converts SMS messages into emails from Alice to Bob."},
+            {
+                "role": "system",
+                "content": "You are a system that converts SMS messages into emails from Alice to Bob.",
+            },
             {"role": "user", "content": sms},
-        ]
+        ],
     )
     print(f"Finished generating email for SMS sample {i+1}")
-    return response['choices'][0]['message']['content']
+    return response["choices"][0]["message"]["content"]
+
 
 # Guardrail to make sure user actually wants to run this script
 print(
@@ -27,7 +32,7 @@ if user_input.lower() != "yes":
 
 # Load OpenAI organization and API key from 'tokens.json'
 # There should be a file called 'tokens.json' inside the same folder as this file
-token_path = 'tokens.json'
+token_path = "tokens.json"
 if not os.path.isfile(token_path):
     raise Exception(f"{token_path} not found!")
 with open(token_path) as f:
@@ -37,24 +42,39 @@ with open(token_path) as f:
 
 # Sample spam and non-spam entries from the Kaggle SMS spam dataset
 NUM_SAMPLES_OF_EACH_CLASS = 500
-df = pd.read_csv("kaggle_sms_spam.csv", encoding = "ISO-8859-1")
-sms_non_spam_sample = df[df['v1'] == 'ham'].sample(n=NUM_SAMPLES_OF_EACH_CLASS, random_state=42)['v2'].tolist()
-sms_spam_sample = df[df['v1'] == 'spam'].sample(n=NUM_SAMPLES_OF_EACH_CLASS, random_state=42)['v2'].tolist()
+df = pd.read_csv("kaggle_sms_spam.csv", encoding="ISO-8859-1")
+sms_non_spam_sample = (
+    df[df["v1"] == "ham"]
+    .sample(n=NUM_SAMPLES_OF_EACH_CLASS, random_state=42)["v2"]
+    .tolist()
+)
+sms_spam_sample = (
+    df[df["v1"] == "spam"]
+    .sample(n=NUM_SAMPLES_OF_EACH_CLASS, random_state=42)["v2"]
+    .tolist()
+)
 
 # Convert SMS to email using OpenAI API
-email_non_spam_sample = [sms_to_email(i, sms) for i, sms in enumerate(sms_non_spam_sample)]
-email_spam_sample = [sms_to_email(len(sms_non_spam_sample) + i, sms) for i, sms in enumerate(sms_spam_sample)]
+email_non_spam_sample = [
+    sms_to_email(i, sms) for i, sms in enumerate(sms_non_spam_sample)
+]
+email_spam_sample = [
+    sms_to_email(len(sms_non_spam_sample) + i, sms)
+    for i, sms in enumerate(sms_spam_sample)
+]
 
 # Save non-spam and spam emails to files
 non_spam_directory = "non_spam_emails"
 if not os.path.exists(non_spam_directory):
     os.makedirs(non_spam_directory)
 for i, email in enumerate(email_non_spam_sample):
-    with open(os.path.join(non_spam_directory, f'non_spam_email_{i + 1}.txt'), 'w') as f:
+    with open(
+        os.path.join(non_spam_directory, f"non_spam_email_{i + 1}.txt"), "w"
+    ) as f:
         f.write(email)
 spam_directory = "spam_emails"
 if not os.path.exists(spam_directory):
     os.makedirs(spam_directory)
 for i, email in enumerate(email_spam_sample):
-    with open(os.path.join(spam_directory, f'spam_email_{i + 1}.txt'), 'w') as f:
+    with open(os.path.join(spam_directory, f"spam_email_{i + 1}.txt"), "w") as f:
         f.write(email)
