@@ -37,11 +37,11 @@ if not os.path.isfile(token_path):
     raise Exception(f"{token_path} not found!")
 with open(token_path) as f:
     tokens = json.load(f)
-    ORGANIZATION = tokens["openai_organization"]
-    API_KEY = tokens["openai_api_key"]
+    openai.organization = tokens["openai_organization"]
+    openai.api_key = tokens["openai_api_key"]
 
 # Sample spam and non-spam entries from the Kaggle SMS spam dataset
-NUM_SAMPLES_OF_EACH_CLASS = 500
+NUM_SAMPLES_OF_EACH_CLASS = 1
 df = pd.read_csv("kaggle_sms_spam.csv", encoding="ISO-8859-1")
 sms_non_spam_sample = (
     df[df["v1"] == "ham"]
