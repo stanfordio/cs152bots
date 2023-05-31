@@ -1,4 +1,5 @@
 *.log
 DiscordBot/tokens.json
+DatasetGeneration/tokens.json
 TABot/tokens.json
 .myvenv
