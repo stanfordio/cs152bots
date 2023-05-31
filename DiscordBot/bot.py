@@ -208,12 +208,15 @@ class ModBot(discord.Client):
             # Forward the messages from group channel to the mod channel
             mod_channel = self.mod_channels[message.guild.id]
             await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
+            # Checks for URLS
             scores = self.eval_text(message.content)
             await mod_channel.send(self.code_format(scores))
 
         if message.channel.id == self.mod_channels[message.guild.id].id:
             # if a mod is chatting in the mod group:
             await self.handle_mod_msg(message)
+
+
 
     async def handle_mod_msg(self, message):
         mod_channel = self.mod_channels[message.guild.id]
@@ -223,6 +226,8 @@ class ModBot(discord.Client):
                 await mod_channel.send("Nothing to review")
             else:
                 # TODO: Handle report.reported_msg is encoded in some way - milestone 3
+
+
                 pri, _, report = self.manual_check_queue.get()
                 msg = "Report:" + "\n"
                 msg += "\t" + "Report against user: " + str(report.reported_user_id) + "\n"
@@ -234,6 +239,9 @@ class ModBot(discord.Client):
                 msg += "React with 1 to ban, 2 to suspend, 3 to warn, 4 for no action."
                 sent = await mod_channel.send(msg)
                 self.in_prog_reviews[sent.id] = report
+
+
+
 
         # #TODO: (maybe) for milestone 2: I haven't tested this but the idea here is to generate a report
         # # of everything a user has reported in case they ask (for police purposes etc)
@@ -292,11 +300,21 @@ class ModBot(discord.Client):
                                                                                                                          "\t" + "Calling 911 if this is an emergency.")
             self.in_prog_reviews.pop(msg_id)
 
+    # Adds auto check if URL is in included--should automatically flag, it's a design decision to just say
+    # no URLS at all
+    def check_for_url(self, message):
+        url1 = re.search("^[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$", message)
+        url2 = re.search("^https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$", message)
+        if url1 or url2:
+            return True
+        return False
+
     def eval_text(self, message):
         ''''
         TODO: Once you know how you want to evaluate messages in your channel, 
         insert your code here! This will primarily be used in Milestone 3. 
         '''
+        url = self.check_for_url(message)
         return message
 
     def code_format(self, text):
