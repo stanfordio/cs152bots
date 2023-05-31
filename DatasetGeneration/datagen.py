@@ -1,5 +1,18 @@
+import openai
 import os
+import pandas as pd
 import json
+
+def sms_to_email(i, sms):
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are a system that converts SMS messages into emails from Alice to Bob."},
+            {"role": "user", "content": sms},
+        ]
+    )
+    print(f"Finished generating email for SMS sample {i+1}")
+    return response['choices'][0]['message']['content']
 
 print(
     "Are you sure you want to run this script? It re-generates all the spam and non-spam email training data and uses OpenAI credits (provided by CS152)."
