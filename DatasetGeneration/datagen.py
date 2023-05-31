@@ -41,7 +41,7 @@ with open(token_path) as f:
     openai.api_key = tokens["openai_api_key"]
 
 # Sample spam and non-spam entries from the Kaggle SMS spam dataset
-NUM_SAMPLES_OF_EACH_CLASS = 1
+NUM_SAMPLES_OF_EACH_CLASS = 2
 df = pd.read_csv("kaggle_sms_spam.csv", encoding="ISO-8859-1")
 sms_non_spam_sample = (
     df[df["v1"] == "ham"]
