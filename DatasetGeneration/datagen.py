@@ -38,9 +38,23 @@ with open(token_path) as f:
 # Sample spam and non-spam entries from the Kaggle SMS spam dataset
 NUM_SAMPLES_OF_EACH_CLASS = 500
 df = pd.read_csv("kaggle_sms_spam.csv", encoding = "ISO-8859-1")
-sms_not_spam_sample = df[df['v1'] == 'ham'].sample(n=NUM_SAMPLES_OF_EACH_CLASS, random_state=42)['v2'].tolist()
+sms_non_spam_sample = df[df['v1'] == 'ham'].sample(n=NUM_SAMPLES_OF_EACH_CLASS, random_state=42)['v2'].tolist()
 sms_spam_sample = df[df['v1'] == 'spam'].sample(n=NUM_SAMPLES_OF_EACH_CLASS, random_state=42)['v2'].tolist()
 
 # Convert SMS to email using OpenAI API
-email_not_spam_sample = [sms_to_email(i, sms) for i, sms in enumerate(sms_not_spam_sample)]
-email_spam_sample = [sms_to_email(len(sms_not_spam_sample) + i, sms) for i, sms in enumerate(sms_spam_sample)]
+email_non_spam_sample = [sms_to_email(i, sms) for i, sms in enumerate(sms_non_spam_sample)]
+email_spam_sample = [sms_to_email(len(sms_non_spam_sample) + i, sms) for i, sms in enumerate(sms_spam_sample)]
+
+# Save non-spam and spam emails to files
+non_spam_directory = "non_spam_emails"
+if not os.path.exists(non_spam_directory):
+    os.makedirs(non_spam_directory)
+for i, email in enumerate(email_non_spam_sample):
+    with open(os.path.join(non_spam_directory, f'non_spam_email_{i + 1}.txt'), 'w') as f:
+        f.write(email)
+spam_directory = "spam_emails"
+if not os.path.exists(spam_directory):
+    os.makedirs(spam_directory)
+for i, email in enumerate(email_spam_sample):
+    with open(os.path.join(spam_directory, f'spam_email_{i + 1}.txt'), 'w') as f:
+        f.write(email)
