@@ -10,7 +10,7 @@ class ReportType(Enum):
 # Here we give user different button options to identify the abuse type
 class ReportReason(discord.ui.View):
 
-    report_type: ReportType = None
+    report_type: ReportType = ReportType.CANCEL
 
     async def disable_all_items(self):
         for item in self.children:

@@ -42,13 +42,18 @@ def perspective_spam_classify(msg, threshold):
         
 
 def perspective_spam_prob(msg):
-	analyze_request = {
-    	'comment': { 'text': msg},
-    	'requestedAttributes': attrs
-	}
-	response = client.comments().analyze(body=analyze_request).execute()
-	spam_res = response["attributeScores"]["SPAM"]["summaryScore"]
-	spam_prob = spam_res["value"]
-	return spam_prob
+    try:
+	    analyze_request = {
+    	    'comment': { 'text': msg},
+    	    'requestedAttributes': attrs
+	    }
+	    response = client.comments().analyze(body=analyze_request).execute()
+	    spam_res = response["attributeScores"]["SPAM"]["summaryScore"]
+	    spam_prob = spam_res["value"]
+	    return spam_prob
+    except:
+        print("perspective API failed")
+        return 0
+
 
 print(perspective_spam_prob(comments[0]))

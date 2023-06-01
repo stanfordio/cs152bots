@@ -3,7 +3,7 @@ import discord
 import discord.ext.context
 from discord.ext.context import ctx
 
-async def next_message():
+async def next_message(timeout=60):
     # TODO: In the future we have to make sure author of report matches message id
     # this is how we seperate different people talking to the same bot
     def check(m: discord.Message):

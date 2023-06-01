@@ -5,6 +5,8 @@ from discord.ext.context import ctx
 from question_templates.block_or_mute import BlockOrMute, BlockOrMuteType
 from question_templates.checking_scam import CheckingScam, ScamRequestType
 from question_templates.report_reason import ReportReason, ReportType
+from question_templates.impersonation import Impersonation, ImpersonationType
+from question_templates.possible_impersonation import PossibleImpersonation, IsImpersonation
 from message_util import next_message
 
 
@@ -25,7 +27,9 @@ class State(Enum):
     AWAITING_MESSAGE = auto()
     MESSAGE_IDENTIFIED = auto()
     BLOCK = auto()
-    IS_SCAM = auto()
+    SPAM = auto()
+    POSSIBLE_IMP = auto()
+    IMPERSONATION = auto()
     REPORT_COMPLETE = auto()
     REPORT_CANCELED = auto()
 
@@ -35,7 +39,6 @@ class Report:
     HELP_KEYWORD = "help"
 
     def __init__(self, client):
-        # TODO: Change back to report start
         self.state = State.REPORT_START
         self.client = client
         self.message = None
@@ -97,17 +100,56 @@ class Report:
             if report_reason.report_type == None:
                 self.state = State.REPORT_CANCELED
             elif report_reason.report_type == ReportType.CANCEL:
-                self.state = State.REPORT_CANCELED
+                await ctx.channel.send("Report Canceled")
+                self.state = State.REPORT_COMPLETE
             elif report_reason.report_type == ReportType.OTHER:
                 self.state = State.BLOCK
             elif report_reason.report_type == ReportType.SCAM:
-                self.state = State.IS_SCAM
+                self.state = State.POSSIBLE_IMP
             elif report_reason.report_type == ReportType.SPAM:
-                self.state = State.BLOCK
+                self.state = State.SPAM
             else:
                 self.state = State.REPORT_COMPLETE
 
-        if self.state == State.IS_SCAM:
+        if self.state == State.POSSIBLE_IMP:
+            await ctx.channel.send("Is this user impersonating someone?")
+
+            check_if_impersonation = PossibleImpersonation(timeout=45)
+            
+            msg = await ctx.channel.send(view=check_if_impersonation)
+
+            check_if_impersonation.message = msg
+
+            await check_if_impersonation.wait()
+
+            if  check_if_impersonation.is_impersonating == IsImpersonation.YES:
+                self.state = State.IMPERSONATION
+            elif check_if_impersonation.is_impersonating == IsImpersonation.NO:
+                self.state = State.SPAM
+            else:
+                await ctx.channel.send("Report Canceled")
+                self.state = State.REPORT_CANCELED
+
+
+        if self.state == State.IMPERSONATION:
+            await ctx.channel.send("Thank you for notifying us. Our team will review this message and account. If you'd like more information, please describe who this user is impersonating.")
+
+            impersonator = Impersonation(timeout=45) 
+
+            msg = await ctx.channel.send(view=impersonator)
+
+            impersonator.message = msg
+
+            await impersonator.wait()
+
+            if impersonator.impersonation_type == ImpersonationType.CANCEL:
+                await ctx.channel.send("Report Canceled")
+                self.state = State.REPORT_CANCELED
+            else:
+                # TODO: Add info to report
+                self.state == State.SPAM
+
+        if self.state == State.SPAM:
             await ctx.channel.send("Is this user asking you for something?")
 
             checking_scam = CheckingScam(timeout=30)
@@ -118,9 +160,11 @@ class Report:
 
             res = await checking_scam.wait()
 
-            if checking_scam.scam_type == None or checking_scam.scam_type == ScamRequestType.CANCEL:
+            if checking_scam.scam_type == ScamRequestType.CANCEL:
+                await ctx.channel.send("Report Canceled")
                 self.state = State.REPORT_CANCELED
             else:
+                # TODO: Add info to report
                 self.state = State.BLOCK
 
         if self.state == State.BLOCK:
@@ -134,17 +178,22 @@ class Report:
 
             await block_or_mute.wait()
 
-            self.state = State.REPORT_COMPLETE
+            if block_or_mute.requested_response_type == BlockOrMuteType.CANCEL:
+                await ctx.channel.send("Report Canceled")
+                self.state = State.REPORT_CANCELED
+            else:
+                #TODO: Add to report
+                self.state = State.REPORT_COMPLETE
 
-            #TODO: Check return value of class
-            #if block_or_mute.requested_response_type == BlockOrMuteType.BLOCK:
-            # TODO: In this case we would add that the users requesting blocking someone to the report
 
         # TODO: Return our completed report class
         return []
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE or self.state == State.REPORT_CANCELED
+
+    def report_cancled(self):
+        return self.state == State.REPORT_CANCELED
     
 
 
