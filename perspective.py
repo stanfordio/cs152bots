@@ -39,7 +39,7 @@ def perspective_spam_classify(msg, threshold):
 	    return "spam"
 	else:
 		return "not spam"
-        
+
 
 def perspective_spam_prob(msg):
     try:
@@ -55,5 +55,31 @@ def perspective_spam_prob(msg):
         print("perspective API failed")
         return 0
 
+def perspective_threat_prob(msg):
+    try:
+	    analyze_request = {
+    	    'comment': { 'text': msg},
+    	    'requestedAttributes': attrs
+	    }
+	    response = client.comments().analyze(body=analyze_request).execute()
+	    threat_res = response["attributeScores"]["THREAT"]["summaryScore"]
+	    threat_prob = threat_res["value"]
+	    return threat_prob
+    except:
+        print("perspective API failed")
+        return 0
 
-#print(perspective_spam_prob(comments[0]))
+
+def perspective_sum_classify(msg, threshold, spam_weight, threat_weight):
+    denom = spam_weight + threat_weight
+    num = perspective_threat_prob(msg) * threat_weight + perspective_spam_prob(msg) * spam_weight
+    val = num / denom
+    if (num / denom) >= threshold:
+        return "spam"
+    else:
+        return "not spam"
+
+print(perspective_spam_prob(comments[0]))
+print(perspective_threat_prob(comments[2]))
+for comment in comments:
+    print(perspective_sum_classify(comment, threshold=0.4, spam_weight=2, threat_weight=1))
