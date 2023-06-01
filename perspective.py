@@ -56,4 +56,4 @@ def perspective_spam_prob(msg):
         return 0
 
 
-print(perspective_spam_prob(comments[0]))
+#print(perspective_spam_prob(comments[0]))
