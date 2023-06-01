@@ -2,6 +2,7 @@
 import discord
 from discord.ext import commands
 from unidecode import unidecode
+import csam_text_classification as ctc
 import os
 import json
 import logging
@@ -25,11 +26,11 @@ with open(token_path) as f:
     # If you get an error here, it means your token is formatted incorrectly. Did you put it in quotes?
     tokens = json.load(f)
     discord_token = tokens['discord']
+    openai_org = tokens['openapi_org']
+    openai_key = tokens['openai_key']
 
 def csam_detector(message):
-    if "csam_hash" in unidecode(message).lower():
-        return True
-    return False
+    return ctc.content_check(unidecode(message), openai_org, openai_key)
 
 class ModBot(discord.Client):
     def __init__(self): 
@@ -121,9 +122,11 @@ class ModBot(discord.Client):
         banned_user = message.author.name
         # For now we are going to use this as a placeholder until Milestone 3. 
         if (csam_detector(message.content)): # REPLACE in milestone 3 with image hashset or link list etc.
-            await message.delete()
+            # await message.delete()
             mod_channel = self.mod_channels[message.guild.id]
-            await mod_channel.send(f"We have banned user {banned_user} due to detected CSAM, reported to NCMEC and removed the content.")
+            await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
+            await mod_channel.send(f"Our CSAM detection tool has flagged {banned_user} due to detected CSAM. Is the above message CSAM?")
+            # TODO(sammym): finish this flow tomorrow
             return
         
         # if (message.content.lower() == "report"):
