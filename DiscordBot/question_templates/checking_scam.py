@@ -8,6 +8,7 @@ class ScamRequestType(Enum):
     MONEY = auto()
     AUTH = auto()
     PERSONAL_INFO = auto()
+    NONE = auto()
     OTHER = auto()
     CANCEL = auto()
 
@@ -51,6 +52,13 @@ class CheckingScam(discord.ui.View):
     async def pin_option(self, interaction, button):
         await interaction.response.send_message("Adding background info to moderation queue item")
         self.scam_type = ScamRequestType.PERSONAL_INFO
+        await self.disable_all_items()
+        self.stop()
+
+    @discord.ui.button(label="No", style=discord.ButtonStyle.blurple)
+    async def pin_option(self, interaction, button):
+        await interaction.response.send_message("Adding background info to moderation queue item")
+        self.scam_type = ScamRequestType.NONE
         await self.disable_all_items()
         self.stop()
 

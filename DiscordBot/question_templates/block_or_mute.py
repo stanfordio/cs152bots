@@ -9,7 +9,7 @@ class BlockOrMuteType(Enum):
 
 # Here we ask user if they want to block or mute user who sent them the message
 class BlockOrMute(discord.ui.View):
-    requested_response_type: BlockOrMuteType = None
+    requested_response_type: BlockOrMuteType = BlockOrMuteType.CANCEL
     
 
     async def disable_all_items(self):
