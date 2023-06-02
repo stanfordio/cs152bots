@@ -3,6 +3,7 @@ import discord
 from discord.ext import commands
 from unidecode import unidecode
 import csam_text_classification as ctc
+import csam_image_classifier as cic
 import os
 import json
 import logging
@@ -10,6 +11,7 @@ import re
 import requests
 from report import Report, ModReport
 import pdb
+
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -122,6 +124,22 @@ class ModBot(discord.Client):
             # await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
         banned_user = message.author.name
         # For now we are going to use this as a placeholder until Milestone 3. 
+        # check if the message contains images
+        if (message.attachments):
+            for attachment in message.attachments:
+                if (cic.image_classifier(attachment.url)):
+                    mod_channel = self.mod_channels[message.guild.id]
+                    await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{attachment.url}"')
+                    await mod_channel.send(f"Our CSAM detection tool has flagged {banned_user} due to detected CSAM. Is the above message CSAM?")
+                    # remove the message from the channel and reply to the message privately saying "this message was flagged as abusive material and removed."
+                    await message.delete()
+                    try:
+                        await message.author.send("This message was flagged as abusive material and removed.")
+                    except:
+                        await message.channel.send("This message was flagged as abusive material and removed.")
+
+                    return
+
         if (csam_detector(message.content)): # REPLACE in milestone 3 with image hashset or link list etc.
             # await message.delete()
             mod_channel = self.mod_channels[message.guild.id]
