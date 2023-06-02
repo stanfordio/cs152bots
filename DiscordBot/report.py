@@ -140,11 +140,13 @@ class Report:
         if (self.CSAM_stage == 1):
             self.abuse_report += ["User Response: " + message.content + "\n"]
             if (message.content == "1"):
-                self.CSAM_stage = 2
-                return ["Please provide a description of the material."]
+                self.CSAM_stage = 0
+                self.stage = 6
+                return self.block_action(message)
             elif (message.content == "2"):
-                self.CSAM_stage = 2
-                return ["Please provide a description of the material."]
+                self.CSAM_stage = 0
+                self.stage = 6
+                return self.block_action(message)
             elif (message.content == "3"):
                 self.CSAM_stage = 2
                 return ["Please provide a description of the material."]
@@ -299,7 +301,7 @@ class ModReport:
         if self.stage == -1:
             self.state = State.REPORT_COMPLETE
             return ["Your report has been completed."]
-        if self.stage == 0: 
+        if self.stage == 0 and not message.author.bot: 
             self.original_message = message
             reply = "Is this content CSAM? Please reply 'yes' or 'no'."
             self.stage = 2
@@ -315,8 +317,8 @@ class ModReport:
                 self.stage = 3
                 return [reply]
             elif message.content == "no" or message.content == "No":
-                self.stage = -1
-                return ["Thank you for your help - please use the DM reporting flow."]
+                self.stage = State.REPORT_COMPLETE
+                return ["Thank you for your help - please use the DM reporting flow.\nYour report has been completed."]
             return ["Please reply yes or no."]
         if self.stage == 3:
             legal_messages = [i+1 for i in range(5)]
