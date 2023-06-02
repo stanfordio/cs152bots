@@ -58,6 +58,7 @@ class ModBot(discord.Client):
             for channel in guild.text_channels:
                 if channel.name == f'group-{self.group_num}-mod':
                     self.mod_channels[guild.id] = channel
+                    self.mod_channel = channel
         
 
     async def on_message(self, message):
@@ -73,6 +74,7 @@ class ModBot(discord.Client):
         if message.guild:
             await self.handle_channel_message(message)
         else:
+            print(message)
             await self.handle_dm(message)
 
     async def handle_dm(self, message):
@@ -103,7 +105,7 @@ class ModBot(discord.Client):
         if self.reports[author_id].report_complete():
             abuse_report = self.reports[author_id].return_abuse_report()
             # send each string in the abuse report to the mod channel
-            mod_channel = self.mod_channels[message.guild.id]
+            mod_channel = self.mod_channel
             for abuse_report_string in abuse_report:
                 await mod_channel.send(abuse_report_string)
             self.reports.pop(author_id)
