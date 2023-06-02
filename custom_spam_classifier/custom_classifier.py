@@ -31,7 +31,7 @@ create_jsonl_file("spam_ham_dataset.csv", "spam_ham.jsonl")
 # Utilizes the fine tuned model that I created
 def custom_classify_spam(message):
     response = openai.Completion.create(
-        model='ada:ft-personal-2023-05-31-22-49-59',  # Replace with the name or ID of your fine-tuned model
+        model='ada:ft-stanford-internet-observatory-2023-06-01-00-36-07',  # Replace with the name or ID of your fine-tuned model
         prompt=message,
         temperature=0,
     )
@@ -51,4 +51,4 @@ comments = [
 	'This is the Federal Investigations Department. IRS records show that there are a number of overseas transactionsunder your name, you need to pay the full portion of the transaction fees to the IRS Department, which you never did. You currently owe $5,638.38. Please call us as soon as possible at (415)-555-3437.'
 ]
 
-#print(custom_classify_spam(comments[2]))
+print(custom_classify_spam(comments[1]))
