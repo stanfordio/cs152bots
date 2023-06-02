@@ -1,6 +1,10 @@
 import csv
 import json
 import openai
+import os
+
+openai.api_key = os.getenv("OPENAI_API_KEY")
+openai.organization = os.getenv("OPENAI_ORGANIZATION")
 
 # Function converts our dataset from kaggle into a jsonl file
 def create_jsonl_file(filename, output_file):
@@ -30,15 +34,18 @@ create_jsonl_file("spam_ham_dataset.csv", "spam_ham.jsonl")
 
 # Utilizes the fine tuned model that I created
 def custom_classify_spam(message):
-    response = openai.Completion.create(
-        model='ada:ft-stanford-internet-observatory-2023-06-01-00-36-07',  # Replace with the name or ID of your fine-tuned model
-        prompt=message,
+    response = openai.ChatCompletion.create(
+        model='gpt-3.5-turbo',  # Replace with the name or ID of your fine-tuned model
+        messages= [{
+            "role": "user",
+            "content": "Label this message as spam or ham. \n Message: " + message,
+        }],
         temperature=0,
     )
 
-    completion_text = response.choices[0].text.strip()
+    completion_text = response.choices[0]["message"]["content"]
     print(completion_text)
-    if "spam" in completion_text:
+    if completion_text.lower().startswith("spam"):
         return "spam"
     else:
         return "not spam"
@@ -51,4 +58,4 @@ comments = [
 	'This is the Federal Investigations Department. IRS records show that there are a number of overseas transactionsunder your name, you need to pay the full portion of the transaction fees to the IRS Department, which you never did. You currently owe $5,638.38. Please call us as soon as possible at (415)-555-3437.'
 ]
 
-print(custom_classify_spam(comments[1]))
+print(custom_classify_spam(comments[0]))
