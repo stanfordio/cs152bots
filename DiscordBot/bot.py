@@ -26,7 +26,7 @@ with open(token_path) as f:
     # If you get an error here, it means your token is formatted incorrectly. Did you put it in quotes?
     tokens = json.load(f)
     discord_token = tokens['discord']
-    openai_org = tokens['openapi_org']
+    openai_org = tokens['openai_org']
     openai_key = tokens['openai_key']
 
 def csam_detector(message):
