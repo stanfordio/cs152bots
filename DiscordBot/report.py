@@ -187,3 +187,6 @@ class Report:
     def get_reported_issues(self):
         return self.reported_issues
 
+    def get_reported_message(self):
+        return self.reported_msg
+
