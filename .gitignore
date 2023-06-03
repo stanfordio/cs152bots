@@ -1,3 +1,4 @@
 *.log
 DiscordBot/tokens.json
 TABot/tokens.json
+tokens.json
