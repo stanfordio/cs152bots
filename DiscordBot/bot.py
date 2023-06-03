@@ -365,7 +365,7 @@ class ModBot(discord.Client):
         '''
         url = self.check_for_url(message)
         money = self.money_message(message)
-        # impersonate = self.impersonating(message)
+        # impersonate = self.impersonating(message) MIGHT BE HARDER TO DO WITH A SINGLE MESSAGE
         return url, money
 
     def code_format(self, text):
