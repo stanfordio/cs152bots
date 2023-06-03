@@ -1,0 +1,12 @@
+{
+    "urls": [
+        {
+            "url": "https://en.wikipedia.org/wiki/Kitten",
+            "alias": ["Wikipedia"]
+        },
+        {
+            "url": "https://www.xyz.com",
+            "alias": ["xyz", "xyz.com", "www.xyz.com"]
+        }
+    ]
+}

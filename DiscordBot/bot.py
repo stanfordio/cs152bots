@@ -34,6 +34,18 @@ with open(token_path) as f:
 def csam_detector(message):
     return ctc.content_check(unidecode(message), openai_org, openai_key)
 
+blacklisted_urls_path = 'blacklisted_sites.json'
+if not os.path.isfile(blacklisted_urls_path):
+    raise Exception(f"{blacklisted_urls_path} not found!")
+with open(blacklisted_urls_path) as f:
+    urls = json.load(f)
+    blacklisted_urls = urls['urls']
+
+def csam_link_detector(message):
+    # print(urls)
+    return any([url["url"] in message or any([alias in message for alias in url["alias"]]) for url in blacklisted_urls])
+
+
 class ModBot(discord.Client):
     def __init__(self): 
         intents = discord.Intents.default()
@@ -148,6 +160,15 @@ class ModBot(discord.Client):
             # TODO(sammym): finish this flow tomorrow
             return
         
+        # link blocking
+        if (csam_link_detector(message.content)):
+            mod_channel = self.mod_channels[message.guild.id]
+            await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
+            await mod_channel.send(f"Our CSAM detection tool has flagged {banned_user} due to linking to known sources of CSAM. The message has been deleted.")
+            await message.delete()
+            await message.author.send(f'Our CSAM detection tool has flagged your message: > {message.content} \n due to linking to known sources of CSAM. The message has been deleted.')
+            return
+        
         # if (message.content.lower() == "report"):
             # If we don't currently have an active report for this user, add one
         if banned_user not in self.reports:
@@ -174,6 +195,14 @@ class ModBot(discord.Client):
                 await after.delete()
                 await self.mod_channels[after.guild.id].send(f"We have banned user {after.author.name}, reported to NCMEC and removed the content.")
                 return
+            if (csam_link_detector(after.content)):
+                # await message.delete()
+                mod_channel = self.mod_channels[after.guild.id]
+                await mod_channel.send(f'Forwarded message:\n{after.author.name}: "{after.content}"')
+                await mod_channel.send(f"Our CSAM detection tool has flagged {after.author} due to linking to known sources of CSAM. The message has been deleted.")
+                await after.delete()
+                await after.author.send(f'Our CSAM detection tool has flagged your message: > {after.content} \n due to linking to known sources of CSAM. The message has been deleted.')
+        
 
     def eval_text(self, message):
         ''''
