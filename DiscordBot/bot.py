@@ -2,8 +2,8 @@
 import discord
 from discord.ext import commands
 from unidecode import unidecode
-import csam_text_classification as ctc
-import csam_image_classifier as cic
+# import csam_text_classification as ctc
+# import csam_image_classifier as cic
 import os
 import json
 import logging
@@ -58,6 +58,7 @@ class ModBot(discord.Client):
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
+        self.unresolved_reports = []
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -121,12 +122,17 @@ class ModBot(discord.Client):
             await message.channel.send(r)
 
         # If the report is complete or cancelled, remove it from our map
-        if self.reports[author_id].report_complete():
+        # If the report is cancelled 
+        # if self.reports[author_id].report_cancelled():
+        #     self.reports.pop(author_id)
+        if self.reports[author_id].report_cancelled() or self.reports[author_id].report_complete():
             abuse_report = self.reports[author_id].return_abuse_report()
             # send each string in the abuse report to the mod channel
             mod_channel = self.mod_channel
-            for abuse_report_string in abuse_report:
-                await mod_channel.send(abuse_report_string)
+            abuse_report.append("\n\n")
+            await mod_channel.send(''.join(abuse_report))
+            # for abuse_report_string in abuse_report:
+            #     await mod_channel.send(abuse_report_string)
             self.reports.pop(author_id)
 
     async def handle_channel_message(self, message):
@@ -170,9 +176,10 @@ class ModBot(discord.Client):
             await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
             await mod_channel.send(f"Our CSAM detection tool has flagged {banned_user} due to linking to known sources of CSAM. The message has been deleted.")
             await message.delete()
-            await message.author.send(f'Our CSAM detection tool has flagged your message: > {message.content} \n due to linking to known sources of CSAM. The message has been deleted.')
+            await message.author.send(f'Our CSAM detection tool has flagged your message: \n > {message.content} \n due to linking to known sources of CSAM. The message has been deleted.')
             return
         
+
         # if (message.content.lower() == "report"):
             # If we don't currently have an active report for this user, add one
         if banned_user not in self.reports:
@@ -188,10 +195,11 @@ class ModBot(discord.Client):
 
             #Moderator Report Handling
         responses = await self.reports[banned_user].handle_mod_message(message)
+        # await self.mod_channels[message.guild.id].send(responses.join())
         for r in responses:
             await self.mod_channels[message.guild.id].send(r)
-            # scores = self.eval_text(message.content)
-            # await mod_channel.send(self.code_format(scores))
+            scores = self.eval_text(message.content)
+            await mod_channel.send(self.code_format(scores))
 
     async def on_message_edit(self, before, after):
         if before.content != after.content:
