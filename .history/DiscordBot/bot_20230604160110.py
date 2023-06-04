@@ -127,6 +127,8 @@ class ModBot(discord.Client):
         english_message = response['translatedText']
         lowercase_message = english_message.lower()
         return lowercase_message
+        
+
     
     def code_format(self, text):
         ''''

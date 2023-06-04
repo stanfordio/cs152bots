@@ -132,6 +132,7 @@ class Report:
                 self.state = State.IS_MISLEADING
                 self.ismisinfo = True
             return [reply]
+<<<<<<< Updated upstream
             
         if self.state == State.IS_MISLEADING:
             reply = "I'm sorry, but I don't recognize that input. Please enter a number from 1 to 3."
@@ -160,10 +161,12 @@ class Report:
             reply += "`4`: None of the above"
             self.state = State.LAST_USER_INPUT
             return [reply]
-
+    
+=======
         
         
             # todo: misleading info flow
+>>>>>>> Stashed changes
 
         if self.state == State.LAST_USER_INPUT:
             self.report_code += message.content 

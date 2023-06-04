@@ -10,15 +10,6 @@ from report import Report
 import pdb
 from unidecode import unidecode
 from google_trans_new import google_translator  
-import unidecode
-from translate import translate
-import os
-os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'auth.json'
-
-from google.cloud import translate_v2 as translate
-import unidecode
-
-translate_client = translate.Client()
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -122,11 +113,25 @@ class ModBot(discord.Client):
 
     
     def eval_text(self, message):
-        ascii_message = unidecode.unidecode(message)
-        response = translate_client.translate(ascii_message, target_language='en')
-        english_message = response['translatedText']
-        lowercase_message = english_message.lower()
-        return lowercase_message
+        # convert unicode to ascii
+        ascii_message = unidecode(message)
+        # translate to english
+        #translator = google_translator()  
+        #english_message = translator.translate(ascii_message, lang_tgt='en')  
+        # convert to lowercase
+        #lowercase_message = english_message.lower()
+        # return the result
+        # return lowercase_message
+        
+        
+        #message = 'hello world'
+        ''''
+        TODO: Once you know how you want to evaluate messages in your channel, 
+        insert your code here! This will primarily be used in Milestone 3. 
+        '''
+        #return message
+        
+
     
     def code_format(self, text):
         ''''

@@ -122,11 +122,20 @@ class ModBot(discord.Client):
 
     
     def eval_text(self, message):
+        # convert unicode to ascii
         ascii_message = unidecode.unidecode(message)
+        # translate to english
+        #translator = google_translator()  
+        #english_message = translator.translate(ascii_message, lang_tgt='en')  
+        # Convert to English
+        # translation = translate.Translator(to_lang="en")
+        # english_message = translation.translate(ascii_message)
         response = translate_client.translate(ascii_message, target_language='en')
         english_message = response['translatedText']
         lowercase_message = english_message.lower()
         return lowercase_message
+        
+
     
     def code_format(self, text):
         ''''

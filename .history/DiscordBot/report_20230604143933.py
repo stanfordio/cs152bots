@@ -160,7 +160,8 @@ class Report:
             reply += "`4`: None of the above"
             self.state = State.LAST_USER_INPUT
             return [reply]
-
+    
+=======
         
         
             # todo: misleading info flow
