@@ -8,8 +8,8 @@ import re
 import requests
 from report import Report
 import pdb
-# from unidecode import unidecode
-# from google_trans_new import google_translator  
+from unidecode import unidecode
+from google_trans_new import google_translator  
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -146,7 +146,7 @@ class ModBot(discord.Client):
             return
 
         # Forward the message to the mod channel
-        mod_channel = self.mod_channels[message.guild.id]
+        mod_channel = message.channel
         
         scores = self.eval_text(message.content)
         await mod_channel.send(self.code_format(scores))
@@ -154,10 +154,10 @@ class ModBot(discord.Client):
     
     def eval_text(self, message):
         # convert unicode to ascii
-        # ascii_message = unidecode(message)
+       ascii_message = unidecode(message)
         # translate to english
-        # translator = google_translator()  
-        # english_message = translator.translate(ascii_message, lang_tgt='en')  
+        #translator = google_translator()  
+        #english_message = translator.translate(ascii_message, lang_tgt='en')  
         # convert to lowercase
         # lowercase_message = english_message.lower()
         # return the result
@@ -169,7 +169,7 @@ class ModBot(discord.Client):
         TODO: Once you know how you want to evaluate messages in your channel, 
         insert your code here! This will primarily be used in Milestone 3. 
         '''
-        # return lowercase_message
+       # return lowercase_message
         return message
     
     def code_format(self, text):

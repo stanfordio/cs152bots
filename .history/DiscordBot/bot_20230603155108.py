@@ -169,8 +169,8 @@ class ModBot(discord.Client):
         TODO: Once you know how you want to evaluate messages in your channel, 
         insert your code here! This will primarily be used in Milestone 3. 
         '''
-        # return lowercase_message
-        return message
+        return lowercase_message
+        # return message
     
     def code_format(self, text):
         ''''

@@ -170,7 +170,7 @@ class ModBot(discord.Client):
         insert your code here! This will primarily be used in Milestone 3. 
         '''
         # return lowercase_message
-        return message
+        # return message
     
     def code_format(self, text):
         ''''

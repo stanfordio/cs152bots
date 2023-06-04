@@ -8,8 +8,8 @@ import re
 import requests
 from report import Report
 import pdb
-# from unidecode import unidecode
-# from google_trans_new import google_translator  
+from unidecode import unidecode
+from google_trans_new import google_translator  
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -115,7 +115,7 @@ class ModBot(discord.Client):
             self.reports.pop(author_id)
 
     async def handle_mod_channel_message(self, message):
-        # Only handle messages sent in the "group-13-mod" channel
+        # Only handle messages sent in the "group-#" channel
         if not message.channel.name == f'group-{self.group_num}-mod':
             print(message.channel.name)
             return
@@ -141,23 +141,37 @@ class ModBot(discord.Client):
     
     async def handle_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel
-        if not message.channel.name == f'group-{self.group_num}':
-            # print(message.channel.name)
+        if not message.channel.name == f'group-{self.group_num}-mod':
+            print(message.channel.name)
             return
 
         # Forward the message to the mod channel
-        mod_channel = self.mod_channels[message.guild.id]
+        mod_channel = message.channel
         
+        print("received")
+
+        match = re.match(r'^(\d+):', message.content)
+        if not match:
+            await mod_channel.send("Message must start with ```REPORT_ID:``` (ex: 3:1)")
+            return
+        
+        report_id = int(match.group()[:-1])
+        author_id = self.report_id_to_author_id[report_id]
+        
+        responses = await self.reports[author_id].mod_flow(message)
+        for r in responses:
+            await mod_channel.send(r)
+
         scores = self.eval_text(message.content)
         await mod_channel.send(self.code_format(scores))
 
     
     def eval_text(self, message):
         # convert unicode to ascii
-        # ascii_message = unidecode(message)
+       # ascii_message = unidecode(message)
         # translate to english
-        # translator = google_translator()  
-        # english_message = translator.translate(ascii_message, lang_tgt='en')  
+        #translator = google_translator()  
+        #english_message = translator.translate(ascii_message, lang_tgt='en')  
         # convert to lowercase
         # lowercase_message = english_message.lower()
         # return the result
@@ -169,7 +183,7 @@ class ModBot(discord.Client):
         TODO: Once you know how you want to evaluate messages in your channel, 
         insert your code here! This will primarily be used in Milestone 3. 
         '''
-        # return lowercase_message
+       # return lowercase_message
         return message
     
     def code_format(self, text):
