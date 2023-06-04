@@ -59,6 +59,13 @@ class ModBot(discord.Client):
             self.report_table[report.link] = dict([(cityhash.CityHash128(report.state), result)])
 
 
+    # returns the result on success, returns None on failure
+    def report_table_result(self, report):
+        if not self.in_report_table(report):
+            return None
+        return self.report_table[report.link][cityhash.CityHash128(report.state)]
+
+
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
         for guild in self.guilds:
