@@ -66,7 +66,7 @@ def harassment_report(completed_report, list_of_reports_against_user):
         if Report.HARASSMENT in report.reported_issues:
             harrassment_count += 1
 
-    if is_harrassment and harassment_count < 3:
+    if is_harrassment and harrassment_count < 3:
         'SUSPEND', "Your message was marked as harmful, you have been suspended " \
                           "for 15 days. Please contact us if you think we made a mistake.", MED_PRI
     elif harrassment_count >= 3 and is_harrassment:  # many reports of harassment
@@ -150,6 +150,7 @@ def money_message(message):
         prompt = "Is the person asking for money? \nMessage: " + message + "\nAnswer:"
         response = openai.Completion.create(
             engine="text-davinci-003",
+            model='gpt-4',
             prompt=prompt,
             temperature=0.3,
             max_tokens=1,
@@ -388,7 +389,7 @@ class ModBot(discord.Client):
                         "We detected fraudulent activity on your account. We will be banning your account. ")
                     await reporter.send("We took action against " + user_reported.name + " who you recently reported. "
                                                                                                 "Thank you for keeping our platform safe.")
-                    self.in_prog_reviews.pop(msg_id)
+                    self.in_prog_reviews.pop(msg_id) 
 
                 elif decision == "SUSPEND":  # Suspend for 15 days
                     user_reported = await self.fetch_user(user_being_reported)
@@ -397,7 +398,7 @@ class ModBot(discord.Client):
                                             "We will be suspending your account for 15 days.")
                     await reporter.send("We took action against " + user_reported.name + " who you recently reported. "
                                                                                                 "Thank you for keeping our platform safe.")
-                    self.in_prog_reviews.pop(msg_id)
+                    self.in_prog_reviews.pop(msg_id) 
 
                 elif "NO_ACTION":  # No action
                     user_reported = await self.fetch_user(user_being_reported)
