@@ -21,9 +21,15 @@ system_prompt = [
 
 
 def content_check(message, org, api_key):
-    openai.organization = org
-    openai.api_key = api_key
-    response = openai.ChatCompletion.create(model="gpt-4", messages=system_prompt + [{"role": "user", "content": message}])
-    print(response)
-    output = response['choices'][0]['message']['content']
-    return output == "illegal"
+    return False # remove once API key is live again
+    try:
+        openai.organization = org
+        openai.api_key = api_key
+        response = openai.ChatCompletion.create(model="gpt-3.5turbo", messages=system_prompt + [{"role": "user", "content": message}])
+        print(response)
+        output = response['choices'][0]['message']['content']
+        return output == "illegal"
+    except openai.error.AuthenticationError as e:
+        print("OpenAI unknown authentication error")
+        print(e.json_body)
+        print(e.headers)
