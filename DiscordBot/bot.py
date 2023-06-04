@@ -1,4 +1,5 @@
 # bot.py
+import cityhash
 import discord
 from discord.ext import commands
 import os
@@ -38,6 +39,8 @@ class ModBot(discord.Client):
         self.curr_report = None # Sets the Report currently being handled by moderator
         self.curr_report_idx = None
         self.warned_users = set()  # Set of users who have been warned for adult nudity
+        self.report_table = dict([("sample.comment.url", dict([(cityhash.CityHash128("this is a sample comment"), "dummy-result")]))])
+
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
