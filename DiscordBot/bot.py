@@ -10,7 +10,6 @@ from itertools import count
 import openai
 openai.organization = "org-YVZe9QFuR0Ke0J0rqr7l2R2L"
 
-
 # from DiscordBot import mod_flow
 from report import Report, BotReactMessage
 import pdb
@@ -33,6 +32,70 @@ with open(token_path) as f:
     discord_token = tokens['discord']
     openai.api_key = tokens['open-api']
 
+def money_message(message):
+        prompt = "Is the person asking for money? \nMessage: " + message + "\nAnswer:"
+        response = openai.Completion.create(
+            engine="text-davinci-003",
+            prompt=prompt,
+            temperature=0.3,
+            max_tokens=1,
+            n=1,
+            stop=None,
+        )
+        answer = response.choices[0].text.strip()
+        return answer.lower() == "yes"
+
+def impersonating(message):
+    prompt = "Do you believe this person is impersonating someone else? \nMessage: " + message + "\nAnswer:"
+    response = openai.Completion.create(
+        engine="text-davinci-003",
+        prompt=prompt,
+        temperature=0.3,
+        max_tokens=1,
+        n=1,
+        stop=None,
+    )
+    answer = response.choices[0].text.strip()
+    return answer.lower() == "yes"
+
+def harrassment(message):
+    prompt = "Do you believe this message contains harrassment? \nMessage: " + message + "\nAnswer:"
+    response = openai.Completion.create(
+        engine="text-davinci-003",
+        prompt=prompt,
+        temperature=0.3,
+        max_tokens=1,
+        n=1,
+        stop=None,
+    )
+    answer = response.choices[0].text.strip()
+    return answer.lower() == "yes"
+
+def spam(message):
+    prompt = "Do you believe this message contains spam content? \nMessage: " + message + "\nAnswer:"
+    response = openai.Completion.create(
+        engine="text-davinci-003",
+        prompt=prompt,
+        temperature=0.3,
+        max_tokens=1,
+        n=1,
+        stop=None,
+    )
+    answer = response.choices[0].text.strip()
+    return answer.lower() == "yes"
+
+def threat(message):
+    prompt = "Does this message contain a threat against anyone or does this message imply danger? \nMessage: " + message + "\nAnswer:"
+    response = openai.Completion.create(
+        engine="text-davinci-003",
+        prompt=prompt,
+        temperature=0.3,
+        max_tokens=1,
+        n=1,
+        stop=None,
+    )
+    answer = response.choices[0].text.strip()
+    return answer.lower() == "yes"
 
 class ModBot(discord.Client):
     REVIEW_REPORT = "review report"
@@ -190,20 +253,46 @@ class ModBot(discord.Client):
                 self.reports_about_user[user_being_reported] = []
             self.reports_about_user[user_being_reported].append(completed_report)
 
-            # take_post_down, response, severity = mod_flow.new_report(completed_report, user_being_reported,
-            #                                               user_making_report, self.reports_by_user,
-            #                                               self.reports_about_user)
-
-            # Feel free to change any of these 
-            severity = 1
-            if any(x in self.severity1 for x in completed_report.reported_issues):
-                severity = 3
-            if any(x in self.severity2 for x in completed_report.reported_issues):
-                severity = 2
-            if any(x in self.severity3 for x in completed_report.reported_issues):
+            decision, message, severity = mod_flow.new_report(completed_report, user_being_reported,
+                                                          user_making_report, self.reports_by_user,
+                                                          self.reports_about_user)
+            if decision == "MANUAL":
+                # Feel free to change any of these 
                 severity = 1
-            self.manual_check_queue.put((severity, next(self.unique), completed_report))
+                if any(x in self.severity1 for x in completed_report.reported_issues):
+                    severity = 4
+                if any(x in self.severity2 for x in completed_report.reported_issues):
+                    severity = 3
+                if any(x in self.severity3 for x in completed_report.reported_issues):
+                    severity = 1
+                self.manual_check_queue.put((severity, next(self.unique), completed_report))
+            else:
+                if decision == "BAN":  # Remove account
+                    user_reported = await self.fetch_user(user_being_reported)
+                    reporter = await self.fetch_user(user_making_report)
+                    await user_reported.send(
+                        "We detected fraudulent activity on your account. We will be banning your account. ")
+                    await reporter.send("We took action against " + user_reported.name + " who you recently reported. "
+                                                                                                "Thank you for keeping our platform safe.")
+                    self.in_prog_reviews.pop(msg_id)
 
+                elif decision == "SUSPEND"':  # Suspend for 15 days
+                    user_reported = await self.fetch_user(user_being_reported)
+                    reporter = await self.fetch_user(user_making_report)
+                    await user_reported.send("We detected fraudulent activity on your account. "
+                                            "We will be suspending your account for 15 days.")
+                    await reporter.send("We took action against " + user_reported.name + " who you recently reported. "
+                                                                                                "Thank you for keeping our platform safe.")
+                    self.in_prog_reviews.pop(msg_id)
+
+                elif "NO_ACTION":  # No action
+                    user_reported = await self.fetch_user(user_being_reported)
+                    reporter = await self.fetch_user(user_making_report)
+                    await reporter.send(
+                        "We did not detect any fraudulent information in the message/profile submitted. "
+                        "The next course of action to protect yourself can include: " + "\n"
+                                                                                    "\t" + "Blocking " + user_reported.name + "\n"
+                                                                                                                            "\t" + "Calling 911 if this is an emergency."
         # for r in responses:
         #   await message.channel.send(r)
 
@@ -332,39 +421,13 @@ class ModBot(discord.Client):
         return False
     """
 
-    def money_message(self, message):
-        prompt = "Is the person asking for money? \nMessage: " + message + "\nAnswer:"
-        response = openai.Completion.create(
-            engine="text-davinci-003",
-            prompt=prompt,
-            temperature=0.3,
-            max_tokens=1,
-            n=1,
-            stop=None,
-        )
-        answer = response.choices[0].text.strip()
-        return answer.lower() == "yes"
-
-    def impersonating(self, message):
-        prompt = "Do you believe this person is impersonating someone else? \nMessage: " + message + "\nAnswer:"
-        response = openai.Completion.create(
-            engine="text-davinci-003",
-            prompt=prompt,
-            temperature=0.3,
-            max_tokens=1,
-            n=1,
-            stop=None,
-        )
-        answer = response.choices[0].text.strip()
-        return answer.lower() == "yes"
-
     def eval_text(self, message):
         ''''
         TODO: Once you know how you want to evaluate messages in your channel, 
         insert your code here! This will primarily be used in Milestone 3. 
         '''
         url = self.check_for_url(message)
-        money = self.money_message(message)
+        money = money_message(message)
         # impersonate = self.impersonating(message) MIGHT BE HARDER TO DO WITH A SINGLE MESSAGE
         return url, money
 

@@ -2,7 +2,7 @@ from report import Report, BotReactMessage, State
 from datetime import datetime
 from enum import Enum, auto
 import discord
-from bot import money_message, impersonating
+from bot import money_message, impersonating, harrassment, threat
 
 user_false_reports = {}
 manual_check_queue = []
@@ -20,97 +20,102 @@ def new_report(completed_report, user_being_reported, user_making_report, report
     if some_condition:  # to do - send this condition from bot.py
         is_abuse = True
 
-    if not is_abuse:
-        # Add user to false reporting map
-        if user_making_report not in user_false_reports:
-            user_false_reports[user_making_report] = []
-        user_false_reports[user_making_report].append(completed_report)
-
-        # If user has a history of false reports ban them
-        if len(user_false_reports[user_making_report]) > 10:
-            return 'BAN', ": Your account has been banned due to too many false reports.", LOW_PRI
-        else:
-            return 'NO_ACTION', ": We did not find this message to be abusive. " \
-                          "Please contact us if you think we made a mistake.", LOW_PRI
-
     # Check abuse type
     reported_issues = completed_report.get_reported_issues()
-    if reported_issues[0] == Report.HARASSMENT:
-        return harassment_report(user_being_reported, user_making_report)
-    elif reported_issues[0] == Report.SPAM:
-        return spam_report(reports_about_user[user_being_reported])
-    elif reported_issues[0] == Report.THREAT:
-        return threat_report(completed_report)
-    elif reported_issues[0] == Report.FRAUD:
-        return fraud_report(completed_report)
+    decisions = []
+
+    if Report.HARASSMENT in reported_issues:
+        decisions.append(harassment_report(user_being_reported, reports_about_user))
+    elif Report.SPAM in reported_issues:
+        decisions.append(spam_report(reports_about_user[user_being_reported]))
+    elif  Report.THREAT in reported_issues[0]:
+        decisions.append(threat_report(completed_report))
+    elif Report.FRAUD in reported_issues[0]:
+        decisions.append(fraud_report(completed_report))
     else:  # Other
-        action, response, severity = other_report(completed_report)
-        return action, response, severity
+        decisions.append(other_report(completed_report))
+
+    # pick most important decision:
+    final_decision, final_message, final_pri = "NO_ACTION", "", LOW
+    for decision in decisions:
+        d, m, p = decision
+        if d == "BAN" and final_decision != "BAN":
+             d, m, p = final_decision, final_message, final_pri
+        elif d == "SUSPEND" and (final_decision == "NO_ACTION" or final_decision == "MANUAL"):
+             d, m, p = final_decision, final_message, final_pri
+        elif d == "MANUAL" and final_decision == "MANUAL":
+             d, m, p = final_decision, final_message, final_pri
+        if d == final_decision and p < final_pri:
+             d, m, p = final_decision, final_message, final_pri
+
+    return final_decision
 
 
-def harassment_report(user_being_reported, reports_about_user):
-    return strikes_against_reported_user(reports_about_user[user_being_reported])
+def harassment_report(completed_report, list_of_reports_against_user):
+    is_harrassment = spam(completed_report.get_reported_message())
 
-
-def spam_report(list_of_reports_against_user):
-    spam_count = 0
+    harrassment_count = 0
     for report in list_of_reports_against_user:
-        if report.reported_issues[0] is Report.SPAM:
+        if Report.HARASSMENT in report.reported_issues:
+            harrassment_count += 1
+
+    if is_harrassment and harassment_count < 3:
+        'SUSPEND', "Your message was marked as harmful, you have been suspended " \
+                          "for 15 days. Please contact us if you think we made a mistake.", MED_PRI
+    elif harrassment_count >= 3 and is_harrassment:  # many reports of harassment
+        return 'BAN', "Your account has been banned due to too many harmful messages.", MED_PRI
+    elif harrassment_count > 5:  # many reports of harassment
+        return 'SUSPEND', "You have been suspended for 15 days due to harmful messages. Please contact us if you think we made a mistake.", MED_PRI
+    else:
+        return  "MANUAL", "", MED_PRI
+
+
+def spam_report(completed_report, list_of_reports_against_user):
+    spam_count = 0
+    is_spam = spam(completed_report.get_reported_message())
+    for report in list_of_reports_against_user:
+        if  Report.SPAM in report.reported_issues[0]:
             spam_count += 1
 
-    if spam_count > 10:  # user has been reported many times for spam
+    if is_spam and spam_count >= 3:  # user has been reported many times for spam
         return 'BAN', "Your account has been banned due to too many spam messages.", MED_PRI
-    else:
+    elif is_spam and spam_count < 3:
         return 'SUSPEND', "Your account has been suspended due to reports of spam messages. ", MED_PRI
+    else:
+        return 'NO ACTION', , ": We did not find this message to be abusive. " \
+                          "Please contact us if you think we made a mistake.", LOW_PRI
 
 
 def threat_report(completed_report):
-    manual_check_queue.append(completed_report)
+    is_threat = threat(completed_report.get_reported_message)
+    if is_threat:
+        return 'BAN', "Your account has been banned due to harmful messages.", HIGH_PRI
     return 'MANUAL', "", HIGHEST_PRI
 
 
 def fraud_report(completed_report):
     reported_issues = completed_report.get_reported_issues()
 
-    if reported_issues[1] == Report.IMPERSONATION:
+    if Report.REQUESTED_MONEY in reported_issues:
+        # if Report.OBTAINED_MONEY in reported_issues:  # requested and obtained money
+        #     return 'MANUAL', "Your account is under review due to reports of fraud.", HIGH_PRI
+        # else:  # requested but did not obtain money
+        if money_message(completed_report.get_reported_message()) == "yes":
+            return 'BAN', "Your account has been banned due to reports of monetary fraud.", HIGH_PRI
+        else:
+            return 'MANUAL', "Your account is under review due to reports of fraud", HIGHEST_PRI
+    elif Report.IMPERSONATION in reported_issues:
         if impersonating(completed_report.get_reported_message()) == "yes":
             return 'BAN', "Your account has been banned due to reports of impersonation.", HIGH_PRI
         else:
-            manual_check_queue.append(completed_report)
             return 'MANUAL', "Your account is under review due to reports of fraud.", MED_PRI
 
-    elif reported_issues[1] == Report.FALSE_INFO:
-        manual_check_queue.append(completed_report)
-        return 'MANUAL', "Your account is under review due to reports of fraud.", LOW_PRI
-
-    elif reported_issues[1] == Report.REQUESTED_MONEY:
-        if reported_issues[2] == Report.OBTAINED_MONEY:  # requested and obtained money
-            manual_check_queue.append(completed_report)
-            return 'MANUAL', "Your account is under review due to reports of fraud.", HIGH_PRI
-        else:  # requested but did not obtain money
-            if money_message(completed_report.get_reported_message()) == "yes":
-                return 'BAN', "Your account has been banned due to reports of monetary fraud.", HIGH_PRI
-            else:
-                manual_check_queue.append(completed_report)
-                return 'MANUAL', "Your account is under review due to reports of fraud", MED_PRI
+    elif Report.FALSE_INFO in reported_issues:
+        return 'MANUAL', "Your account is under review due to reports of fraud.", MED_PRI
     else:
         return other_report(completed_report)
 
 
 def other_report(completed_report):
-    manual_check_queue.append(completed_report)
     response = "Your report has been placed in our queue for manual moderation."
     return 'MANUAL', response, LOW_PRI
-
-
-def strikes_against_reported_user(list_of_reports_against_user):
-    non_spam_count = 0
-    for report in list_of_reports_against_user:
-        if len(report.reported_issues) > 1 or report.reported_issues[0] != Report.SPAM:
-            non_spam_count += 1
-
-    if non_spam_count > 3:  # many reports of fraud
-        return 'BAN', "Your account has been banned due to too many harmful messages.", HIGH_PRI
-    else:  # first time offender
-        return 'SUSPEND', "Your message was marked as harmful, you have been suspended " \
-                          "for 15 days. Please contact us if you think we made a mistake.", MED_PRI
