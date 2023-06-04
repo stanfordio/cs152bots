@@ -41,6 +41,12 @@ class ModBot(discord.Client):
         self.warned_users = set()  # Set of users who have been warned for adult nudity
         self.report_table = dict([("sample.comment.url", dict([(cityhash.CityHash128("this is a sample comment"), "dummy-result")]))])
 
+    def in_report_table(self, report):
+        if self.report_table.keys().__contains__(report.link):
+            if self.report_table[report.link].keys().__contains__(cityhash.CityHash128(report.state)):
+                return True
+        return False
+
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
