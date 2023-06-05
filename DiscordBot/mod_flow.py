@@ -2,7 +2,7 @@ from report import Report, BotReactMessage, State
 from datetime import datetime
 from enum import Enum, auto
 import discord
-from bot import money_message, impersonating, harrassment, threat
+from bot import money_message, impersonating, harrassment, threat, spam
 
 user_false_reports = {}
 manual_check_queue = []
@@ -17,8 +17,8 @@ LOW_PRI = 4
 
 def new_report(completed_report, user_being_reported, user_making_report, reports_about_user):
     is_abuse = False
-    if some_condition:  # to do - send this condition from bot.py
-        is_abuse = True
+    #if some_condition:  # to do - send this condition from bot.py
+    #    is_abuse = True
 
     # Check abuse type
     reported_issues = completed_report.get_reported_issues()
@@ -36,7 +36,7 @@ def new_report(completed_report, user_being_reported, user_making_report, report
         decisions.append(other_report(completed_report))
 
     # pick most important decision:
-    final_decision, final_message, final_pri = "NO_ACTION", "", LOW
+    final_decision, final_message, final_pri = "NO_ACTION", "", LOW_PRI
     for decision in decisions:
         d, m, p = decision
         if d == "BAN" and final_decision != "BAN":
@@ -59,7 +59,7 @@ def harassment_report(completed_report, list_of_reports_against_user):
         if Report.HARASSMENT in report.reported_issues:
             harrassment_count += 1
 
-    if is_harrassment and harassment_count < 3:
+    if is_harrassment and harrassment_count < 3:
         'SUSPEND', "Your message was marked as harmful, you have been suspended " \
                           "for 15 days. Please contact us if you think we made a mistake.", MED_PRI
     elif harrassment_count >= 3 and is_harrassment:  # many reports of harassment

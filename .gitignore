@@ -1,3 +1,9 @@
 *.log
 DiscordBot/tokens.json
 TABot/tokens.json
+.env
+tokens.json
+__pycache_
+.vscode/
+DiscordBot/.gitignore
+DiscordBot/__pycache__

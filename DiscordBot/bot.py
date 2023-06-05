@@ -150,6 +150,7 @@ def money_message(message):
         prompt = "Is the person asking for money? \nMessage: " + message + "\nAnswer:"
         response = openai.Completion.create(
             engine="text-davinci-003",
+            model='gpt-4',
             prompt=prompt,
             temperature=0.3,
             max_tokens=1,
@@ -388,7 +389,7 @@ class ModBot(discord.Client):
                         "We detected fraudulent activity on your account. We will be banning your account. ")
                     await reporter.send("We took action against " + user_reported.name + " who you recently reported. "
                                                                                                 "Thank you for keeping our platform safe.")
-                    self.in_prog_reviews.pop(msg_id)
+                    self.in_prog_reviews.pop(msg_id) 
 
                 elif decision == "SUSPEND":  # Suspend for 15 days
                     user_reported = await self.fetch_user(user_being_reported)
@@ -397,7 +398,7 @@ class ModBot(discord.Client):
                                             "We will be suspending your account for 15 days.")
                     await reporter.send("We took action against " + user_reported.name + " who you recently reported. "
                                                                                                 "Thank you for keeping our platform safe.")
-                    self.in_prog_reviews.pop(msg_id)
+                    self.in_prog_reviews.pop(msg_id) 
 
                 elif "NO_ACTION":  # No action
                     user_reported = await self.fetch_user(user_being_reported)
