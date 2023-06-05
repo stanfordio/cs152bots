@@ -45,10 +45,16 @@ def getGPT_Predictions(messages, gpt_func):
 ##### Generate ROC/AUC for Perspective #####
 ## Run perspective.perspective_spam_prob(msg) on every message - predictions
 def printROC_AUC_Perspective(spam_messages, ham_messages, all_classifiers):
+    start_time = time.time()
+    print("----- Perspective -----")
     print("Perspective - SPAM")
     spam_predictions = getPerspectivePredictions(spam_messages)
     print("Perspective - HAM")
     ham_predictions = getPerspectivePredictions(ham_messages)
+
+    duration = time.time() - start_time
+    print('End Time: {}'.format(duration))
+    print('Average Time per Unit: {}'.format(duration / 1000))
 
     ## Each message should have a corresponding classification and spam_prediction
     ### Run these through sklearn.metrics.roc_curve(y_true, y_score)
@@ -76,10 +82,17 @@ def printROC_AUC_Perspective(spam_messages, ham_messages, all_classifiers):
 
 ##### Get Confusion Matrix for gpt4-classifier
 def printGPT4_Confusion(spam_messages, ham_messages, all_classifiers):
+    start_time = time.time()
+    print("----- GPT4 -----")
+
     print("GPT4 - SPAM")
     gpt_4_spam_predictions = getGPT_Predictions(spam_messages, gpt4_classify_email )
     print("GPT4 - HAM")
     gpt_4_ham_predictions = getGPT_Predictions(ham_messages, gpt4_classify_email)
+
+    duration = time.time() - start_time
+    print('End Time: {}'.format(duration))
+    print('Average Time per Unit: {}'.format(duration / 1000))
 
     gpt_4_predictions = np.concatenate((gpt_4_spam_predictions, gpt_4_ham_predictions))
     
@@ -89,10 +102,17 @@ def printGPT4_Confusion(spam_messages, ham_messages, all_classifiers):
 
 ##### Get Confusion Matrix for custom gpt3-classifier
 def printGPT3_Confusion(spam_messages, ham_messages, all_classifiers):
+    start_time = time.time()
+    print("----- GPT3 -----")
+    
     print("GPT3 - SPAM")
     gpt_3_spam_predictions = getGPT_Predictions(spam_messages, custom_classify_spam)
     print("GPT3 - HAM")
     gpt_3_ham_predictions = getGPT_Predictions(ham_messages, custom_classify_spam)
+
+    duration = time.time() - start_time
+    print('End Time: {}'.format(duration))
+    print('Average Time per Unit: {}'.format(duration / 1000))
 
     gpt_3_predictions = np.concatenate((gpt_3_spam_predictions, gpt_3_ham_predictions))
     
@@ -102,6 +122,7 @@ def printGPT3_Confusion(spam_messages, ham_messages, all_classifiers):
 
 
 def main():
+    test = 5
     ##### Grab Messages + Generate True Classification Matrix #####
     spam_file_path = "DatasetGeneration/spam_emails"
     ham_file_path = "DatasetGeneration/non_spam_emails"
@@ -111,13 +132,13 @@ def main():
     ham_messages = getMessages(ham_file_path)
 
     ## Assign 0 for ham, 1 for spam - true classification
-    spam_classifiers = np.array([1] * len(spam_messages))
-    ham_classifiers = np.array([0] * len(ham_messages))
+    spam_classifiers = np.array([1] * test) # len(spam_messages))
+    ham_classifiers = np.array([0] * test) # len(ham_messages))
     all_classifiers = np.concatenate((spam_classifiers, ham_classifiers))
 
     # printGPT4_Confusion(spam_messages, ham_messages, all_classifiers)
     # printROC_AUC_Perspective(spam_messages, ham_messages, all_classifiers)
-
+    printGPT3_Confusion(spam_messages[:test], ham_messages[:test], all_classifiers)
 
 if __name__ == '__main__':
     main()
