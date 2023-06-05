@@ -32,7 +32,11 @@ with open(token_path) as f:
     openai_key = tokens['openai_key']
 
 def csam_detector(message):
-    return ctc.content_check(unidecode(message), openai_org, openai_key)
+    result = ctc.content_check(unidecode(message), openai_org, openai_key)
+    if 'illegal' in result.lower():
+        return result
+    else:
+        return ''
 
 blacklisted_urls_path = 'blacklisted_sites.json'
 if not os.path.isfile(blacklisted_urls_path):
@@ -151,13 +155,13 @@ class ModBot(discord.Client):
                         await message.channel.send("This message was flagged as abusive material and removed.")
 
                     return
-
-        if (csam_detector(message.content)): # REPLACE in milestone 3 with image hashset or link list etc.
+        csam_evaluation = csam_detector(message.content)
+        if (len(csam_evaluation) != 0): 
             # await message.delete()
             mod_channel = self.mod_channels[message.guild.id]
             await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-            await mod_channel.send(f"Our CSAM detection tool has flagged {banned_user} due to detected CSAM. Is the above message CSAM?")
-            # TODO(sammym): finish this flow tomorrow
+            await mod_channel.send(f'Our systems have evaluated this message as inappropriate, with justification {csam_evaluation}.')
+            await mod_channel.send(f"Is the above message CSAM?")
             return
         
         # link blocking
