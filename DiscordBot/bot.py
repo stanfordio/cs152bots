@@ -162,15 +162,17 @@ class ModBot(discord.Client):
         # lowercase_message = english_message.lower()
         # return the result
         
-        # take message and convert everything to asccii
+        # take message and convert everything to ascii
         # convert to english
-        # thedn all to lower case
+        # then all to lower case
         ''''
         TODO: Once you know how you want to evaluate messages in your channel, 
         insert your code here! This will primarily be used in Milestone 3. 
         '''
         # return lowercase_message
-        return message
+        propaganda_score = classifier.evaluate(message) # placeholder
+        toxicity_score = perspective.evaluate(message) # placeholder
+        return message, propaganda_score, toxicity_score
     
     def code_format(self, text):
         ''''
@@ -178,7 +180,11 @@ class ModBot(discord.Client):
         evaluated, insert your code here for formatting the string to be 
         shown in the mod channel. 
         '''
-        return "Evaluated: '" + text+ "'"
+        message, propaganda_score, toxicity_score = text
+        reply =  "Evaluated: '" + message + "'\n"
+        reply += "Propaganda score: " + str(propaganda_score) + "\n"
+        reply += "Toxicity score:" + str(toxicity_score)
+        return reply
 
 
 client = ModBot()
