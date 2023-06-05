@@ -7,16 +7,18 @@ import logging
 import re
 import requests
 from report import Report
+from inform import Colloquialism
 import pdb
+import unidecode
 from unidecode import unidecode
 from google_trans_new import google_translator  
-import unidecode
-from translate import translate
+from google.cloud import translate_v2 as translate
+#from translate import translate
 import os
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'auth.json'
 
-from google.cloud import translate_v2 as translate
-import unidecode
+
+
 
 translate_client = translate.Client()
 
@@ -42,9 +44,10 @@ class ModBot(discord.Client):
         intents = discord.Intents.default()
         intents.message_content = True
         super().__init__(command_prefix='.', intents=intents)
-        self.group_num = None
+        self.group_num = 13
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
+        self.informs = {} # Map from user IDs to the state of their collouquialism informing
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -92,27 +95,114 @@ class ModBot(discord.Client):
         author_id = message.author.id
         responses = []
 
-        # Only respond to messages if they're part of a reporting flow
+        #respond to messages if they're part of a reporting flow OR the inform flow
         if author_id not in self.reports and not message.content.startswith(Report.START_KEYWORD):
             return
+        if author_id not in self.informs and not message.content.startswith(Colloquialism.START_KEYWORD):
+            return
 
-        # If we don't currently have an active report for this user, add one
+        # If we don't currently have an active report/inform for this user, add one
         if author_id not in self.reports:
-            self.reports[author_id] = Report(self)
+            self.reports[author_id] = Report(self, author_id,self.next_report_id)
+            self.report_id_to_author_id[self.next_report_id] = author_id
+            self.next_report_id += 1
+        
+        if author_id not in self.informs:
+            self.informs[author_id] = Colloquialism(self, author_id,self.next_inform_id)
+            self.inform_id_to_author_id[self.next_inform_id] = author_id
+            self.next_inform_id += 1
 
-        # Let the report class handle this message; forward all the messages it returns to uss
+        # Let the report/inform class handle this message; forward all the messages it returns to us
+        if not self.reports[author_id].mod_review:
+            responses = await self.reports[author_id].handle_message(message)
+            for r in responses:
+                await message.channel.send(r)
+
+            if self.reports[author_id].mod_review:
+                #initial mod flow
+                responses = await self.reports[author_id].mod_flow("")
+                mod_channel = self.mod_channels[self.reports[author_id].guild.id]
+                print(mod_channel.name)
+                for r in responses:
+                    await mod_channel.send(r)
+            self.reports[author_id] = Report(self)
+        
+        if not self.informs[author_id].mod_review:
+            responses = await self.informs[author_id].handle_message(message)
+            for r in responses:
+                await message.channel.send(r)
+
+            if self.informs[author_id].mod_review:
+                #initial mod flow
+                responses = await self.informs[author_id].mod_flow("")
+                mod_channel = self.mod_channels[self.informs[author_id].guild.id]
+                print(mod_channel.name)
+                for r in responses:
+                    await mod_channel.send(r)
+            self.informs[author_id] = Colloquialism(self)
+
+        # Let the report/inform class handle this message; forward all the messages it returns to us
         responses = await self.reports[author_id].handle_message(message)
         for r in responses:
             await message.channel.send(r)
 
-        # If the report is complete or cancelled, remove it from our map
+        responses = await self.informs[author_id].handle_message(message)
+        for r in responses:
+            await message.channel.send(r)
+
+        # If the report/inform is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():
             self.reports.pop(author_id)
+
+        if self.informs[author_id].inform_complete():
+            self.informs.pop(author_id)
+
+    async def handle_mod_channel_message(self, message):
+        # Only handle messages sent in the "group-13-mod" channel
+        if not message.channel.name == f'group-{self.group_num}-mod':
+            print(message.channel.name)
+            return
+
+        # Forward the message to the mod channel
+        mod_channel = message.channel
+
+        print("received")
+
+        match = re.match(r'^(\d+):', message.content)
+        if not match:
+            await mod_channel.send("Message must start with ```REPORT_ID:``` (ex: 3:1)")
+            return
+
+        report_id = int(match.group()[:-1])
+        author_id = self.report_id_to_author_id[report_id]
+
+        responses = await self.reports[author_id].mod_flow(message)
+        for r in responses:
+            await mod_channel.send(r)
+
 
     async def handle_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel
         if not message.channel.name == f'group-{self.group_num}':
             return
+
+        #Check if any words in the message are in the list of collouquialisms.txt file, and if so flag the message and send it to the mod channel
+        with open('collouquialisms.txt') as f:
+            collouquialisms = f.readlines()
+        collouquialisms = [x.strip() for x in collouquialisms]
+        coll_present = False
+        for word in message.content.split():
+            if word in collouquialisms:
+                coll_present = True
+                break
+        if coll_present:
+            mod_channel = self.mod_channels[message.guild.id]
+            await mod_channel.send(f'Collouquialism detected:\n{message.author.name}: "{message.content}"')
+            scores = self.eval_text(message.content)
+            await mod_channel.send(self.code_format(scores))
+            return
+        
+    
 
         # Forward the message to the mod channel
         mod_channel = self.mod_channels[message.guild.id]
@@ -126,6 +216,9 @@ class ModBot(discord.Client):
         response = translate_client.translate(ascii_message, target_language='en')
         english_message = response['translatedText']
         lowercase_message = english_message.lower()
+
+       
+
         return lowercase_message
     
     def code_format(self, text):
