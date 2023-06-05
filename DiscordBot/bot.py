@@ -56,7 +56,7 @@ class ModBot(discord.Client):
         self.group_num = 13
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
-        self.informs = {} # Map from user IDs to the state of their collouquialism informing
+        self.informs = {} # Map from user IDs to the state of their colloquialism informing
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -195,18 +195,18 @@ class ModBot(discord.Client):
         if not message.channel.name == f'group-{self.group_num}':
             return
 
-        #Check if any words in the message are in the list of collouquialisms.txt file, and if so flag the message and send it to the mod channel
-        with open('collouquialisms.txt') as f:
-            collouquialisms = f.readlines()
-        collouquialisms = [x.strip() for x in collouquialisms]
+        #Check if any words in the message are in the list of colloquialisms.txt file, and if so flag the message and send it to the mod channel
+        with open('colloquialisms.txt') as f:
+            colloquialisms = f.readlines()
+        colloquialisms = [x.strip() for x in colloquialisms]
         coll_present = False
         for word in message.content.split():
-            if word in collouquialisms:
+            if word in colloquialisms:
                 coll_present = True
                 break
         if coll_present:
             mod_channel = self.mod_channels[message.guild.id]
-            await mod_channel.send(f'Collouquialism detected:\n{message.author.name}: "{message.content}"')
+            await mod_channel.send(f'colloquialism detected:\n{message.author.name}: "{message.content}"')
             scores = self.eval_text(message.content)
             await mod_channel.send(self.code_format(scores))
             return
