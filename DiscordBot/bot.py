@@ -12,14 +12,24 @@ import pdb
 import unidecode
 from unidecode import unidecode
 from google_trans_new import google_translator  
-from google.cloud import translate_v2 as translate
-#from translate import translate
+import unidecode
+from translate import translate
+from googleapiclient import discovery
 import os
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'auth.json'
 
 
 
 
+import api_key
+API_KEY = api_key.get_key()
+perspective_client = discovery.build(
+    "commentanalyzer",
+    "v1alpha1",
+    developerKey=API_KEY,
+    discoveryServiceUrl="https://commentanalyzer.googleapis.com/$discovery/rest?version=v1alpha1",
+    static_discovery=False,
+)
 translate_client = translate.Client()
 
 # Set up logging to the console
@@ -37,7 +47,6 @@ with open(token_path) as f:
     # If you get an error here, it means your token is formatted incorrectly. Did you put it in quotes?
     tokens = json.load(f)
     discord_token = tokens['discord']
-
 
 class ModBot(discord.Client):
     def __init__(self): 
@@ -215,19 +224,36 @@ class ModBot(discord.Client):
         ascii_message = unidecode.unidecode(message)
         response = translate_client.translate(ascii_message, target_language='en')
         english_message = response['translatedText']
-        lowercase_message = english_message.lower()
+        processed_message = english_message.lower()
 
-       
+        # TODO: Justin, replace this with your classifier API
+        # propaganda_score = classifier.evaluate(processed_message) # placeholder
 
-        return lowercase_message
-    
+        analyze_request = {
+            'comment': {'text': processed_message},
+            'requestedAttributes': {'TOXICITY': {}}
+        }
+        response = perspective_client.comments().analyze(body=analyze_request).execute()
+        toxicity_score = response['attributeScores']['TOXICITY']['summaryScore']['value']
+
+        # return processed_message, propaganda_score, toxicity_score
+        return processed_message, 0.7, toxicity_score
+
     def code_format(self, text):
         ''''
         TODO: Once you know how you want to show that a message has been 
         evaluated, insert your code here for formatting the string to be 
         shown in the mod channel. 
         '''
-        return "Evaluated: '" + text+ "'"
+        message, propaganda_score, toxicity_score = text
+        reply =  "Evaluated: '" + message + "'\n"
+        reply += "Propaganda score: " + str(propaganda_score) + "\n"
+        if propaganda_score >= 0.5:
+            reply += """```This message could be misinformation!```"""
+        reply += "Toxicity score: " + str(toxicity_score)
+        if toxicity_score >= 0.5:
+            reply += """```\nThis message could be toxic!```"""
+        return reply
 
 
 client = ModBot()
