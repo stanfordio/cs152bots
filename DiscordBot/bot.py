@@ -11,6 +11,7 @@ import pdb
 from discord.ext import context
 from perspective import perspective_spam_prob
 from gpt4_response import gpt4_warning
+from moderation import Moderation_Flow
 
 NOT_SPAM_THRESH_HOLD = .5
 SPAM_THRESH_HOLD = .904
@@ -118,7 +119,9 @@ class ModBot(context.ContextClient, discord.Client):
         message = report.message
         mod_channel = self.mod_channels[message.guild.id]
         await mod_channel.send(report.print_report())
-        # TODO: Add buttons to moderation channel for banning and other stuff
+        mod_flow = Moderation_Flow(report.message, mod_channel)
+        mod_flow.handle_moderation_report()
+        
 
     async def check_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel
@@ -147,6 +150,9 @@ class ModBot(context.ContextClient, discord.Client):
             print_str += "Message: " + message.content + "\n"
             print_str += "Spam Score: " + str(spam_score) + "\n"
             await mod_channel.send(print_str)
+            mod_flow = Moderation_Flow(message, mod_channel, True)
+            mod_flow.handle_moderation_report()
+            
 
     def eval_text(self, message):
         content = message.content

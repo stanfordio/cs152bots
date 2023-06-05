@@ -1,16 +1,14 @@
 from enum import Enum, auto
 import discord
 
-class ReportType(Enum):
-    OTHER = auto()
-    SCAM = auto()
-    SPAM = auto()
-    CANCEL = auto()
+class ReportReliability(Enum):
+    GOOD = auto()
+    BAD = auto()
 
 # Here we give user different button options to identify the abuse type
-class ReportReason(discord.ui.View):
+class ReportIsReliable(discord.ui.View):
 
-    report_type: ReportType = ReportType.CANCEL
+    report_reliability: ReportReliability = None
 
     async def disable_all_items(self):
         for item in self.children:
@@ -21,30 +19,14 @@ class ReportReason(discord.ui.View):
         await self.message.channel.send("Timedout")
         await self.disable_all_items()
 
-    @discord.ui.button(label="Other", style=discord.ButtonStyle.blurple)
-    async def other_option(self, interaction, button):
-        await interaction.response.send_message("Taking you to the reporting flow for option other")
-        self.report_type = ReportType.OTHER
+    @discord.ui.button(label="Yes", style=discord.ButtonStyle.green)
+    async def yes_option(self, interaction, button):
+        self.report_reliability = ReportReliability.GOOD
         await self.disable_all_items()
         self.stop()
 
-    @discord.ui.button(label="Possible Scam", style=discord.ButtonStyle.blurple)
-    async def scam_option(self, interaction, button):
-        await interaction.response.send_message("Taking you to the reporting flow for Scam")
-        self.report_type = ReportType.SCAM
-        await self.disable_all_items()
-        self.stop()
-
-    @discord.ui.button(label="Spam", style=discord.ButtonStyle.blurple)
-    async def spam_option(self, interaction, button):
-        await interaction.response.send_message("Taking you to the reporting flow for spam")
-        self.report_type = ReportType.SPAM
-        await self.disable_all_items()
-        self.stop()
-
-    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.danger)
-    async def cancel_option(self, interaction, button):
-        await interaction.response.send_message("Leaving reporting flow")
-        self.report_type = ReportType.CANCEL
+    @discord.ui.button(label="No", style=discord.ButtonStyle.danger)
+    async def no_option(self, interaction, button):
+        self.report_reliability = ReportReliability.BAD
         await self.disable_all_items()
         self.stop()

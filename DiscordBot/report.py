@@ -178,7 +178,7 @@ class Report:
                 self.state = State.REPORT_CANCELED
             else:
                 self.report.impersonation = impersonator.impersonation_type
-                self.state == State.SPAM
+                self.state = State.SPAM
 
         if self.state == State.SPAM:
             await ctx.channel.send("Is this user asking you for something?")
