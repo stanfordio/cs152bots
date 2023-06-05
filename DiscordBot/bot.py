@@ -21,7 +21,7 @@ handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(me
 logger.addHandler(handler)
 
 # There should be a file called 'tokens.json' inside the same folder as this file
-token_path = 'tokens.json'
+token_path = 'tokens.json'  
 if not os.path.isfile(token_path):
     raise Exception(f"{token_path} not found!")
 with open(token_path) as f:
@@ -203,7 +203,6 @@ class ModBot(discord.Client):
                 await after.delete()
                 await after.author.send(f'Our CSAM detection tool has flagged your message: > {after.content} \n due to linking to known sources of CSAM. The message has been deleted.')
         
-
     def eval_text(self, message):
         ''''
         TODO: Once you know how you want to evaluate messages in your channel, 
