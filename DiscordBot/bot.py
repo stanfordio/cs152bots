@@ -2,7 +2,7 @@
 import discord
 from discord.ext import commands
 from unidecode import unidecode
-# import csam_text_classification as ctc
+import csam_text_classification as ctc
 # import csam_image_classifier as cic
 import os
 import json
@@ -243,10 +243,10 @@ class ModBot(discord.Client):
 
     async def on_message_edit(self, before, after):
         if before.content != after.content:
-            # if csam_detector(after.content):
-            #     await after.delete()
-            #     await self.mod_channels[after.guild.id].send(f"We have banned user {after.author.name}, reported to NCMEC and removed the content.")
-            #     return
+            if csam_detector(after.content):
+                await after.delete()
+                await self.mod_channels[after.guild.id].send(f"We have banned user {after.author.name}, reported to NCMEC and removed the content.")
+                return
             if (csam_link_detector(after.content)):
                 # await message.delete()
                 mod_channel = self.mod_channels[after.guild.id]
