@@ -1,0 +1,6 @@
+requests
+discord.py
+discord.ext.context
+openai
+google-api-python-client
+
