@@ -13,7 +13,7 @@ import unidecode
 from unidecode import unidecode
 from google_trans_new import google_translator  
 import unidecode
-from translate import translate
+from google.cloud import translate_v2 as translate
 from googleapiclient import discovery
 import os
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'auth.json'
@@ -22,8 +22,6 @@ from google.cloud import translate_v2 as translate
 translate_client = translate.Client()
 
 from inference import predict_propoganda
-
-
 
 
 import api_key
