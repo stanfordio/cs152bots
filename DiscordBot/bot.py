@@ -6,10 +6,14 @@ import json
 import logging
 import re
 import requests
-from report import Report
+from report import Report, ModerationRequest
 import pdb
 from discord.ext import context
+from perspective import perspective_spam_prob
+from gpt4_response import gpt4_warning
 
+NOT_SPAM_THRESH_HOLD = .5
+SPAM_THRESH_HOLD = .904
 # Set up logging to the console
 logger = logging.getLogger('discord')
 logger.setLevel(logging.DEBUG)
@@ -67,11 +71,10 @@ class ModBot(context.ContextClient, discord.Client):
             return
 
         # Check if this message was sent in a server ("guild") or if it's a DM
-        #if message.guild:
-            ##TODO: Get rid of this for now till we have automatic checking
-            #await self.handle_channel_message(message)
-        #else:
-        await self.handle_dm(message)
+        if message.guild:
+            await self.check_channel_message(message)
+        else:
+            await self.handle_dm(message)
 
     async def handle_dm(self, message):
         print("entering handle dm")
@@ -105,41 +108,46 @@ class ModBot(context.ContextClient, discord.Client):
         ## Let the report class handle this message
         report = await self.reports[author_id].handle_message(message)
 
-        # If the report is complete or cancelled, remove it from our map
-        #TODO: Send report in an easy to read format to our moderator channel
+        # If the report is complete we want to send it to our 
         if self.reports[author_id].report_complete():
-            # If the report is complete we want to send it to our 
             self.reports.pop(author_id)
-            await self.handle_channel_message(message)
+            await self.send_report_to_mod_channel(report)
 
-    async def handle_channel_message(self, message):
+    # Send report to moderation channel
+    async def send_report_to_mod_channel(self, report: ModerationRequest):
+        message = report.message
+        mod_channel = self.mod_channels[message.guild.id]
+        await mod_channel.send(report.print_report())
+
+    async def check_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel
         if not message.channel.name == f'group-{self.group_num}':
             return
 
-        # Forward the message to the mod channel
-        mod_channel = self.mod_channels[message.guild.id]
-        await mod_channel.send(f'The following message was reported for moderator review: \n{message.author.name}: "{message.content}"')
-        scores = self.eval_text(message.content)
-        await mod_channel.send(self.code_format(scores))
+        spam_score = self.eval_text(message)
 
-    
+        # if below threshold we can ignore the message
+        if spam_score < NOT_SPAM_THRESH_HOLD:
+            return
+
+        # Here we send the user a warning about why the message can be dangerous
+        warning = gpt4_warning(message.content) 
+        warning_message = "This message may be a possible scam. Take the following information into consideration: \n" + warning
+        await mod_channel.send(warning_message)
+
+        if spam_score > SPAM_THRESH_HOLD:
+            # Forward the message to the mod channel
+            mod_channel = self.mod_channels[message.guild.id]
+            print_str = "Automated Moderation Report:\n"
+            print_str += "Author: " + self.message.author.name + "\n"
+            print_str += "Message: " + self.message.content + "\n"
+            print_str += "Spam Score: " + str(self.score) + "\n"
+            await mod_channel.send(print_str)
+
     def eval_text(self, message):
-        ''''
-        TODO: Once you know how you want to evaluate messages in your channel, 
-        insert your code here! This will primarily be used in Milestone 3. 
-        '''
-        return message
-
-    
-    def code_format(self, text):
-        ''''
-        TODO: Once you know how you want to show that a message has been 
-        evaluated, insert your code here for formatting the string to be 
-        shown in the mod channel. 
-        '''
-        return "Please take immediate action against the user for the following message: '" + text+ "'"
-
+        content = message.content
+        spam_p = perspective_spam_prob(content)
+        return spam_p
 
 client = ModBot()
 client.run(discord_token)

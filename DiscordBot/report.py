@@ -10,18 +10,40 @@ from question_templates.possible_impersonation import PossibleImpersonation, IsI
 from message_util import next_message
 
 
-# TODO: Add logic to this class for keeping track of score
-#class ModerationRequest():
-    #block_or_mute: BlockOrMuteType = None
-    #scam_request: ScamRequestType = None
-    #report_type: ReportType = None
+class ModerationRequest():
+    block_or_mute: BlockOrMuteType = None
+    scam_request: ScamRequestType = None
+    impersonation: ImpersonationType = None
+    is_impersonating: IsImpersonation = None
+    report_type: ReportType = None
+    score: int = 0
 
-    #def __init__(self, message):
-        #self.message_author = message.author.name
-        #self.message_content = message.content
+    def __init__(self, message):
+        self.message = message
 
-    #def return_report():
+    def increment_score(self):
+        self.score += 1
+    
+    def print_report(self):
+        print_str = "Moderation Report:\n"
+        print_str += "Author: " + self.message.author.name + "\n"
+        print_str += "Message: " + self.message.content + "\n"
+        print_str += "Score: " + str(self.score) + "\n"
+        print_str += "Report Type: " + str(self.report_type) + "\n"
 
+        if self.block_or_mute:
+            print_str += "Block/Mute Type: " + str(self.block_or_mute) + "\n"
+
+        if self.scam_request:
+            print_str += "Scam Request Type: " + str(self.scam_request) + "\n"
+
+        if self.impersonation:
+            print_str += "Impersonation Type: " + str(self.impersonation) + "\n"
+
+        if self.is_impersonating:
+            print_str += "Is Impersonating: " + str(self.is_impersonating) + "\n"
+
+        return print_str
 class State(Enum):
     REPORT_START = auto()
     AWAITING_MESSAGE = auto()
@@ -42,6 +64,7 @@ class Report:
         self.state = State.REPORT_START
         self.client = client
         self.message = None
+        self.report = None
     
     async def handle_message(self, message):
         '''
@@ -78,7 +101,8 @@ class Report:
                     continue
                 try:
                     message = await channel.fetch_message(int(m.group(3)))
-                    #TODO: Add message to our report
+                    #TODO(: Add message to our report
+                    self.report = ModerationRequest(message)
                     await ctx.channel.send(''.join(["I found this message:", "```" + message.author.name + ": " + message.content + "```"]))
                     wait_for_message = False
                 except discord.errors.NotFound:
@@ -97,6 +121,9 @@ class Report:
             # Here we wait for the ReportReason class to wait for users button press
             await report_reason.wait()
 
+            # Update our internal report
+            self.report.report_type = report_reason.report_type
+
             if report_reason.report_type == None:
                 self.state = State.REPORT_CANCELED
             elif report_reason.report_type == ReportType.CANCEL:
@@ -105,6 +132,7 @@ class Report:
             elif report_reason.report_type == ReportType.OTHER:
                 self.state = State.BLOCK
             elif report_reason.report_type == ReportType.SCAM:
+                self.report.increment_score()
                 self.state = State.POSSIBLE_IMP
             elif report_reason.report_type == ReportType.SPAM:
                 self.state = State.SPAM
@@ -121,8 +149,11 @@ class Report:
             check_if_impersonation.message = msg
 
             await check_if_impersonation.wait()
+            
+            self.report.is_impersonating = check_if_impersonation.is_impersonating
 
             if  check_if_impersonation.is_impersonating == IsImpersonation.YES:
+                self.report.increment_score()
                 self.state = State.IMPERSONATION
             elif check_if_impersonation.is_impersonating == IsImpersonation.NO:
                 self.state = State.SPAM
@@ -146,7 +177,7 @@ class Report:
                 await ctx.channel.send("Report Canceled")
                 self.state = State.REPORT_CANCELED
             else:
-                # TODO: Add info to report
+                self.report.impersonation = impersonator.impersonation_type
                 self.state == State.SPAM
 
         if self.state == State.SPAM:
@@ -160,11 +191,16 @@ class Report:
 
             res = await checking_scam.wait()
 
+            self.report.scam_request = checking_scam.scam_type
+
             if checking_scam.scam_type == ScamRequestType.CANCEL:
                 await ctx.channel.send("Report Canceled")
                 self.state = State.REPORT_CANCELED
+            # User didn't ask for anything
+            elif checking_scam.scam_type == ScamRequestType.NONE:
+                self.state = State.BLOCK
             else:
-                # TODO: Add info to report
+                self.report.increment_score()
                 self.state = State.BLOCK
 
         if self.state == State.BLOCK:
@@ -182,12 +218,10 @@ class Report:
                 await ctx.channel.send("Report Canceled")
                 self.state = State.REPORT_CANCELED
             else:
-                #TODO: Add to report
+                self.report.block_or_mute = block_or_mute.requested_response_type
                 self.state = State.REPORT_COMPLETE
 
-
-        # TODO: Return our completed report class
-        return []
+        return self.report
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE or self.state == State.REPORT_CANCELED

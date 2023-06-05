@@ -14,7 +14,7 @@ class ScamRequestType(Enum):
 
 # Here we ask user if they want to block or mute user who sent them the message
 class CheckingScam(discord.ui.View):
-    scam_type: ScamRequestType = None
+    scam_type: ScamRequestType = ScamRequestType.CANCEL
     other_info: str = None
 
     async def disable_all_items(self):
@@ -56,7 +56,7 @@ class CheckingScam(discord.ui.View):
         self.stop()
 
     @discord.ui.button(label="No", style=discord.ButtonStyle.blurple)
-    async def pin_option(self, interaction, button):
+    async def no_option(self, interaction, button):
         await interaction.response.send_message("Adding background info to moderation queue item")
         self.scam_type = ScamRequestType.NONE
         await self.disable_all_items()
