@@ -22,7 +22,7 @@ class PossibleImpersonation(discord.ui.View):
         await self.disable_all_items()
 
 
-    @discord.ui.button(label="Yes", style=discord.ButtonStyle.burple)
+    @discord.ui.button(label="Yes", style=discord.ButtonStyle.blurple)
     async def yes_option(self, interaction, button):
         self.is_impersonating = IsImpersonation.YES
         await self.disable_all_items()

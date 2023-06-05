@@ -118,6 +118,7 @@ class ModBot(context.ContextClient, discord.Client):
         message = report.message
         mod_channel = self.mod_channels[message.guild.id]
         await mod_channel.send(report.print_report())
+        # TODO: Add buttons to moderation channel for banning and other stuff
 
     async def check_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel
@@ -130,23 +131,28 @@ class ModBot(context.ContextClient, discord.Client):
         if spam_score < NOT_SPAM_THRESH_HOLD:
             return
 
+        mod_channel = self.mod_channels[message.guild.id]
         # Here we send the user a warning about why the message can be dangerous
         warning = gpt4_warning(message.content) 
+        print("Finished generating gpt4 response")
         warning_message = "This message may be a possible scam. Take the following information into consideration: \n" + warning
-        await mod_channel.send(warning_message)
+        await message.channel.send(warning_message, reference=message)
+        print("warning message sending")
 
         if spam_score > SPAM_THRESH_HOLD:
             # Forward the message to the mod channel
             mod_channel = self.mod_channels[message.guild.id]
             print_str = "Automated Moderation Report:\n"
-            print_str += "Author: " + self.message.author.name + "\n"
-            print_str += "Message: " + self.message.content + "\n"
-            print_str += "Spam Score: " + str(self.score) + "\n"
+            print_str += "Author: " + message.author.name + "\n"
+            print_str += "Message: " + message.content + "\n"
+            print_str += "Spam Score: " + str(spam_score) + "\n"
             await mod_channel.send(print_str)
 
     def eval_text(self, message):
         content = message.content
-        spam_p = perspective_spam_prob(content)
+        print(content)
+        spam_p = float(perspective_spam_prob(content))
+        print("Checking message with spam score of: ", spam_p)
         return spam_p
 
 client = ModBot()

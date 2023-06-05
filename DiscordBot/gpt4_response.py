@@ -6,6 +6,7 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 openai.organization = os.getenv("OPENAI_ORGANIZATION")
 
 def gpt4_warning(sms):
+    #TODO: Do ten tries max
     gotAnswer = False
     while gotAnswer == False: 
         try:
@@ -20,6 +21,7 @@ def gpt4_warning(sms):
                     },
                     {"role": "user", "content": sms},
                 ],
+                max_tokens=100
             )
             gotAnswer = True
             
