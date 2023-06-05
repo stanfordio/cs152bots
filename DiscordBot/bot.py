@@ -58,7 +58,11 @@ class ModBot(discord.Client):
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
-        self.unresolved_reports = []
+
+        self.resolving_report = False
+        self.currentReports = []
+        # map URLs to Reports
+        self.unresolved_reports = {}
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -123,14 +127,15 @@ class ModBot(discord.Client):
 
         # If the report is complete or cancelled, remove it from our map
         # If the report is cancelled 
-        # if self.reports[author_id].report_cancelled():
-        #     self.reports.pop(author_id)
-        if self.reports[author_id].report_cancelled() or self.reports[author_id].report_complete():
+        if self.reports[author_id].report_cancelled():
+            self.reports.pop(author_id)
+        if self.reports[author_id].report_complete():
             abuse_report = self.reports[author_id].return_abuse_report()
             # send each string in the abuse report to the mod channel
             mod_channel = self.mod_channel
             abuse_report.append("\n\n")
-            await mod_channel.send(''.join(abuse_report))
+            abuse_report_mod_channel_message = await mod_channel.send(''.join(abuse_report))
+            self.unresolved_reports[abuse_report_mod_channel_message.jump_url] = self.reports[author_id]
             # for abuse_report_string in abuse_report:
             #     await mod_channel.send(abuse_report_string)
             self.reports.pop(author_id)
@@ -182,11 +187,11 @@ class ModBot(discord.Client):
 
         # if (message.content.lower() == "report"):
             # If we don't currently have an active report for this user, add one
-        if banned_user not in self.reports:
-            self.reports[banned_user] = ModReport(self)
-        elif self.reports[banned_user].report_complete():
-            self.reports.pop(banned_user)
-            self.reports[banned_user] = ModReport(self)
+        # if banned_user not in self.reports:
+        #     self.reports[banned_user] = ModReport(self)
+        # elif self.reports[banned_user].report_complete():
+        #     self.reports.pop(banned_user)
+        #     self.reports[banned_user] = ModReport(self)
 
             # #User Report Flow
             # responses = await self.reports[banned_user].handle_message(message)
@@ -194,19 +199,54 @@ class ModBot(discord.Client):
             #     await message.channel.send(r)
 
             #Moderator Report Handling
-        responses = await self.reports[banned_user].handle_mod_message(message)
-        # await self.mod_channels[message.guild.id].send(responses.join())
-        for r in responses:
-            await self.mod_channels[message.guild.id].send(r)
-            scores = self.eval_text(message.content)
-            await mod_channel.send(self.code_format(scores))
+        # only start mod reports when messages are sent in the mod channel
+        # Reports should be in format  
+        if message.channel.id == self.mod_channels[message.guild.id].id:
+            # # if "report" == message.content:
+
+            if "show" == message.content:
+                # print(self.unresolved_reports)
+                reply = ["Current Unresolved Reports:\n"]
+                reply.extend([f"{self.unresolved_reports[url].report_type}: {url}\n" for url in self.unresolved_reports.keys()])
+                if len(self.unresolved_reports) == 0:
+                    reply += ["No Unresolved Reports!"]
+                await self.mod_channels[message.guild.id].send(''.join(reply))
+                return
+            # print(message.reference)
+            if "report" == message.content:
+                if  not message.reference or not message.reference.jump_url or message.reference.jump_url not in self.unresolved_reports:
+                    await self.mod_channels[message.guild.id].send("Please reply a valid report message to begin resolving it.")
+                modReport = ModReport(self)
+                userReport = self.unresolved_reports[message.reference.jump_url]
+                original_user_report_message = await self.message_from_link(message.reference.jump_url)
+                self.currentReports = [original_user_report_message, modReport, userReport]
+                responses = await modReport.handle_mod_message(userReport.message)
+                # await self.mod_channels[message.guild.id].send(responses.join())
+                for r in responses:
+                    await self.mod_channels[message.guild.id].send(r)
+                    # scores = self.eval_text(userReport.message.content)
+                    self.resolving_report = True
+                    return
+                    # await self.mod_channels[message.guild.id].send(self.code_format(scores))
+                
+            if self.resolving_report and self.currentReports:
+                reportMsg, modReport, userReport = self.currentReports
+                responses = await modReport.handle_mod_message(message)
+                for r in responses:
+                    await self.mod_channels[message.guild.id].send(r)
+                if modReport.report_complete():
+                    await reportMsg.edit(content = reportMsg.content + "\n\n REPORT RESOLVED")
+                    self.unresolved_reports.pop(reportMsg.jump_url)
+                    self.resolving_report = False
+                    self.currentReports = []
+
 
     async def on_message_edit(self, before, after):
         if before.content != after.content:
-            if csam_detector(after.content):
-                await after.delete()
-                await self.mod_channels[after.guild.id].send(f"We have banned user {after.author.name}, reported to NCMEC and removed the content.")
-                return
+            # if csam_detector(after.content):
+            #     await after.delete()
+            #     await self.mod_channels[after.guild.id].send(f"We have banned user {after.author.name}, reported to NCMEC and removed the content.")
+            #     return
             if (csam_link_detector(after.content)):
                 # await message.delete()
                 mod_channel = self.mod_channels[after.guild.id]
@@ -230,6 +270,23 @@ class ModBot(discord.Client):
         shown in the mod channel. 
         '''
         return "Evaluated: '" + text+ "'"
+    
+    async def message_from_link(self, message):
+            m = re.search('/(\d+)/(\d+)/(\d+)', message)
+            if not m:
+                return ["I'm sorry, I couldn't read that link. Please try again or say `cancel` to cancel."]
+            guild = self.get_guild(int(m.group(1)))
+            if not guild:
+                return ["I cannot accept reports of messages from guilds that I'm not in. Please have the guild owner add me to the guild and try again."]
+            channel = guild.get_channel(int(m.group(2)))
+            if not channel:
+                return ["It seems this channel was deleted or never existed. Please try again or say `cancel` to cancel."]
+            try:
+                message = await channel.fetch_message(int(m.group(3)))
+            except discord.errors.NotFound:
+                return ["It seems this message was deleted or never existed. Please try again or say `cancel` to cancel."]
+            
+            return message
 
 
 bot = ModBot()

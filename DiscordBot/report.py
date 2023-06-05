@@ -497,6 +497,7 @@ class ModReport:
                     reply += "and banned this user. The content has been removed."
                     if (self.original_message is not None):
                         await self.original_message.delete()
+                        await self.original_message.author.send(f"We have deleted your message: \n >{self.original_message.content}\nin {self.original_message.guild} for violating our policies on CSAM. You have been kicked from the server.")
                     return [reply]
                 else:
                     self.stage = -1
