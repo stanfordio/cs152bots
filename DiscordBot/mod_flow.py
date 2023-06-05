@@ -82,7 +82,7 @@ def spam_report(completed_report, list_of_reports_against_user):
     elif is_spam and spam_count < 3:
         return 'SUSPEND', "Your account has been suspended due to reports of spam messages. ", MED_PRI
     else:
-        return 'NO ACTION', , ": We did not find this message to be abusive. " \
+        return 'NO ACTION', ": We did not find this message to be abusive. " \
                           "Please contact us if you think we made a mistake.", LOW_PRI
 
 

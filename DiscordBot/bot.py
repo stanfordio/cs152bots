@@ -66,7 +66,7 @@ def harassment_report(completed_report, list_of_reports_against_user):
         if Report.HARASSMENT in report.reported_issues:
             harrassment_count += 1
 
-    if is_harrassment and harassment_count < 3:
+    if is_harrassment and harrassment_count < 3:
         'SUSPEND', "Your message was marked as harmful, you have been suspended " \
                           "for 15 days. Please contact us if you think we made a mistake.", MED_PRI
     elif harrassment_count >= 3 and is_harrassment:  # many reports of harassment
@@ -419,11 +419,9 @@ class ModBot(discord.Client):
             url, money = self.eval_text(message.content)
             # TO-DO figure out how we want to use different and make report
             if url:
-                severity = 2
-                #self.manual_check_queue.put((severity, next(self.unique), completed_report))
+                await message.channel.send("Beware of the links posted in this chat! We cannot guarantee their safety and do not recommend clicking external links.")
             if money:
-                severity = 3
-                #self.manual_check_queue.put((severity, next(self.unique), completed_report))
+                 await message.channel.send("We have detected a request for money in the previous messages. Beware of fraud, and please report this message if you suspect this person of fraud.")
             #await mod_channel.send(self.code_format(scores))
 
         if message.channel.id == self.mod_channels[message.guild.id].id:
