@@ -18,6 +18,10 @@ from googleapiclient import discovery
 import os
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'auth.json'
 
+from google.cloud import translate_v2 as translate
+translate_client = translate.Client()
+
+
 
 
 
@@ -30,7 +34,7 @@ perspective_client = discovery.build(
     discoveryServiceUrl="https://commentanalyzer.googleapis.com/$discovery/rest?version=v1alpha1",
     static_discovery=False,
 )
-translate_client = translate.Client()
+# translate_client = translate.Client()
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
