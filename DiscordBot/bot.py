@@ -152,37 +152,39 @@ class ModBot(discord.Client):
         banned_user = message.author.name
         # For now we are going to use this as a placeholder until Milestone 3. 
         # check if the message contains images
-        if (message.attachments):
-            for attachment in message.attachments:
-                if (cic.image_classifier(attachment.url)):
-                    mod_channel = self.mod_channels[message.guild.id]
-                    await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{attachment.url}"')
-                    await mod_channel.send(f"Our CSAM detection tool has flagged {banned_user} due to detected CSAM. Is the above message CSAM?")
-                    # remove the message from the channel and reply to the message privately saying "this message was flagged as abusive material and removed."
-                    await message.delete()
-                    try:
-                        await message.author.send("This message was flagged as abusive material and removed.")
-                    except:
-                        await message.channel.send("This message was flagged as abusive material and removed.")
+        # CHECKS FOR NON MOD CHANNELS:
+        if message.channel.id != self.mod_channels[message.guild.id].id:
+            if (message.attachments):
+                for attachment in message.attachments:
+                    if (cic.image_classifier(attachment.url)):
+                        mod_channel = self.mod_channels[message.guild.id]
+                        await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{attachment.url}"')
+                        await mod_channel.send(f"Our CSAM detection tool has flagged {banned_user} due to detected CSAM. Is the above message CSAM?")
+                        # remove the message from the channel and reply to the message privately saying "this message was flagged as abusive material and removed."
+                        await message.delete()
+                        try:
+                            await message.author.send("This message was flagged as abusive material and removed.")
+                        except:
+                            await message.channel.send("This message was flagged as abusive material and removed.")
 
-                    return
-        csam_evaluation = csam_detector(message.content)
-        if (len(csam_evaluation) != 0): 
-            # await message.delete()
-            mod_channel = self.mod_channels[message.guild.id]
-            await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-            await mod_channel.send(f'Our systems have evaluated this message as inappropriate, with justification {csam_evaluation}.')
-            await mod_channel.send(f"Is the above message CSAM?")
-            return
-        
-        # link blocking
-        if (csam_link_detector(message.content)):
-            mod_channel = self.mod_channels[message.guild.id]
-            await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-            await mod_channel.send(f"Our CSAM detection tool has flagged {banned_user} due to linking to known sources of CSAM. The message has been deleted.")
-            await message.delete()
-            await message.author.send(f'Our CSAM detection tool has flagged your message: \n > {message.content} \n due to linking to known sources of CSAM. The message has been deleted.')
-            return
+                        return
+            csam_evaluation = csam_detector(message.content)
+            if (len(csam_evaluation) != 0): 
+                # await message.delete()
+                mod_channel = self.mod_channels[message.guild.id]
+                await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
+                await mod_channel.send(f'Our systems have evaluated this message as inappropriate, with justification {csam_evaluation}.')
+                await mod_channel.send(f"Is the above message CSAM?")
+                return
+            
+            # link blocking
+            if (csam_link_detector(message.content)):
+                mod_channel = self.mod_channels[message.guild.id]
+                await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
+                await mod_channel.send(f"Our CSAM detection tool has flagged {banned_user} due to linking to known sources of CSAM. The message has been deleted.")
+                await message.delete()
+                await message.author.send(f'Our CSAM detection tool has flagged your message: \n > {message.content} \n due to linking to known sources of CSAM. The message has been deleted.')
+                return
         
 
         # if (message.content.lower() == "report"):
@@ -228,9 +230,20 @@ class ModBot(discord.Client):
                     self.resolving_report = True
                     return
                     # await self.mod_channels[message.guild.id].send(self.code_format(scores))
-                
+            if "cancel" == message.content:
+                self.resolving_report = False
+                if self.currentReports:
+                    reportMsg, modReport, userReport = self.currentReports
+                    await self.mod_channels[message.guild.id].send(f"Canceled resolving report: {reportMsg.jump_url}")
+                self.currentReports = []
+                return
             if self.resolving_report and self.currentReports:
                 reportMsg, modReport, userReport = self.currentReports
+                # if not modReport.report_complete() and message == "cancel":
+                #     self.resolving_report = False
+                #     self.currentReports = []
+                #     await self.mod_channels[message.guild.id].send(f"Canceled resolving report: {reportMsg.jump_url}")
+                #     return
                 responses = await modReport.handle_mod_message(message)
                 for r in responses:
                     await self.mod_channels[message.guild.id].send(r)

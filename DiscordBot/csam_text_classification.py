@@ -53,7 +53,7 @@ def content_check(message, org, api_key):
         response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=refined_system_prompt + [{"role": "user", "content": message}])
         print(response)
         output = response['choices'][0]['message']['content']
-        return output == "illegal"
+        return 'illegal' in output.lower()
     except openai.error.AuthenticationError as e:
         print("OpenAI unknown authentication error")
         print(e.json_body)
