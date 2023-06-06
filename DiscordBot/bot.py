@@ -3,7 +3,7 @@ import discord
 from discord.ext import commands
 from unidecode import unidecode
 import csam_text_classification as ctc
-# import csam_image_classifier as cic
+import csam_image_classifier as cic
 import os
 import json
 import logging
@@ -216,8 +216,9 @@ class ModBot(discord.Client):
                 return
             # print(message.reference)
             if "report" == message.content:
-                if  not message.reference or not message.reference.jump_url or message.reference.jump_url not in self.unresolved_reports:
+                if not message.reference or not message.reference.jump_url or message.reference.jump_url not in self.unresolved_reports:
                     await self.mod_channels[message.guild.id].send("Please reply a valid report message to begin resolving it.")
+                    return
                 modReport = ModReport(self)
                 userReport = self.unresolved_reports[message.reference.jump_url]
                 original_user_report_message = await self.message_from_link(message.reference.jump_url)
@@ -228,7 +229,7 @@ class ModBot(discord.Client):
                     await self.mod_channels[message.guild.id].send(r)
                     # scores = self.eval_text(userReport.message.content)
                     self.resolving_report = True
-                    return
+                return
                     # await self.mod_channels[message.guild.id].send(self.code_format(scores))
             if "cancel" == message.content:
                 self.resolving_report = False
@@ -239,11 +240,11 @@ class ModBot(discord.Client):
                 return
             if self.resolving_report and self.currentReports:
                 reportMsg, modReport, userReport = self.currentReports
-                # if not modReport.report_complete() and message == "cancel":
-                #     self.resolving_report = False
-                #     self.currentReports = []
-                #     await self.mod_channels[message.guild.id].send(f"Canceled resolving report: {reportMsg.jump_url}")
-                #     return
+                if not modReport.report_complete() and message == "cancel":
+                    self.resolving_report = False
+                    self.currentReports = []
+                    await self.mod_channels[message.guild.id].send(f"Canceled resolving report: {reportMsg.jump_url}")
+                    return
                 responses = await modReport.handle_mod_message(message)
                 for r in responses:
                     await self.mod_channels[message.guild.id].send(r)
@@ -256,10 +257,10 @@ class ModBot(discord.Client):
 
     async def on_message_edit(self, before, after):
         if before.content != after.content:
-            if csam_detector(after.content):
-                await after.delete()
-                await self.mod_channels[after.guild.id].send(f"We have banned user {after.author.name}, reported to NCMEC and removed the content.")
-                return
+            # if csam_detector(after.content):
+            #     await after.delete()
+            #     await self.mod_channels[after.guild.id].send(f"We have banned user {after.author.name}, reported to NCMEC and removed the content.")
+            #     return
             if (csam_link_detector(after.content)):
                 # await message.delete()
                 mod_channel = self.mod_channels[after.guild.id]
