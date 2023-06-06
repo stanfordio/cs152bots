@@ -137,12 +137,12 @@ class ModBot(discord.Client):
                     print(mod_channel.name)
                     for r in responses:
                         await mod_channel.send(r)
-                self.reports[author_id] = Report(self)
+                #self.reports[author_id] = Report(self)
             
             # Let the report/inform class handle this message; forward all the messages it returns to us
-            responses = await self.reports[author_id].handle_message(message)
-            for r in responses:
-                await message.channel.send(r)
+            #responses = await self.reports[author_id].handle_message(message)
+            #for r in responses:
+            #    await message.channel.send(r)
 
             # If the report/inform is complete or cancelled, remove it from our map
             if self.reports[author_id].report_complete():
@@ -173,11 +173,11 @@ class ModBot(discord.Client):
                     print(mod_channel.name)
                     for r in responses:
                         await mod_channel.send(r)
-                self.informs[author_id] = Colloquialism(self)
+                #self.informs[author_id] = Colloquialism(self)
 
-            responses = await self.informs[author_id].handle_message(message)
-            for r in responses:
-                await message.channel.send(r)
+            #responses = await self.informs[author_id].handle_message(message)
+            #for r in responses:
+            #    await message.channel.send(r)
 
 
             if self.informs[author_id].inform_complete():
