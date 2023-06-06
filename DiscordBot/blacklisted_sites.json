@@ -1,12 +1,10 @@
 {
-    "urls": [
-        {
-            "url": "https://en.wikipedia.org/wiki/Kitten",
-            "alias": ["Wikipedia"]
-        },
-        {
-            "url": "https://www.xyz.com",
-            "alias": ["xyz", "xyz.com", "www.xyz.com"]
-        }
+    "https://en.wikipedia.org/wiki/Kitten": [
+        "Wikipedia"
+    ],
+    "https://www.xyz.com": [
+        "xyz",
+        "xyz.com",
+        "www.xyz.com"
     ]
 }

@@ -12,6 +12,16 @@ import requests
 from report import Report, ModReport
 import pdb
 
+# REFERENCE: https://stackoverflow.com/questions/7160737/how-to-validate-a-url-in-python-malformed-or-not
+import re
+regex = re.compile(
+        r'^(?:http|ftp)s?://' # http:// or https://
+        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|' #domain...
+        r'localhost|' #localhost...
+        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})' # ...or ip
+        r'(?::\d+)?' # optional port
+        r'(?:/?|[/?]\S+)$', re.IGNORECASE)
+
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -38,16 +48,9 @@ def csam_detector(message):
     else:
         return ''
 
-blacklisted_urls_path = 'blacklisted_sites.json'
-if not os.path.isfile(blacklisted_urls_path):
-    raise Exception(f"{blacklisted_urls_path} not found!")
-with open(blacklisted_urls_path) as f:
-    urls = json.load(f)
-    blacklisted_urls = urls['urls']
-
-def csam_link_detector(message):
+def csam_link_detector(modBot, message):
     # print(urls)
-    return any([url["url"] in message or any([alias in message for alias in url["alias"]]) for url in blacklisted_urls])
+    return any([url in message or any([alias in message for alias in modBot.blacklisted_urls[url]]) for url in modBot.blacklisted_urls])
 
 
 class ModBot(discord.Client):
@@ -58,11 +61,22 @@ class ModBot(discord.Client):
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
+        self.unresolved_reports = {}
 
         self.resolving_report = False
         self.currentReports = []
+        self.adding_link_stage = 0
         # map URLs to Reports
-        self.unresolved_reports = {}
+        self.blacklisted_urls_path = 'blacklisted_sites.json'
+
+        self.blacklisted_urls = {}
+        if not os.path.isfile(self.blacklisted_urls_path):
+            raise Exception(f"{self.blacklisted_urls_path} not found!")
+        with open(self.blacklisted_urls_path) as f:
+            self.blacklisted_urls = json.load(f)
+            # self.blacklisted_urls = urls['urls']
+
+        self.added_link = None
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -179,7 +193,7 @@ class ModBot(discord.Client):
                 return
             
             # link blocking
-            if (csam_link_detector(message.content)):
+            if (csam_link_detector(self, message.content)):
                 mod_channel = self.mod_channels[message.guild.id]
                 await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
                 await mod_channel.send(f"Our CSAM detection tool has flagged {banned_user} due to linking to known sources of CSAM. The message has been deleted.")
@@ -207,6 +221,17 @@ class ModBot(discord.Client):
         if message.channel.id == self.mod_channels[message.guild.id].id:
             # # if "report" == message.content:
 
+            # Handle a help message
+            if message.content == Report.HELP_KEYWORD:
+                reply =  "Use the `report` command in reply to a valid (and unresolved) user report to begin the process of resolving a report.\n"
+                reply += "Use the `cancel` command to cancel the report resolution or link adding process.\n"
+                reply += "Use the `show` command to show all unresolved user reports\n"
+                reply += "Use the `add link` command to add a link to the blocklist\n"
+                reply += "Use the `view blocked links` to view all blocked links.\n"
+
+                await message.channel.send(reply)
+                return
+            
             if "show" == message.content:
                 # print(self.unresolved_reports)
                 reply = ["Current Unresolved Reports:\n"]
@@ -233,12 +258,50 @@ class ModBot(discord.Client):
                 return
                     # await self.mod_channels[message.guild.id].send(self.code_format(scores))
             if "cancel" == message.content:
+                if self.adding_link_stage > 0:
+                    # if self.adding_link_stage == 1:
+                    if self.adding_link_stage ==2:
+                        self.blacklisted_urls.pop(self.added)
+                    self.adding_link_stage = 0
+                    await self.mod_channels[message.guild.id].send(f"Process to block link cancelled.")
+                    return
                 self.resolving_report = False
                 if self.currentReports:
                     reportMsg, modReport, userReport = self.currentReports
                     await self.mod_channels[message.guild.id].send(f"Canceled resolving report: {reportMsg.jump_url}")
                 self.currentReports = []
                 return
+            
+            if "add link" == message.content and self.adding_link_stage == 0:
+                self.adding_link_stage = 1
+                await self.mod_channels[message.guild.id].send(f"Enter URL to block.")
+                return 
+            if self.adding_link_stage == 1:
+                if re.match(regex, message.content):
+                    self.blacklisted_urls[message.content] = []
+                    self.adding_link_stage = 2
+                    self.added_link = message.content
+                    await self.mod_channels[message.guild.id].send(f"Enter aliases for this URL, separated by commas with no spaces.")
+                    return
+                else:
+                    await self.mod_channels[message.guild.id].send(f"Invalid input. Enter a valid URL or `cancel` to stop the process.")
+                    return
+            if self.adding_link_stage == 2:
+                self.blacklisted_urls[self.added_link] = message.content.split(',')
+                await self.mod_channels[message.guild.id].send(f"URL and aliases added to the blacklist. \n URL: {self.added_link} \nAliases: {message.content.split(',')}")
+                json_object = json.dumps(self.blacklisted_urls, indent=4)
+                with open(self.blacklisted_urls_path, "w") as outfile:
+                    outfile.write(json_object)
+                self.adding_link_stage = 0
+                self.added_link = None
+                return
+
+            if "view blocked links" == message.content:
+                formatted = [f"URL: {url} \nAliases: {self.blacklisted_urls[url]}" for url in self.blacklisted_urls]
+                separator = '\n\n'
+                await self.mod_channels[message.guild.id].send(f"*Blocked links*:\n\n {separator.join(formatted)}")
+                return
+            
             if self.resolving_report and self.currentReports:
                 reportMsg, modReport, userReport = self.currentReports
                 if not modReport.report_complete() and message == "cancel":
@@ -262,7 +325,7 @@ class ModBot(discord.Client):
             #     await after.delete()
             #     await self.mod_channels[after.guild.id].send(f"We have banned user {after.author.name}, reported to NCMEC and removed the content.")
             #     return
-            if (csam_link_detector(after.content)):
+            if (csam_link_detector(self, after.content)):
                 # await message.delete()
                 mod_channel = self.mod_channels[after.guild.id]
                 await mod_channel.send(f'Forwarded message:\n{after.author.name}: "{after.content}"')
