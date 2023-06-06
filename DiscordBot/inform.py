@@ -68,7 +68,7 @@ class Colloquialism:
 
         if message.content == self.CANCEL_KEYWORD:
             self.state = Inform_State.INFORM_COMPLETE
-            return ["Report cancelled."]
+            return ["Inform cancelled."]
         
         if self.state == Inform_State.INFORM_START:
             reply =  "Thank you for starting the colloquialism informing process. "
@@ -109,6 +109,7 @@ class Colloquialism:
             self.guild = guild
             reply = "I found this message:" + "```" + message.author.name + ": " + message.content + "```"
             reply += "If this is correct, please input 1. Otherwise, please input 2.\n"
+            self.state = Inform_State.CONFIRMING_FIRST_EXAMPLE
             return [reply]
         
         if self.state == Inform_State.CONFIRMING_FIRST_EXAMPLE:
@@ -144,6 +145,7 @@ class Colloquialism:
             self.guild = guild
             reply = "I found this message:" + "```" + message.author.name + ": " + message.content + "```"
             reply += "If this is correct, please input 1. Otherwise, please input 2.\n"
+            self.state = Inform_State.CONFIRMING_SECOND_EXAMPLE
             return [reply]
         
         if self.state == Inform_State.CONFIRMING_SECOND_EXAMPLE:
@@ -179,6 +181,7 @@ class Colloquialism:
             self.guild = guild
             reply = "I found this message:" + "```" + message.author.name + ": " + message.content + "```"
             reply += "If this is correct, please input 1. Otherwise, please input 2.\n"
+            self.state = Inform_State.CONFIRMING_THIRD_EXAMPLE
             return [reply]
         
         if self.state == Inform_State.CONFIRMING_THIRD_EXAMPLE:
