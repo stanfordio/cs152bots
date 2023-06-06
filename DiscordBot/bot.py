@@ -174,7 +174,8 @@ class ModBot(discord.Client):
                 mod_channel = self.mod_channels[message.guild.id]
                 await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
                 await mod_channel.send(f'Our systems have evaluated this message as inappropriate, with justification {csam_evaluation}.')
-                await mod_channel.send(f"Is the above message CSAM?")
+                await message.delete()
+                await message.author.send(f'Our CSAM detection tool has flagged your message: \n > {message.content} \n due to containing kitten references. The message has been deleted.')
                 return
             
             # link blocking
