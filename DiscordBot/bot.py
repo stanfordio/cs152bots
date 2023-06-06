@@ -136,9 +136,10 @@ class ModBot(context.ContextClient, discord.Client):
 
         mod_channel = self.mod_channels[message.guild.id]
         # Here we send the user a warning about why the message can be dangerous
-        warning = gpt4_warning(message.content) 
+        # TODO: change this back
+        # warning = gpt4_warning(message.content) 
         print("Finished generating gpt4 response")
-        warning_message = "This message may be a possible scam. Take the following information into consideration: \n" + warning
+        warning_message = "This message may be a possible scam. Take the following information into consideration: \n" #+ warning
         await message.channel.send(warning_message, reference=message)
         print("warning message sending")
 
@@ -151,7 +152,7 @@ class ModBot(context.ContextClient, discord.Client):
             print_str += "Spam Score: " + str(spam_score) + "\n"
             await mod_channel.send(print_str)
             mod_flow = Moderation_Flow(message, mod_channel, True)
-            mod_flow.handle_moderation_report()
+            await mod_flow.handle_moderation_report()
             
 
     def eval_text(self, message):

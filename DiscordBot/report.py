@@ -84,7 +84,7 @@ class Report:
             while (wait_for_message):
                 msg = await next_message()
                 if not msg or msg.content == self.CANCEL_KEYWORD:
-                    self.state == self.CANCEL_KEYWORD
+                    self.state = self.CANCEL_KEYWORD
                     return
                 # Parse out the three ID strings from the message link
                 m = re.search('/(\d+)/(\d+)/(\d+)', msg.content)
@@ -226,7 +226,7 @@ class Report:
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE or self.state == State.REPORT_CANCELED
 
-    def report_cancled(self):
+    def report_canceled(self):
         return self.state == State.REPORT_CANCELED
     
 

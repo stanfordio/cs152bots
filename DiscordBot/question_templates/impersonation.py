@@ -10,6 +10,7 @@ class ImpersonationType(Enum):
     OTHER = auto()
     NEVERMIND = auto()
     CANCEL = auto()
+    DEFAULT = auto()
 
 # Here we give user different button options to identify the abuse type
 class Impersonation(discord.ui.View):
@@ -23,7 +24,7 @@ class Impersonation(discord.ui.View):
         await self.message.edit(view=self)
 
     async def on_timeout(self) -> None:
-        await self.message.channel.send("Timedout")
+        await self.message.channel.send("Timed out")
         await self.disable_all_items()
 
     async def get_additional_info(self):
