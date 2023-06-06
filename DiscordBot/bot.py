@@ -40,6 +40,8 @@ class ModBot(discord.Client):
         self.curr_report_idx = None
         self.warned_users = set()  # Set of users who have been warned for adult nudity
         self.report_table = dict([("sample.comment.url", dict([(cityhash.CityHash128("this is a sample comment"), "dummy-result")]))])
+        self.reporter_table = {}
+        self.reportee_table = {}
 
 
     def in_report_table(self, report):
@@ -65,6 +67,22 @@ class ModBot(discord.Client):
             return None
         return self.report_table[report.link][cityhash.CityHash128(report.state)]
 
+    # reporter table structure: {string user : [int good, int bad]}, ex: {emilyc02 : [1, 0], stilakid: [3, 1]}
+    # good/bad are 1 if adding to good/bad report count, 0 if not
+    def update_reporter(self, user, good, bad):
+        if user in self.reporter_table:
+            self.reporter_table.update({user : [self.reporter_table[user][0] + good, self.reporter_table[user][1] + bad]})
+        else:
+            self.reporter_table[user] = [good, bad]
+    
+    # reporter table structure: {string user : [{dict comment: int reports}, int warned]}
+    # warned is 1 if adding warning, 0 if not
+    def update_reportee(self, user, comment_url, warned):
+        if user in self.reportee_table:
+            if warned:
+                self.reportee_table[user][1] += warned
+            if comment_url:
+                self.reportee_table[user][0][comment_url] = self.reportee_table[user][0].get(comment_url, 0) + 1
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
