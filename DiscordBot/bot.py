@@ -60,6 +60,10 @@ class ModBot(discord.Client):
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
         self.informs = {} # Map from user IDs to the state of their colloquialism informing
+        self.report_id_to_author_id = {}
+        self.next_report_id = 1
+        self.inform_id_to_author_id = {}
+        self.next_inform_id = 1
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
