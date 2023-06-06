@@ -109,73 +109,75 @@ class ModBot(discord.Client):
 
         #respond to messages if they're part of a reporting flow OR the inform flow
         
-        if author_id not in self.reports and not message.content.startswith(Report.START_KEYWORD):
-            return
         
-        # If we don't currently have an active report/inform for this user, add one
-        if author_id not in self.reports:
-            self.reports[author_id] = Report(self, author_id,self.next_report_id)
-            self.report_id_to_author_id[self.next_report_id] = author_id
-            self.next_report_id += 1
+        if author_id in self.reports or message.content.startswith(Report.START_KEYWORD):
+            if author_id not in self.reports and not message.content.startswith(Report.START_KEYWORD):
+                return
+            
+            # If we don't currently have an active report/inform for this user, add one
+            if author_id not in self.reports:
+                self.reports[author_id] = Report(self, author_id,self.next_report_id)
+                self.report_id_to_author_id[self.next_report_id] = author_id
+                self.next_report_id += 1
 
-        # Let the report/inform class handle this message; forward all the messages it returns to us
-        if not self.reports[author_id].mod_review:
+            # Let the report/inform class handle this message; forward all the messages it returns to us
+            if not self.reports[author_id].mod_review:
+                responses = await self.reports[author_id].handle_message(message)
+                for r in responses:
+                    await message.channel.send(r)
+
+                if self.reports[author_id].mod_review:
+                    #initial mod flow
+                    responses = await self.reports[author_id].mod_flow("")
+                    mod_channel = self.mod_channels[self.reports[author_id].guild.id]
+                    print(mod_channel.name)
+                    for r in responses:
+                        await mod_channel.send(r)
+                self.reports[author_id] = Report(self)
+            
+            # Let the report/inform class handle this message; forward all the messages it returns to us
             responses = await self.reports[author_id].handle_message(message)
             for r in responses:
                 await message.channel.send(r)
 
-            if self.reports[author_id].mod_review:
-                #initial mod flow
-                responses = await self.reports[author_id].mod_flow("")
-                mod_channel = self.mod_channels[self.reports[author_id].guild.id]
-                print(mod_channel.name)
-                for r in responses:
-                    await mod_channel.send(r)
-            self.reports[author_id] = Report(self)
-        
-        # Let the report/inform class handle this message; forward all the messages it returns to us
-        responses = await self.reports[author_id].handle_message(message)
-        for r in responses:
-            await message.channel.send(r)
-
-        # If the report/inform is complete or cancelled, remove it from our map
-        if self.reports[author_id].report_complete():
-            self.reports.pop(author_id)
+            # If the report/inform is complete or cancelled, remove it from our map
+            if self.reports[author_id].report_complete():
+                self.reports.pop(author_id)
 
 
 
         #inform block
+        if author_id in self.informs or message.content.startswith(Colloquialism.START_KEYWORD):
+            if author_id not in self.informs and not message.content.startswith(Colloquialism.START_KEYWORD):
+                return
+            
+            if author_id not in self.informs:
+                self.informs[author_id] = Colloquialism(self, author_id,self.next_inform_id)
+                self.inform_id_to_author_id[self.next_inform_id] = author_id
+                self.next_inform_id += 1
 
-        if author_id not in self.informs and not message.content.startswith(Colloquialism.START_KEYWORD):
-            return
-        
-        if author_id not in self.informs:
-            self.informs[author_id] = Colloquialism(self, author_id,self.next_inform_id)
-            self.inform_id_to_author_id[self.next_inform_id] = author_id
-            self.next_inform_id += 1
 
+            if not self.informs[author_id].mod_review:
+                responses = await self.informs[author_id].handle_message(message)
+                for r in responses:
+                    await message.channel.send(r)
 
-        if not self.informs[author_id].mod_review:
+                if self.informs[author_id].mod_review:
+                    #initial mod flow
+                    responses = await self.informs[author_id].mod_flow("")
+                    mod_channel = self.mod_channels[self.informs[author_id].guild.id]
+                    print(mod_channel.name)
+                    for r in responses:
+                        await mod_channel.send(r)
+                self.informs[author_id] = Colloquialism(self)
+
             responses = await self.informs[author_id].handle_message(message)
             for r in responses:
                 await message.channel.send(r)
 
-            if self.informs[author_id].mod_review:
-                #initial mod flow
-                responses = await self.informs[author_id].mod_flow("")
-                mod_channel = self.mod_channels[self.informs[author_id].guild.id]
-                print(mod_channel.name)
-                for r in responses:
-                    await mod_channel.send(r)
-            self.informs[author_id] = Colloquialism(self)
 
-        responses = await self.informs[author_id].handle_message(message)
-        for r in responses:
-            await message.channel.send(r)
-
-
-        if self.informs[author_id].inform_complete():
-            self.informs.pop(author_id)
+            if self.informs[author_id].inform_complete():
+                self.informs.pop(author_id)
 
     async def handle_mod_channel_message(self, message):
         # Only handle messages sent in the "group-13-mod" channel
