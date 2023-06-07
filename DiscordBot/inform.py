@@ -37,7 +37,7 @@ class Inform_State(Enum):
 
 
 class Colloquialism:
-    START_KEYWORD = "inform of colloquialism"
+    START_KEYWORD = "inform"
     CANCEL_KEYWORD = "cancel"
     HELP_KEYWORD = "help"
 
@@ -51,6 +51,7 @@ class Colloquialism:
         self.second_example = None
         self.third_example = None
         self.is_colloquialism = None
+       
 
         self.message = None
         self.inform_id = inform_id
@@ -223,8 +224,7 @@ class Colloquialism:
         if self.state == Inform_State.ADDITIONAL_ACTION:
             reply = f"I'm sorry, but I don't recognize that input. Please enter {self.inform_id}:1 or {self.inform_id}:2"
             if message.content == f'{self.inform_id}:1':
-                reply = "Keyword added to colloquialism list. Please add comments explaining your decision to the informer/for cataloguing purposes."
-                #add self.colloquialism to colloquialisms.txt file in a new line
+                reply = "Keyword added to colloquialism list. Please type in '[INFORM ID]:' followed by comments explaining your decision to the informer/for cataloguing purposes."
                 with open("colloquialisms.txt", "a") as f:
                     f.write(self.colloquialism + "\n")
                 self.state = Inform_State.ADD_WORD
@@ -237,6 +237,10 @@ class Colloquialism:
         
         if self.state == Inform_State.ADD_WORD:
             self.moderator_response = message.content
+            
+            with open("colloquialisms_notes.txt", "a") as f:
+                f.write(self.colloquialism + ": " + self.moderator_response + "\n")
+
             reply = "Thank you. Review complete."
             self.state = Inform_State.INFORM_COMPLETE
             return [reply]
