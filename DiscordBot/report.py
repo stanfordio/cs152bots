@@ -239,6 +239,7 @@ class Report:
                 await self.message.delete()
                 reply = "Post removed. \n"
                 self.state = State.REPORT_COMPLETE
+                return [reply]
             elif message.content == f'{self.report_id}:2':
                 reply = "No action taken. Please add a note explaining your decision to the reporter.\n"
                 self.state = State.NO_ACTION
