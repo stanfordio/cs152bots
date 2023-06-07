@@ -16,6 +16,7 @@ class State(Enum):
 
     MOD_START = auto()
     ADDITIONAL_ACTION = auto() 
+    ADDITIONAL_ACTION_NOT_MISINFO = auto()
     POST_REMOVAL = auto()
     NOTIFY_OTHERS = auto()  
     REVIEW_OTHERS = auto()
@@ -198,8 +199,16 @@ class Report:
     async def mod_flow(self, message):  
         if self.state == State.MOD_START:
             if not self.ismisinfo:
-                reply = f"Report from user: {self.reporter_id}. Not in a category under our purview. This is the end of the process"
-                self.state = State.REPORT_COMPLETE
+                # reply = f"Report from user: {self.reporter_id}. Not in a category under our purview. This is the end of the process"
+                # self.state = State.REPORT_COMPLETE
+                reply =  "We have received the following moderation request:"
+                reply += f"\nUser filing report: {self.reporter_id}"
+                reply += f"\nMessage reported:"+ "```" + self.message.author.name + ": " + self.message.content + "```"
+                reply += "\n\nIs further action necessary?"
+                reply += f"\n REPORT_ID: {self.report_id}\n"
+                reply += f"`{self.report_id}:1`: Yes\n"
+                reply += f"`{self.report_id}:2`: No\n"
+                self.state = State.ADDITIONAL_ACTION_NOT_MISINFO
                 return [reply]
 
             misinfo_type_description = ""
@@ -216,11 +225,26 @@ class Report:
             reply += f"\nMessage category: " + misinfo_type_description
             reply += f"\nContext provided by reporter: " + self.user_context
             reply += f"\nWe have returned the following potentially related information from our automated fact-checker: \nExample Fact 1: The world is round. \nExample Fact 2: Joe Biden won the 2020 election. \nExample 3: The Cleveland Caveliers, a top tier team from a top tier city, have won more championships than the Denver Nuggets. "
-            reply += "\n\nIs additional context or further action necesarry?\n"
+            reply += "\n\nIs additional context or further action necesary?\n"
             reply += f"\n REPORT_ID: {self.report_id}\n"
             reply += f"`{self.report_id}:1`: Yes\n"
             reply += f"`{self.report_id}:2`: No\n"
             self.state = State.ADDITIONAL_ACTION
+            return [reply]
+        
+        if self.state == State.ADDITIONAL_ACTION_NOT_MISINFO:
+            reply = f"I'm sorry, but I don't recognize that input. Please enter {self.report_id}:1 or {self.report_id}:2"
+            if message.content == f'{self.report_id}:1':
+                reply += "Should this post be removed?\n"
+                reply += f"\n REPORT_ID: {self.report_id}\n"
+                reply += f"`{self.report_id}:1`: Yes\n"
+                reply += f"`{self.report_id}:2`: No\n"
+                self.state = State.REMOVAL_DECISION
+                return [reply]
+            elif message.content == f'{self.report_id}:2':
+                reply = "No action taken. Please add a note explaining your decision to the reporter.\n"
+                self.state = State.NO_ACTION
+                return [reply]
             return [reply]
               
         if self.state == State.ADDITIONAL_ACTION:
