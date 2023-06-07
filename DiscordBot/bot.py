@@ -99,6 +99,15 @@ class ModBot(discord.Client):
             await self.handle_channel_message(message)
         else:
             await self.handle_dm(message)
+            
+        # POTENTIAL ERROR FIX?
+        # if message.guild:
+        #     if message.channel.name == f'group-{self.group_num}-mod':
+        #         await self.handle_mod_channel_message(message)
+        #     else:
+        #         await self.handle_channel_message(message)
+        # else:
+        #     await self.handle_dm(message)
 
     async def handle_dm(self, message):
         # Handle a help message
