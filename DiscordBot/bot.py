@@ -66,6 +66,33 @@ class ModBot(discord.Client):
         print("Report table")
         print(self.report_table)
 
+    # Given a report, adds it to the report queue for reports made by bots.
+    def add_report_to_bot_queue(self, report):
+        if self.in_report_table(report):
+            self.update_tables(report)
+            return
+
+        if report.report_adult():
+            self.reports['bot_adult'].append(report)
+        elif report.report_csam():
+            self.reports['bot_csam'].append(report)
+
+        return
+
+    # Given a link to a message and a valid classification, makes a report for that message and adds it to the report
+    # queue meant for bots.
+    #
+    # message_link: discord message link
+    # classification: either Report.ADULT or Report.CSAM
+    def add_message_to_bot_queue(self, message_link, classification):
+        report = Report()
+        report.reporter = "bot"
+        report.state = State.AWAITING_MESSAGE
+        report.handle_message(message_link)
+        report.state = classification
+        self.add_report_to_bot_queue(report)
+        return
+
     def in_report_table(self, report):
         if self.report_table.keys().__contains__(report.link):
             if self.report_table[report.link].keys().__contains__(cityhash.CityHash128(report.message.content)):
