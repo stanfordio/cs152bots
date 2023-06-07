@@ -110,6 +110,7 @@ class ModBot(discord.Client):
         #     await self.handle_dm(message)
 
     async def handle_dm(self, message):
+        print("h")
         # Handle a help message
         if message.content == Report.HELP_KEYWORD:
             reply =  "Use the `report` command to begin the reporting process.\n"
@@ -180,6 +181,7 @@ class ModBot(discord.Client):
                 self.informs.pop(author_id)
 
     async def handle_mod_channel_message(self, message):
+        print("m")
         # Only handle messages sent in the "group-13-mod" channel
         if not message.channel.name == f'group-{self.group_num}-mod':
             print(message.channel.name)
@@ -216,6 +218,7 @@ class ModBot(discord.Client):
 
 
     async def handle_channel_message(self, message):
+        print("c")
         # Only handle messages sent in the "group-#" channel
         if not message.channel.name == f'group-{self.group_num}':
             return
