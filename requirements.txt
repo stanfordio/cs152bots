@@ -69,3 +69,4 @@ Unidecode
 uritemplate
 urllib3
 yarl
+pandas
