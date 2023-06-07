@@ -217,7 +217,6 @@ class ModBot(discord.Client):
 
             if message.content.startswith(Report.START_KEYWORD):
                 self.active_reporters[message.author.id] = Report(self)
-                await self.mod_channel.send(f"Report created by user - type \"queue\" to view outstanding reports.")
 
             # Let the report class handle this message and generate a response.
             # Then, this function sends the response to the user.
@@ -237,6 +236,7 @@ class ModBot(discord.Client):
                     else:
                         self.reports['user_csam'].append(self.active_reporters[message.author.id])
                     self.active_reporters.pop(message.author.id)
+                    await self.mod_channel.send(f"Report created by user - type \"queue\" to view outstanding reports.")
 
                 elif self.active_reporters[message.author.id].report_adult():
                     if self.reporter_is_up_to_no_good(message.author.id):
@@ -248,6 +248,7 @@ class ModBot(discord.Client):
                     else:
                         self.reports['user_adult'].append(self.active_reporters[message.author.id])
                     self.active_reporters.pop(message.author.id)
+                    await self.mod_channel.send(f"Report created by user - type \"queue\" to view outstanding reports.")
 
                 # If the report is complete or cancelled, remove it from our map
                 elif self.active_reporters[message.author.id].report_complete():
