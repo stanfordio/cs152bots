@@ -31,6 +31,7 @@ class Report:
     CANCEL_KEYWORD = "cancel"
     HELP_KEYWORD = "help"
     QUEUE_KEYWORD = "queue"
+    EXIT_KEYWORD = "exit"
 
     SPAM = "spam"
     HARASSMENT = "harassment"
@@ -64,6 +65,7 @@ class Report:
         self.client = client
         self.message = None
         self.reportedUser = None
+        self.reporter = None
         self.link = None
     
     async def handle_message(self, message):
@@ -82,6 +84,7 @@ class Report:
             reply += "Say `help` at any time for more information.\n\n"
             reply += "Please copy paste the link to the message you want to report.\n"
             reply += "You can obtain this link by right-clicking the message and clicking `Copy Message Link`."
+            self.reporter = message.author.id
             self.state = State.AWAITING_MESSAGE
             return [reply]
         
@@ -248,6 +251,7 @@ class Report:
             reply += "Please state if the report is valid.\n"
             reply += "Use the command `valid` if the message features adult nudity.\n"
             reply += "Use the command `invalid` if the message does not actually feature adult nudity.\n"
+            reply += "Use the command `wrong-type` if the message features CSAM.\n"
             return [reply]
 
         if self.state == State.CSAM:
