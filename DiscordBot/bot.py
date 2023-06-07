@@ -183,6 +183,8 @@ class ModBot(discord.Client):
         # Only handle messages sent in the "group-13-mod" channel
         if not message.channel.name == f'group-{self.group_num}-mod':
             print(message.channel.name)
+            print(f'group-{self.group_num}-mod')
+            print((not message.channel.name == f'group-{self.group_num}-mod'))
             return
 
         # Forward the message to the mod channel
