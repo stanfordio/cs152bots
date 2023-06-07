@@ -2,7 +2,9 @@ from transformers import BertTokenizerFast
 from model import BertForTokenAndSequenceJointClassification, PROPOGANDA_SENTINEL, NO_LABEL
 import torch
 import sys
-
+import pandas as pd
+from tqdm import tqdm
+tqdm.pandas()
 
 tokenizer = BertTokenizerFast.from_pretrained('bert-base-cased')
 model = BertForTokenAndSequenceJointClassification.from_pretrained(
@@ -21,4 +23,8 @@ def predict_propoganda(sentence):
     return sequence_class == PROPOGANDA_SENTINEL, set([t for t in tags if t != NO_LABEL])
 
 if __name__ == '__main__':
-    print(predict_propoganda(sys.argv[1]))
+    dfo = pd.read_csv(sys.argv[1])
+    df = dfo.sample(500)
+    print(len(df))
+    df['preds'] = df[sys.argv[2]].astype(str).progress_apply(predict_propoganda)
+    print(df['preds'].sum())

@@ -61,9 +61,8 @@ class ModBot(discord.Client):
         self.reports = {} # Map from user IDs to the state of their report
         self.informs = {} # Map from user IDs to the state of their colloquialism informing
         self.report_id_to_author_id = {}
-        self.next_report_id = 1
+        self.next_assignable_id = 1
         self.inform_id_to_author_id = {}
-        self.next_inform_id = 1
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -129,9 +128,9 @@ class ModBot(discord.Client):
             
             # If we don't currently have an active report/inform for this user, add one
             if author_id not in self.reports:
-                self.reports[author_id] = Report(self, author_id,self.next_report_id)
-                self.report_id_to_author_id[self.next_report_id] = author_id
-                self.next_report_id += 1
+                self.reports[author_id] = Report(self, author_id,self.next_assignable_id)
+                self.report_id_to_author_id[self.next_assignable_id] = author_id
+                self.next_assignable_id += 1
 
             # Let the report/inform class handle this message; forward all the messages it returns to us
             if not self.reports[author_id].mod_review:
@@ -158,9 +157,9 @@ class ModBot(discord.Client):
                 return
             
             if author_id not in self.informs:
-                self.informs[author_id] = Colloquialism(self, author_id,self.next_inform_id)
-                self.inform_id_to_author_id[self.next_inform_id] = author_id
-                self.next_inform_id += 1
+                self.informs[author_id] = Colloquialism(self, author_id,self.next_assignable_id)
+                self.inform_id_to_author_id[self.next_assignable_id] = author_id
+                self.next_assignable_id += 1
 
 
             if not self.informs[author_id].mod_review:
@@ -175,9 +174,7 @@ class ModBot(discord.Client):
                     print(mod_channel.name)
                     for r in responses:
                         await mod_channel.send(r)
-    
-
-
+                        
             if self.informs[author_id].inform_complete():
                 self.informs.pop(author_id)
 
@@ -194,13 +191,23 @@ class ModBot(discord.Client):
 
         match = re.match(r'^(\d+):', message.content)
         if not match:
-            await mod_channel.send("Message must start with ```REPORT_ID:``` (ex: 3:1)")
+            await mod_channel.send("Message must start with report id or inform id (ex: 3:1)")
             return
 
-        report_id = int(match.group()[:-1])
-        author_id = self.report_id_to_author_id[report_id]
+        received_id = int(match.group()[:-1])
 
-        responses = await self.reports[author_id].mod_flow(message)
+        if received_id not in self.report_id_to_author_id and received_id not in self.inform_id_to_author_id:
+            await mod_channel.send(f"Could not find a report or inform with id {received_id}")
+            return
+        
+        if received_id in self.report_id_to_author_id:
+            author_id = self.report_id_to_author_id[received_id]
+            responses = await self.reports[author_id].mod_flow(message)
+
+        else:
+            author_id = self.inform_id_to_author_id[received_id]
+            responses = await self.informs[author_id].mod_flow(message)
+
         for r in responses:
             await mod_channel.send(r)
 
