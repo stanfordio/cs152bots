@@ -249,7 +249,7 @@ class ModBot(discord.Client):
         if likely_propoganda:
             reply += """```This message may contain misinformation or propoganda!```"""
             reply += f"""\n This message may contain {" ".join(propoganda_types)}"""
-        reply += "Toxicity score: " + str(toxicity_score)
+        reply += "\n\nToxicity score: " + str(toxicity_score)
         if toxicity_score >= 0.5:
             reply += """```\nThis message could be toxic!```"""
         return reply
