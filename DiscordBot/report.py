@@ -209,6 +209,7 @@ class Report:
                 reply += f"`{self.report_id}:1`: Yes\n"
                 reply += f"`{self.report_id}:2`: No\n"
                 self.state = State.ADDITIONAL_ACTION_NOT_MISINFO
+                print(self.state)
                 return [reply]
 
             misinfo_type_description = ""
@@ -233,9 +234,16 @@ class Report:
             return [reply]
         
         if self.state == State.ADDITIONAL_ACTION_NOT_MISINFO:
-            await self.message.delete()
-            reply = "Post removed. \n"
-            self.state = State.REPORT_COMPLETE
+            reply = f"I'm sorry, but I don't recognize that input. Please enter {self.report_id}:1 or {self.report_id}:2"
+            if message.content == f'{self.report_id}:1':
+                await self.message.delete()
+                reply = "Post removed. \n"
+                self.state = State.REPORT_COMPLETE
+            elif message.content == f'{self.report_id}:2':
+                reply = "No action taken. Please add a note explaining your decision to the reporter.\n"
+                self.state = State.NO_ACTION
+                return [reply]
+            return [reply]
               
         if self.state == State.ADDITIONAL_ACTION:
             reply = f"I'm sorry, but I don't recognize that input. Please enter {self.report_id}:1 or {self.report_id}:2"
