@@ -109,137 +109,161 @@ class Report:
 
             self.message = message
 
-            return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
-                    "Please classify the message as one of the following: ", \
-                    "Use the command `spam` to classify the message as spam.", \
-                    "Use the command `harassment` to classify the message as harassment.", \
-                    "Use the command `offensive` to classify the message as containing offensive content or nudity.", \
-                    "Use the command `harm` if the message threatens to cause harm.\n"]
+            reply = "I found this message: ```" + message.author.name + ": " + message.content + "```\n"
+            reply += "Please classify the message as one of the following: \n"
+            reply += "Use the command `spam` to classify the message as spam.\n"
+            reply += "Use the command `harassment` to classify the message as harassment.\n"
+            reply += "Use the command `offensive` to classify the message as containing offensive content or nudity.\n"
+            reply += "Use the command `harm` if the message threatens to cause harm.\n"
+
+            return [reply]
 
         # Classifying the message.
         if self.state == State.MESSAGE_IDENTIFIED:
             if message.content == self.SPAM:
                 self.state = State.SPAM
-                return ["You have classified the message as spam.", \
-                        "Please identify if the spam is a fraud or an impersonation.", \
-                        "Use the command `fraud` to classify the spam as fraudulent.", \
-                        "Use the command `impersonation` to classify the spam as an impersonation.\n"]
+                reply = "You have classified the message as spam.\n"
+                reply += "Please identify if the spam is a fraud or an impersonation.\n"
+                reply += "Use the command `fraud` to classify the spam as fraudulent.\n"
+                reply += "Use the command `impersonation` to classify the spam as an impersonation.\n"
+                return [reply]
 
             if message.content == self.HARASSMENT:
                 self.state = State.HARASSMENT
-                return ["You have classified the message as harassment.", \
-                        "Please identify if the harassment is directed to you or someone else.", \
-                        "Use the command `me` if the harasser is targeting you.", \
-                        "Use the command `other` if the harasser is targeting someone else.\n"]
+                reply = "You have classified the message as harassment.\n"
+                reply += "Please identify if the harassment is directed to you or someone else.\n"
+                reply += "Use the command `me` if the harasser is targeting you.\n"
+                reply += "Use the command `other` if the harasser is targeting someone else.\n"
+                return [reply]
 
             if message.content == self.OFFENSIVE:
                 self.state = State.OFFENSIVE_CONTENT
-                return ["You have classified the message as offensive.", \
-                        "Please identify under which category the offensive content falls under.", \
-                        "Use the command `graphic` if the message contains graphic violence.", \
-                        "Use the command `sexual` if the message contains sexually explicit content or nudity.", \
-                        "Use the command `hate` if the message is a hate speech.\n"]
+                reply = "You have classified the message as offensive.\n"
+                reply += "Please identify under which category the offensive content falls under.\n"
+                reply += "Use the command `graphic` if the message contains graphic violence.\n"
+                reply += "Use the command `sexual` if the message contains sexually explicit content or nudity.\n"
+                reply += "Use the command `hate` if the message is a hate speech.\n"
+                return [reply]
 
             if message.content == self.HARM:
                 self.state = State.HARM_OR_DANGER
-                return ["You have classified the message as harmful or dangerous.", \
-                        "Please identify the type of harm the message insinuates", \
-                        "Use the command `threatens` if the message threatens someone.", \
-                        "Use the command `self` if the message is about self-harm or suicide.", \
-                        "Use the command `substance` if the message is related to illegal substance abuse.\n"]
+                reply = "You have classified the message as harmful or dangerous.\n"
+                reply += "Please identify the type of harm the message insinuates\n"
+                reply += "Use the command `threatens` if the message threatens someone.\n"
+                reply += "Use the command `self` if the message is about self-harm or suicide.\n"
+                reply += "Use the command `substance` if the message is related to illegal substance abuse.\n"
+                return [reply]
 
         # spam control flow
         if self.state == State.SPAM:
             if message.content == self.FRAUD:
                 self.state = State.REPORT_COMPLETE
-                return ["You have reported that the message is a fraudulent spam.", \
-                        "Report complete. Thank you very much."]
+                reply = "You have reported that the message is a fraudulent spam.\n"
+                reply += "Report complete. Thank you very much.\n"
+                return [reply]
 
             if message.content == self.IMPERSONATION:
                 self.state = State.REPORT_COMPLETE
-                return ["You have reported that the message is a spam where " + self.reportedUser + "impersonates as someone else.", \
-                        "Report complete. Thank you very much."]
+                reply = f"You have reported that the message is a spam where {self.reportedUser} impersonates as someone else.\n"
+                reply += "Report complete. Thank you very much.\n"
+                return [reply]
 
         # harassment control flow
         if self.state == State.HARASSMENT:
             if message.content == self.TARGETING_ME:
                 self.state = State.REPORT_COMPLETE
-                return ["You have reported that this message is proof of harassment against you by " + self.reportedUser + ".", \
-                        "Report complete. Thank you very much."]
+                reply = f"You have reported that this message is proof of harassment against you by {self.reportedUser}.\n"
+                reply += "Report complete. Thank you very much.\n"
+                return [reply]
 
             if message.content == self.TARGETING_OTHERS:
                 self.state = State.REPORT_COMPLETE
-                return ["You have reported that this message is proof of harassment against someone else by " + self.reportedUser + ".", \
-                        "Report complete. Thank you very much."]
+                reply = f"You have reported that this message is proof of harassment against someone else by {self.reportedUser}.\n"
+                reply += "Report complete. Thank you very much.\n"
+                return [reply]
 
         # offensive content control flow
         if self.state == State.OFFENSIVE_CONTENT:
             if message.content == self.GRAPHIC_VIOLENCE:
                 self.state = State.REPORT_COMPLETE
-                return ["You have reported that the message contains grahpic violence.", \
-                        "Report complete. Thank you very much."]
+                reply = "You have reported that the message contains grahpic violence.\n"
+                reply += "Report complete. Thank you very much.\n"
+                return [reply]
 
             if message.content == self.SEXUALLY_EXPLICIT_CONTENT or message.content == self.NUDITY:
                 self.state = State.SEXUAL_CONTENT
-                return ["You have specified that the message contains sexually explicit content.", \
-                        "Please state if the sexual content features an adult or a child/minor.", \
-                        "Use the command `adult` if the message features only adults.", \
-                        "Use the command `child` if the message may feature a child or a minor."]
+                reply = "You have specified that the message contains sexually explicit content.\n"
+                reply += "Please state if the sexual content features an adult or a child/minor.\n"
+                reply += "Use the command `adult` if the message features only adults.\n"
+                reply += "Use the command `child` if the message may feature a child or a minor.\n"
+                return [reply]
 
             if message.content == self.HATE_SPEECH:
                 self.state = State.REPORT_COMPLETE
-                return ["You have reported that the message is a hate speech against someone else.", \
-                        "Report complete. Thank you very much."]
+                reply = "You have reported that the message is a hate speech against someone else.\n"
+                reply += "Report complete. Thank you very much.\n"
+                return [reply]
 
         if self.state == State.SEXUAL_CONTENT:
             if message.content == self.ADULT:
                 self.state = State.ADULT
-                return ["Thank you for your report. We take these matters very seriously and will "
-                        "investigate this message promptly. We will take appropriate actions, which "
-                        "may include removal of the message and/or the user."]
+                reply = "Thank you for your report. We take these matters very seriously and will " \
+                        "investigate this message promptly. We will take appropriate actions, which " \
+                        "may include removal of the message and/or the user."
+                return [reply]
 
             if message.content == self.CSAM:
                 self.state = State.CSAM
-                return ["Thank you for your report. We take these matters very seriously and will "
-                        "investigate this message promptly. We will take appropriate actions, "
-                        "which may include removal of the message and/or the user and working "
-                        "with law enforcement."
-                        ]
+                reply = "Thank you for your report. We take these matters very seriously and will " \
+                        "investigate this message promptly. We will take appropriate actions, " \
+                        "which may include removal of the message and/or the user and working " \
+                        "with law enforcement.\n"
+                return [reply]
 
         # harm/danger control flow
         if self.state == State.HARM_OR_DANGER:
             if message.content == self.THREATENS_OTHERS:
                 self.state = State.REPORT_COMPLETE
-                return ["You have reported that the message contains threats to someone else.", \
-                        "Report complete. Thank you very much."]
+                reply = "You have reported that the message contains threats to someone else.\n"
+                reply += "Report complete. Thank you very much.\n"
+                return [reply]
 
             if message.content == self.SELF_HARM:
                 self.state = State.REPORT_COMPLETE
-                return ["You have reported that the message contains elements of self harm or suicide", \
-                        "Report complete. Thank you very much."]
+                reply = "You have reported that the message contains elements of self harm or suicide.\n"
+                reply += "Report complete. Thank you very much.\n"
+                return [reply]
 
             if message.content == self.SUBSTANCE_ABUSE:
                 self.state = State.REPORT_COMPLETE
-                return ["You have reported that the message is related to illegal substance abuse.", \
-                        "Report complete. Thank you very much."]
+                reply = "You have reported that the message is related to illegal substance abuse.\n"
+                reply += "Report complete. Thank you very much.\n"
+                return [reply]
 
         return []
 
     async def moderate(self, message):
         if self.state == State.ADULT:
-            return [f"You are moderating the message `{message.content}` {self.link}, which has been reported for adult nudity.", \
-                     "Please state if the report is valid.", \
-                     "Use the command `valid` if the message features adult nudity.", \
-                     "Use the command `invalid` if the message does not actually feature adult nudity."]
+            reply = f"You are moderating the message `{message.content}` {self.link}, which has been reported for adult nudity."
+            reply += "Please state if the report is valid.\n"
+            reply += "Use the command `valid` if the message features adult nudity.\n"
+            reply += "Use the command `invalid` if the message does not actually feature adult nudity.\n"
+            return [reply]
 
         if self.state == State.CSAM:
-            return [f"You are moderating the message `{message.content}` {self.link}, which has been reported for CSAM.", \
-                     "Please state if the report is valid.", \
-                     "Use the command `valid` if the message features CSAM.", \
-                     "Use the command `invalid` if the message does not actually feature CSAM or nudity.", \
-                     "Use the command `wrong-type` if the message features nudity but is not CSAM."]
+            reply = f"You are moderating the message `{message.content}` {self.link}, which has been reported for CSAM.\n"
+            reply += "Please state if the report is valid.\n"
+            reply += "Use the command `valid` if the message features CSAM.\n"
+            reply += "Use the command `invalid` if the message does not actually feature CSAM or nudity.\n"
+            reply += "Use the command `wrong-type` if the message features nudity but is not CSAM.\n"
+            return [reply]
 
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
-    
+
+    def report_csam(self):
+        return self.state == State.CSAM
+
+    def report_adult(self):
+        return self.state == State.ADULT

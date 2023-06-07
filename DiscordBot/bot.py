@@ -1,14 +1,13 @@
 # bot.py
+from collections import deque
+
 import cityhash
 import discord
-from discord.ext import commands
 import os
 import json
 import logging
 import re
-import requests
 from report import Report, State
-import pdb
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -35,7 +34,15 @@ class ModBot(discord.Client):
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         # self.reports = {} # Map from user IDs to the state of their report
-        self.reports = [] # list of outstanding reports
+        self.reports = {
+            'user_csam': deque([]),
+            'user_adult': deque([]),
+            'bot_csam': deque([]),
+            'bot_adult': deque([])
+        }
+        self.queue_num = ['user_csam', 'user_adult', 'bot_csam', 'bot_adult']
+        self.active_reporters = {}
+        self.active_moderators = {}
         self.curr_report = None # Sets the Report currently being handled by moderator
         self.curr_report_idx = None
         self.warned_users = set()  # Set of users who have been warned for adult nudity
@@ -135,19 +142,36 @@ class ModBot(discord.Client):
             #     return
 
             if message.content.startswith(Report.START_KEYWORD):
-                self.reports.append(Report(self))
+                self.active_reporters[message.author.id] = Report(self)
                 await self.mod_channel.send(f"Report created by user - type \"queue\" to view outstanding reports.")
-                
-            # Let the report class handle this message; forward all the messages it returns to us
-            if len(self.reports) > 0:
-                responses = await self.reports[-1].handle_message(message)
+
+            # Let the report class handle this message and generate a response.
+            # Then, this function sends the response to the user.
+            if message.author.id in self.active_reporters:
+                responses = await self.active_reporters[message.author.id].handle_message(message)
                 for r in responses:
                     await message.channel.send(r)
 
-            # If the report is complete or cancelled, remove it from our map
-            for idx, report in enumerate(self.reports):
-                if report.report_complete():
-                    del self.reports[idx]
+                print('user messaged')
+
+                # If the report needs to be moderated, it puts it in the correct queue and removes it from the list of acitve reports
+                if self.active_reporters[message.author.id].report_csam():
+                    self.reports['user_csam'].append(self.active_reporters[message.author.id])
+                    self.active_reporters.pop(message.author.id)
+
+                elif self.active_reporters[message.author.id].report_adult():
+                    self.reports['user_adult'].append(self.active_reporters[message.author.id])
+                    self.active_reporters.pop(message.author.id)
+
+                # If the report is complete or cancelled, remove it from our map
+                elif self.active_reporters[message.author.id].report_complete():
+                    self.active_reporters.pop(message.author.id)
+
+                print("active reporters")
+                print(len(self.active_reporters))
+                print("queues")
+                print(self.reports)
+
 
 
     async def handle_channel_message(self, message):
@@ -164,49 +188,50 @@ class ModBot(discord.Client):
         elif message.channel.name == f'group-{self.group_num}-mod':
             if message.content == Report.QUEUE_KEYWORD:
                 reply = "Moderation process started.\n\n"
-                reply += "Here are the current reported messages in the queue:\n"
-                for idx, report in enumerate(self.reports):
-                    # reply += f"{idx}: `{report.message.content}`\n"
-                    if report.state == State.CSAM:
-                        reply += f"{idx}: `{report.message.content}` {report.link} **(CSAM REPORT - HIGH PRIORITY)**\n"
-                    else:
-                        reply += f"{idx}: `{report.message.content}` {report.link}\n"
+                reply += "Here are the report queues and the number of messages in them:\n"
 
-                reply += "\nPlease enter the number for the message you wish to address."
+                for i in range(len(self.queue_num)):
+                    reply += f"{i} - {self.queue_num[i]}: {len(self.reports[self.queue_num[i]])}\n"
+
+                reply += "\nPlease enter the number for the queue you wish to work on."
                 await message.channel.send(reply)
                 return
 
             # moderator choosing a message to address
             elif message.content.isnumeric():
                 idx = int(message.content)
-                if len(self.reports) != 0 and 0 <= idx < len(self.reports):
-                    target = self.reports[idx]
+                if not 0 <= idx < len(self.reports):
+                    reply = "Please enter a valid queue number."
+                    await message.channel.send(reply)
+                    return
+                elif len(self.reports[self.queue_num[idx]]) == 0:
+                    reply = "This queue is currently empty. Please select another queue."
+                    await message.channel.send(reply)
+                    return
+                else:
+                    queue = self.reports[self.queue_num[idx]]
+                    self.active_moderators[message.author.id] = queue.popleft()
 
                     # designate current message being moderated
-                    self.curr_report = target
-                    self.curr_report_idx = idx
-                    await self.mod_channel.send(f"Report checked out: \n{self.curr_report.message.author}: `{self.curr_report.message.content}`")
-                    responses = await target.moderate(target.message)
+                    await self.mod_channel.send(f"Report checked out: \n{self.active_moderators[message.author.id].message.author}: `{self.active_moderators[message.author.id].message.content}`")
+                    responses = await self.active_moderators[message.author.id].moderate(self.active_moderators[message.author.id].message)
                     for r in responses:
                         await message.channel.send(r)
             
             # moderator addressing a message
             elif message.content == "valid":
-                if self.curr_report.state == State.CSAM:
-                    await self.mod_channel.send(f"Deleted by moderator: \n{self.curr_report.message.author}: `{self.curr_report.message.content}`")
-                    await self.curr_report.message.delete()
+                if self.active_moderators[message.author.id].state == State.CSAM:
+                    await self.mod_channel.send(f"Deleted by moderator: \n{self.active_moderators[message.author.id].message.author}: `{self.active_moderators[message.author.id].message.content}`")
+                    await self.active_moderators[message.author.id].message.delete()
                     reply = "The message has been removed, the user has been banned, and NCMEC has been notified. Thank you!"
                     await message.channel.send(reply)
-                    del self.reports[self.curr_report_idx]
-                    self.curr_report = None
-                    self.curr_report_idx = None
-                    # self.reports.pop(self.curr_reporter)
+                    self.active_moderators.pop(message.author.id)
                     return
                 
-                if self.curr_report.state == State.ADULT:
-                    await self.mod_channel.send(f"Deleted by moderator: \n{self.curr_report.message.author}: `{self.curr_report.message.content}`")
-                    await self.curr_report.message.delete()
-                    offender = self.curr_report.message.author
+                if self.active_moderators[message.author.id].state == State.ADULT:
+                    await self.mod_channel.send(f"Deleted by moderator: \n{self.active_moderators[message.author.id].message.author}: `{self.active_moderators[message.author.id].message.content}`")
+                    await self.active_moderators[message.author.id].message.delete()
+                    offender = self.active_moderators[message.author.id].message.author
                     if offender in self.warned_users:
                         reply = "The message has been removed and the user has been banned. Thank you!"
                         await message.channel.send(reply)
@@ -214,19 +239,16 @@ class ModBot(discord.Client):
                         self.warned_users.add(offender)
                         reply = "The message has been removed and the user has been warned. Thank you!"
                         await message.channel.send(reply)
-                    
-                    del self.reports[self.curr_report_idx]
-                    self.curr_report = None
-                    self.curr_report_idx = None
-                    # self.reports.pop(self.curr_reporter)
+
+                    self.active_moderators.pop(message.author.id)
                     return
 
             elif message.content == "wrong-type":
-                if self.curr_report.state == State.CSAM:
+                if self.active_moderators[message.author.id].state == State.CSAM:
                     await self.mod_channel.send(
-                        f"Deleted by moderator: \n{self.curr_report.message.author}: `{self.curr_report.message.content}`")
-                    await self.curr_report.message.delete()
-                    offender = self.curr_report.message.author
+                        f"Deleted by moderator: \n{self.active_moderators[message.author.id].message.author}: `{self.active_moderators[message.author.id].message.content}`")
+                    await self.active_moderators[message.author.id].message.delete()
+                    offender = self.active_moderators[message.author.id].message.author
                     if offender in self.warned_users:
                         reply = "The message has been removed and the user has been banned. Thank you!"
                         await message.channel.send(reply)
@@ -235,17 +257,12 @@ class ModBot(discord.Client):
                         reply = "The message has been removed and the user has been warned. Thank you!"
                         await message.channel.send(reply)
 
-                    del self.reports[self.curr_report_idx]
-                    self.curr_report = None
-                    self.curr_report_idx = None
-                    # self.reports.pop(self.curr_reporter)
+                    self.active_moderators.pop(message.author.id)
                     return
             
             elif message.content == "invalid":
-                del self.reports[self.curr_report_idx]
-                self.curr_report = None
-                self.curr_report_idx = None
-                # self.reports.pop(self.curr_reporter)
+                self.active_moderators.pop(message.author.id)
+
                 reply = "Report discarded. Thank you!"
                 await message.channel.send(reply)
                 return
