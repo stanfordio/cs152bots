@@ -69,6 +69,7 @@ class ModBot(discord.Client):
         for guild in self.guilds:
             print(f' - {guild.name}')
         print('Press Ctrl-C to quit.')
+        print('running branch justinfix')
 
         # Parse the group number out of the bot's name
         match = re.search('[gG]roup (\d+) [bB]ot', self.user.name)
@@ -174,7 +175,7 @@ class ModBot(discord.Client):
                     print(mod_channel.name)
                     for r in responses:
                         await mod_channel.send(r)
-                        
+
             if self.informs[author_id].inform_complete():
                 self.informs.pop(author_id)
 
