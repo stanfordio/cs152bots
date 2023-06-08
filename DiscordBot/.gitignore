@@ -1,2 +1,5 @@
 tokens.json
 __pycache__
+.history
+auth.json
+api_key.py
