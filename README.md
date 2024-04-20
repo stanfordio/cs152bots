@@ -121,6 +121,9 @@ You’ll need to install some libraries if you don’t have them already, namely
 	# python3 -m pip install requests
 	# python3 -m pip install discord.py
 
+### [Optional] Setting up your own server
+If you want to test out additional permissions/channels/features without having to wait for the TAs to make changes for you, you are welcome to create your own Discord server and invite your bot there instead! The starter code should support having the bot on multiple servers at once. If you do make your server, make sure to add a `group-#` and `group-#-mod` channel, as the bot’s code relies on having those channels for it to work properly. Just know that you’ll eventually need to move back into the 152 server. 
+
 
 ## Guide To The Starter Code
 
