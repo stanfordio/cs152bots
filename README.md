@@ -172,3 +172,16 @@ If you’re still having trouble, try running a different version of Python (i.e
 This is an issue with the version of Discord API that is installed. Try the following steps: 
 1. running ```pip install --upgrade``` discord in the terminal in your folder in the project that contains this file
 2. IF that does not work, try changing the line in bot.py that says ```intents.message_content = True``` to  ```intents.messages = True```
+
+
+## Resources
+
+Below are some resources we think might be useful to you for this part of the milestone. 
+
+[Here](https://discordpy.readthedocs.io/en/latest/) is the documentation for `discord.py`, Discord’s Python package for writing Discord bots. It’s very thorough and fairly readable; this plus Google (in addition to the TAs) should be able to answer all of your functionality questions!
+
+Discord bots frequently use emoji reactions as a quick way to offer users a few choices - this is especially convenient in a setting like moderation when mods may have to make potentially many consecutive choices. Check out [`on_raw_reaction_add()`](https://discordpy.readthedocs.io/en/latest/api.html?highlight=on_reaction_add#discord.on_raw_reaction_add) for documentation about how to do this with your bot. You also might want to look into [`on_raw_message_edit()`](https://discordpy.readthedocs.io/en/latest/api.html?highlight=edit#discord.on_raw_message_edit) to notice users editing old messages.
+
+Discord offers “embeds” as a way of getting a little more control over message formatting. Read more about them in [this](https://python.plainenglish.io/send-an-embed-with-a-discord-bot-in-python-61d34c711046) article or in the [official documentation](https://discordpy.readthedocs.io/en/latest/api.html?highlight=embeds#discord.Embed).
+
+[`unicode`](https://pypi.org/project/Unidecode/) and [`uni2ascii-janin`](https://pypi.org/project/uni2ascii-janin/) are two packages that can help with translating `unicode` characters to their `ascii` equivalents.
