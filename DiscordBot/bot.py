@@ -38,6 +38,9 @@ class ModBot(discord.Client):
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
+        """
+        testing git push
+        """
         for guild in self.guilds:
             print(f' - {guild.name}')
         print('Press Ctrl-C to quit.')
