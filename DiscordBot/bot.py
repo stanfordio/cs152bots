@@ -1,4 +1,5 @@
 # bot.py
+# test by keely to see if i can push it
 import discord
 from discord.ext import commands
 import os
