@@ -6,6 +6,8 @@ class State(Enum):
     REPORT_START = auto()
     AWAITING_MESSAGE = auto()
     MESSAGE_IDENTIFIED = auto()
+    AWAITING_CATEGORY = auto()
+    CATEGORY_IDENTIFIED = auto()
     REPORT_COMPLETE = auto()
 
 class Report:
@@ -56,11 +58,19 @@ class Report:
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.MESSAGE_IDENTIFIED
             return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
-                    "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
+                    "Please select one of the categories for this message: terrorist activity | offensive content | harassment | spam"]
+                    #"This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
         
         if self.state == State.MESSAGE_IDENTIFIED:
-            return ["<insert rest of reporting flow here>"]
+            self.state = State.CATEGORY_IDENTIFIED
+            return ["Thank you for reporting a message with " + message + ". We will respond appropriately!"]
 
+
+
+        if self.state == State.CATEGORY_IDENTIFIED:
+            self.state = State.REPORT_COMPLETE
+            return ["<insert rest of reporting flow here>"]
+            
         return []
 
     def report_complete(self):
@@ -69,4 +79,3 @@ class Report:
 
 
     
-
