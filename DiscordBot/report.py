@@ -15,7 +15,9 @@ class Report:
     HELP_KEYWORD = "help"
     YES_KEYWORD = "yes"
     HATE_SPEECH_TYPES = ["slurs or symbols", "encouraging hateful behavior", "mocking trauma", "harmful stereotypes", "threatening violence"]
-    
+    SUBMIT_KEYWORD = "submit"
+    CONTINUE_KEYWORD = "continue"
+
     HATE_SPEECH_KEYWORDS = []  # add keywords we want to use to detect hate speech here
 
     def __init__(self, client):
@@ -29,13 +31,14 @@ class Report:
         prompts to offer at each of those states. You're welcome to change anything you want; this skeleton is just here to
         get you started and give you a model for working with Discord. 
         '''
+        print(message)
 
         if message.content == self.CANCEL_KEYWORD:
             self.state = State.REPORT_COMPLETE
             return ["Report cancelled."]
         
         if self.state == State.REPORT_START:
-            reply =  "Thank you for starting the reporting process. "
+            reply = "Thank you for starting the reporting process. "
             reply += "Say `help` at any time for more information.\n\n"
             reply += "Please copy paste the link to the message you want to report.\n"
             reply += "You can obtain this link by right-clicking the message and clicking `Copy Message Link`."
@@ -43,6 +46,8 @@ class Report:
             return [reply]
         
         if self.state == State.AWAITING_MESSAGE:
+
+            # user confirmed that the message is hateful conduct
             if message.content == self.YES_KEYWORD:
                 self.state == State.HATEFUL_CONDUCT_CONFIRMED
                 reply = "Thank you for confirming that this is hateful conduct. "
@@ -55,13 +60,32 @@ class Report:
                 violence = "`threatening violence`: acts of credible threats of violence aimed at other users"
                 types = [slurs, behavior, trauma, stereotypes, violence]
                 reply += "\n".join(f"  • {type}" for type in types)
+                self.state = State.AWAITING_MESSAGE
                 return [reply]
-                
+            
+            # user picked the relevant hate speech type
+            if message.content in self.HATE_SPEECH_TYPES:
+                # add this message content to the final message that is submitted
+
+                reply = "You have classified this message as " + message.content + ". "
+                reply += "Would you like to submit your report now, or would you like to add more information? Please say `submit` if you would like to submit, or `continue` if you would like to add more information."
+                self.state = State.AWAITING_MESSAGE
+                return [reply]
+            
+            # user submits the report
+            if message.content == self.SUBMIT_KEYWORD:
+                self.report_complete()
+                return ["Thank you for submitting your report. A moderator will review it shortly."]
+            
+            # user wants to add more information
+            if message.content == self.CONTINUE_KEYWORD:
+                pass
+
             # add parsing for reporting a user
 
             # add parsing for reporting a Twitch channel
 
-            # Parse out the three ID strings from the message link
+            # parse out the three ID strings from the message link
             m = re.search('/(\d+)/(\d+)/(\d+)', message.content)
             if not m:
                 return ["I'm sorry, I couldn't read that link. Please try again or say `cancel` to cancel."]
@@ -90,7 +114,10 @@ class Report:
         return []
 
     def report_complete(self):
-        return self.state == State.REPORT_COMPLETE
+        self.state == State.REPORT_COMPLETE
+
+    def get_report(self): 
+        return self.message
     
 
 
