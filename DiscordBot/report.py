@@ -7,6 +7,11 @@ class State(Enum):
     AWAITING_MESSAGE = auto()
     MESSAGE_IDENTIFIED = auto()
     REPORT_COMPLETE = auto()
+    
+    AWAIT_CONTENT_TYPE = auto()
+    AWAIT_SPAM_TYPE = auto()
+    
+    # ADD MORE STATES HERE FOR DIFFERENT FLOW STUFF
 
 class Report:
     START_KEYWORD = "report"
@@ -17,6 +22,10 @@ class Report:
         self.state = State.REPORT_START
         self.client = client
         self.message = None
+        
+        # 1 is Imminent Danger, 2 is Spam, 3 is Nudity or Graphic, 4 is Disinformation, 5 is Hate speech/harrassment, 6 is Other
+        self.abuse_type = None
+        
     
     async def handle_message(self, message):
         '''
@@ -54,12 +63,24 @@ class Report:
                 return ["It seems this message was deleted or never existed. Please try again or say `cancel` to cancel."]
 
             # Here we've found the message - it's up to you to decide what to do next!
-            self.state = State.MESSAGE_IDENTIFIED
-            return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
-                    "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
-        
-        if self.state == State.MESSAGE_IDENTIFIED:
-            return ["<insert rest of reporting flow here>"]
+            self.state = State.AWAIT_CONTENT_TYPE
+            # return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
+            #         "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
+            # return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
+            #         "if you want to report, please specify the type of AI-generated content you see."] \
+            return   [' You can select from 1. Imminent Danger, 2. Spam, 3. Nudity or Graphic, 4. Disinformation, 5. Hate speech/harrassment, 6. Other (including satire, memes, commentary, couterspeech, etc.)'] \
+                            + ['Please type the number of the content type you see.']
+
+            
+        if self.state == State.AWAIT_CONTENT_TYPE:
+            self.state = State.AWAIT_SPAM_TYPE
+            try:
+                selection = int(message.content)
+                self.abuse_type = selection
+            except:
+                return ["Please type the number of the content type you see."]
+            
+            return [f'abuse type {selection} reported. Thank you for your report.']
 
         return []
 
