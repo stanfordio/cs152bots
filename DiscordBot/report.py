@@ -2,6 +2,22 @@ from enum import Enum, auto
 import discord
 import re
 
+SPECIFIC_OPTIONS = {
+    1: "Please select the type of imminent danger you see: 1. Credible threat of violence, 2. Suicidal content or self-harm.",
+    2: "Please select the type of spam you see: 1. Fraud, 2. Solicitation, 3. Impersonation.",
+    4: "Please select the type of disinformation you see: 1. Targeted at political candidates/figures, 2. Imposter, 3. False context, 4. Fabricated content,",
+    5: "Please select the type of hate speech/harrassment you see: 1. Bullying, 2. Hate speech directed at me/specific group of people, 3. Unwanted sexual content, 4. Revealing Private Information.",
+}
+
+CLOSING_MESSAGES = {
+    1: ["Thank you for reporting. Our content moderation team will review the report and decide on the appropriate response, notifying local authorities if necessary."],
+    2: ['Thank you for reporting. Our content moderation team will review the report and decide on the appropriate response, notifying local authorities if necessary.'],
+    3: ['Thank you for reporting. Our content moderation team will review this report and will take appropriate steps to flag, censor,  or remove this content.'],
+    4: ['Thank you for reporting. Our content moderation team will review the report and decide on the appropriate actions. This may include flagging of the content as AI-generated.\n Would you like us to remove all detected AI-generated content in from your feed the future?'],
+    5: ['Thank you for reporting. Our content moderation team will review the report and decide on the appropriate actions. This may include flagging of the content as AI-generated.\n Would you like us to remove all detected AI-generated content in from your feed the future?'],
+    6: ["Thank you for reporting. This content does not violate our policy as it does not cause significant confusion about the authenticity of the media."]
+}
+
 class State(Enum):
     REPORT_START = auto()
     AWAITING_MESSAGE = auto()
@@ -9,7 +25,9 @@ class State(Enum):
     REPORT_COMPLETE = auto()
     
     AWAIT_CONTENT_TYPE = auto()
-    AWAIT_SPAM_TYPE = auto()
+    AWAIT_SPECIFIC_TYPE = auto()
+    
+    AWAIT_AI_REMOVAL = auto()
     
     # ADD MORE STATES HERE FOR DIFFERENT FLOW STUFF
 
@@ -72,15 +90,68 @@ class Report:
                             + ['Please type the number of the content type you see.']
 
             
+        # this block determines the type of abuse the user is reporting
+        # for numbering see comments in init
         if self.state == State.AWAIT_CONTENT_TYPE:
-            self.state = State.AWAIT_SPAM_TYPE
             try:
                 selection = int(message.content)
                 self.abuse_type = selection
             except:
                 return ["Please type the number of the content type you see."]
             
-            return [f'abuse type {selection} reported. Thank you for your report.']
+            if self.abuse_type not in SPECIFIC_OPTIONS:
+                self.state = State.REPORT_COMPLETE
+                curr_abuse = self.abuse_type
+                self.abuse_type = None
+                if curr_abuse == 3:
+                    # TODO: insert code here to actually send to moderation team
+                    return CLOSING_MESSAGES[curr_abuse]
+                elif curr_abuse == 6:
+                    # TODO: insert code here to actually send to moderation team
+                    return CLOSING_MESSAGES[curr_abuse]
+            else:
+                self.state = State.AWAIT_SPECIFIC_TYPE
+                return [SPECIFIC_OPTIONS[self.abuse_type]]
+
+        # this block zones in on the specific type of abuse the user is reporting
+        if self.state == State.AWAIT_SPECIFIC_TYPE:
+            try:
+                selection = int(message.content)
+            except:
+                return [SPECIFIC_OPTIONS[self.abuse_type]]
+            
+            if (selection > 2 and self.abuse_type == 1) or (selection > 3 and self.abuse_type == 2 ) or (selection > 4 and self.abuse_type >=3):
+                return ["Please type a valid number of the content type you see."]
+            
+            if self.abuse_type == 4 or self.abuse_type == 5:
+                self.state = State.AWAIT_AI_REMOVAL
+                curr_abuse = self.abuse_type
+                self.abuse_type = None
+            else:
+                self.state = State.REPORT_COMPLETE
+                curr_abuse = self.abuse_type
+                self.abuse_type = None
+            
+            # TODO: insert code here to actually send to moderation team
+            return CLOSING_MESSAGES[curr_abuse]
+            
+        # this block implements the AI removal feature
+        if self.state == State.AWAIT_AI_REMOVAL:
+            try:
+                selection = message.content.lower()
+            except:
+                return ["Please type yes or no."]
+            
+            self.state = State.REPORT_COMPLETE
+            self.abuse_type = None
+            # TODO: Do something with the user's response
+            if selection == 'yes':
+                pass
+            if selection == 'no':
+                pass
+            
+            return ['Done!']
+
 
         return []
 
