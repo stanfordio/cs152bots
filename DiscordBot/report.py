@@ -65,8 +65,7 @@ class Report:
             
             # user picked the relevant hate speech type
             if message.content in self.HATE_SPEECH_TYPES:
-                # add this message content to the final message that is submitted
-
+                # we need to add this message content to the final message that is submitted
                 reply = "You have classified this message as " + message.content + ". "
                 reply += "Would you like to submit your report now, or would you like to add more information? Please say `submit` if you would like to submit, or `continue` if you would like to add more information."
                 self.state = State.AWAITING_MESSAGE
@@ -79,7 +78,17 @@ class Report:
             
             # user wants to add more information
             if message.content == self.CONTINUE_KEYWORD:
-                pass
+                # we need to add this message content to the final message that is submitted
+                reply = "Tell us more about what you are reporting. Helpful information for us includes the date, time, and timezone of the message, as well as a detailed description of what the hateful conduct was and why it qualifies as the hateful conduct subtype that you classified it as. If applicable, we would also like to know the name of the channel in which the violation occurred, the username of the target of the conduct, and the name of the game."
+                reply += "Please begin your response with `More information:`"
+                self.state = State.AWAITING_MESSAGE
+                return [reply]
+            
+            # user has added more information and now wants to submit
+            if message.content.startswith("More information:"):
+                reply = "Thank you for adding more information. Are you ready to submit? Please say `submit` to submit your report."
+                self.state = State.AWAITING_MESSAGE
+                return [reply]
 
             # add parsing for reporting a user
 
