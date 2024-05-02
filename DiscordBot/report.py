@@ -5,6 +5,7 @@ import re
 class State(Enum):
     REPORT_START = auto()
     AWAITING_MESSAGE = auto()
+    HATEFUL_CONDUCT_CONFIRMED = auto()
     MESSAGE_IDENTIFIED = auto()
     REPORT_COMPLETE = auto()
 
@@ -12,6 +13,10 @@ class Report:
     START_KEYWORD = "report"
     CANCEL_KEYWORD = "cancel"
     HELP_KEYWORD = "help"
+    YES_KEYWORD = "yes"
+    HATE_SPEECH_TYPES = ["slurs or symbols", "encouraging hateful behavior", "mocking trauma", "harmful stereotypes", "threatening violence"]
+    
+    HATE_SPEECH_KEYWORDS = []  # add keywords we want to use to detect hate speech here
 
     def __init__(self, client):
         self.state = State.REPORT_START
@@ -38,6 +43,24 @@ class Report:
             return [reply]
         
         if self.state == State.AWAITING_MESSAGE:
+            if message.content == self.YES_KEYWORD:
+                self.state == State.HATEFUL_CONDUCT_CONFIRMED
+                reply = "Thank you for confirming that this is hateful conduct. "
+                reply += "What kind of hateful conduct is it? "
+                reply += "Please say one of the following:\n"
+                slurs = "`slurs or symbols`: use of hateful slurs or symbols"
+                behavior = "`encouraging hateful behavior`: encouraging other users to partake in hateful behavior"
+                trauma = "`mocking trauma`: denying or mocking known hate crimes or events of genocide"
+                stereotypes = "`harmful stereotypes`: perpetuating discrimination against protected characteristics such as race, ethnicity, national origin, religious affiliation, sexual orientation, sex, gender, gender identity, serios disease, disability, or immigration status"
+                violence = "`threatening violence`: acts of credible threats of violence aimed at other users"
+                types = [slurs, behavior, trauma, stereotypes, violence]
+                reply += "\n".join(f"  • {type}" for type in types)
+                return [reply]
+                
+            # add parsing for reporting a user
+
+            # add parsing for reporting a Twitch channel
+
             # Parse out the three ID strings from the message link
             m = re.search('/(\d+)/(\d+)/(\d+)', message.content)
             if not m:
@@ -55,8 +78,11 @@ class Report:
 
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.MESSAGE_IDENTIFIED
-            return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
-                    "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
+            reply = "I found this message: " + message.author.name + ": " + message.content + "\n"
+            reply += "Is this hateful conduct? Please say `yes` or `no`."
+            self.state = State.AWAITING_MESSAGE
+            return [reply]
+
         
         if self.state == State.MESSAGE_IDENTIFIED:
             return ["<insert rest of reporting flow here>"]
