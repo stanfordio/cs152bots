@@ -6,7 +6,7 @@ import json
 import logging
 import re
 import requests
-from report import Report
+from report import Report, State
 import pdb
 
 # Set up logging to the console
@@ -30,6 +30,7 @@ class ModBot(discord.Client):
     def __init__(self): 
         intents = discord.Intents.default()
         intents.message_content = True
+        intents.reactions = True
         super().__init__(command_prefix='.', intents=intents)
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
@@ -70,6 +71,37 @@ class ModBot(discord.Client):
         else:
             await self.handle_dm(message)
 
+    async def on_raw_reaction_add(self, payload):
+        '''
+        This function is called whenever a message has a reaction added to it.
+        '''
+        # Get channel that reaction is in
+        channel = self.get_channel(payload.channel_id)
+        if channel is None:
+            channel = await self.fetch_channel(payload.channel_id)
+        
+        # Get message that was reacted to
+        try:
+            message = await channel.fetch_message(payload.message_id)
+        except discord.NotFound:
+            # If the message is not found, possibly deleted
+            return
+        except discord.Forbidden:
+            # The bot does not have permissions to access message
+            return
+
+        # Only listen for reactions to messages made by the bot, in a private DM, and reacting user is part of reporting flow
+        if message.author.id != self.user.id or payload.guild_id or payload.user_id not in self.reports: 
+            return
+        
+        # Let report class handle the reaction
+        await self.reports[payload.user_id].handle_reaction(payload, message)
+
+        # If the report is complete or cancelled, remove it from our map
+        if self.reports[payload.user_id].report_complete():
+            self.reports.pop(payload.user_id)
+
+
     async def handle_dm(self, message):
         # Handle a help message
         if message.content == Report.HELP_KEYWORD:
@@ -89,10 +121,8 @@ class ModBot(discord.Client):
         if author_id not in self.reports:
             self.reports[author_id] = Report(self)
 
-        # Let the report class handle this message; forward all the messages it returns to uss
-        responses = await self.reports[author_id].handle_message(message)
-        for r in responses:
-            await message.channel.send(r)
+        # Let the report class handle this message
+        await self.reports[author_id].handle_message(message)
 
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():
