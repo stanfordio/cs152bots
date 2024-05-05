@@ -101,10 +101,13 @@ class ModBot(discord.Client):
             
             if self.reports[author_id].requires_forwarding:
                 # Forward the report to the mod channel
-                mod_channel = self.mod_channels[self.reports[author_id].message.guild.id]
-                send_message = f"Forwarded report from {author}\n"
-                send_message += f"Message: {self.reports[author_id].message.content}\n"
-                send_message += f'Author of the message: {self.reports[author_id].message.author.name}\n'
+                msg = self.reports[author_id].message
+                mod_channel = self.mod_channels[msg.guild.id]
+                send_message = '=' * 20 + '\n'
+                send_message += '****REPORT START****\n' 
+                send_message += f"Forwarded report from {author}\n"
+                send_message += f"Message text: {msg.content}\n"
+                send_message += f'Author of the message: {msg.author.name}\n'
                 send_message += f"Abuse type: {self.reports[author_id].forward_abuse_string}\n"
                 if self.reports[author_id].specific_abuse_string:
                     send_message += f"Specific abuse: {self.reports[author_id].specific_abuse_string}\n"
@@ -112,6 +115,21 @@ class ModBot(discord.Client):
                     send_message += "The user would like to not see AI-generated content anymore.\n"
                 
                 await mod_channel.send(send_message)
+                
+                if msg.attachments:
+                    attachment = msg.attachments[0]  # Assuming the first attachment is the image
+                    # Forward the image to another server's channel
+                    await mod_channel.send('Image associated with the message attached:\n')
+                    await mod_channel.send(file=await attachment.to_file())
+                elif msg.embeds:
+                    embed = msg.embeds[0]
+                    # Forward the embed to another server's channel
+                    await mod_channel.send('Image associated with the message attached:\n')
+                    await mod_channel.send(embed=embed)
+                
+                end_message = '****REPORT END****\n'
+                end_message += '=' * 20
+                await mod_channel.send(end_message)
             
             self.reports.pop(author_id)
 
