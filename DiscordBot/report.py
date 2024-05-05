@@ -10,12 +10,14 @@ class State(Enum):
     MESSAGE_IDENTIFIED = auto()
     REPORT_COMPLETE = auto()
     AWAITING_BLOCK_CONSENT = auto()
+    AWAITING_SCAM_INFO = auto()
 
 
 class Report:
     START_KEYWORD = "report"
     CANCEL_KEYWORD = "cancel"
     HELP_KEYWORD = "help"
+    BLOCK_USER_MESSAGE = "Would you like to block the user so they cannot message you in the future? (y/n)"
 
     def __init__(self, client):
         self.state = State.REPORT_START
@@ -38,12 +40,41 @@ class Report:
 
         async def my_callback(interaction):
             if dropdown.values[0] == 'Suspicious Link':
-                await interaction.response.send_message(f"Thank you for reporting. Our content moderation team will review the link and flag it if necessary.")
-                self.state = State.REPORT_COMPLETE
+                await interaction.response.send_message(f"Thank you for reporting. Our content moderation team will review the link and flag it if necessary.\n{Report.BLOCK_USER_MESSAGE}")
+                self.state = State.AWAITING_BLOCK_CONSENT
             elif dropdown.values[0] == 'Blackmail':
-                await interaction.response.send_message(f"Please select the form of blackmail", view=self.get_blackmail_view())
+                await interaction.response.send_message(f"Please select the form(s) of blackmail", view=self.get_blackmail_view())
+            elif dropdown.values[0] == "Investment Scam":
+                await interaction.response.send_message(f"Please select all that applies", view=self.get_scam_view())
+            elif dropdown.values[0] == "Imminent Danger":
+                await interaction.response.send_message(f"If you are in a life-threatening situation, please contact your local authorities.\nOur content moderation team will review the message and decide on an appropriate action. This may include working with the local authorities and providing message content.\n{Report.BLOCK_USER_MESSAGE}")
+                self.state = State.AWAITING_BLOCK_CONSENT
             else:
                 await interaction.response.send_message(f"You chose: {dropdown.values[0]}")
+
+        dropdown.callback = my_callback
+        view = View()
+        view.add_item(dropdown)
+        return view
+
+    def get_scam_view(self):
+        options = [
+            SelectOption(label='Assets Sent', value='Assets Sent', description="You have sent money or cryptocurrency."),
+            SelectOption(label='Personal Information Provided' , value='Personal Information Provided', description="You have provided personal information such as bank information, account login, etc."),
+            SelectOption(label='Suspicion of Impersonation', value='Suspicion of Impersonation', description="You believe the account is fraudulent."),
+        ]
+
+        dropdown = Select(
+            min_values=1,
+            max_values=3,
+            placeholder='Select all that applies',
+            options=options,
+            custom_id='scam_dropdown'
+        )
+
+        async def my_callback(interaction):
+            await interaction.response.send_message(f"Thank you for reporting. Our content moderation team will review the message and decide on an appropriate action. \nPlease provide any other useful information that could help our investigation, such as date of transactions, specific information that was sent, how much assets were lost. If no additional information can be provided, reply with N/A.")
+            self.state = State.AWAITING_SCAM_INFO
 
         dropdown.callback = my_callback
         view = View()
@@ -66,7 +97,7 @@ class Report:
         )
 
         async def my_callback(interaction):
-            await interaction.response.send_message("Thank you for reporting. Our content moderation team will review the message and decide on an appropriate action. This may include removing the user from our platform.\n Would you like to block the user so they cannot message you in the future (y/n)?")
+            await interaction.response.send_message(f"Thank you for reporting. Our content moderation team will review the message and decide on an appropriate action. This may include removing the user from our platform.\n{Report.BLOCK_USER_MESSAGE}")
             self.state = State.AWAITING_BLOCK_CONSENT
 
         dropdown.callback = my_callback
@@ -120,9 +151,16 @@ class Report:
             if message.content == 'y':
                 self.state = State.REPORT_COMPLETE
                 return [{"response": "The user has been blocked. They will no longer be able to contact you."}]
-            elif message.content == 'no':
+            elif message.content == 'n':
                 self.state = State.REPORT_COMPLETE
                 return [{"response": "The user will not be blocked."}]
+
+        if self.state == State.AWAITING_SCAM_INFO:
+            additional_message = ""
+            if message.content != 'N/A':
+                additional_message = "Thank you for this information. This will be passed to our content moderation team.\n"
+            self.state = State.AWAITING_BLOCK_CONSENT
+            return [{"response": f"{additional_message}{Report.BLOCK_USER_MESSAGE}"}]
         return []
 
     def report_complete(self):
