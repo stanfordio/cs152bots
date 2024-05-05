@@ -18,6 +18,22 @@ CLOSING_MESSAGES = {
     6: ["Thank you for reporting. This content does not violate our policy as it does not cause significant confusion about the authenticity of the media."]
 }
 
+ABUSE_STRINGS = {
+    1: "Imminent Danger",
+    2: "Spam",
+    3: "Nudity or Graphic",
+    4: "Disinformation",
+    5: "Hate speech/harrassment",
+    6: "Other"
+}
+
+SPECIFIC_ABUSE_STRINGS = {
+    1: ["Credible threat of violence", "Suicidal content or self-harm"],
+    2: ["Fraud", "Solicitation", "Impersonation"],
+    4: ["Targeted at political candidates/figures", "Imposter", "False context", "Fabricated content"],
+    5: ["Bullying", "Hate speech directed at me/specific group of people", "Unwanted sexual content", "Revealing Private Information"]
+}
+
 class State(Enum):
     REPORT_START = auto()
     AWAITING_MESSAGE = auto()
@@ -40,9 +56,14 @@ class Report:
         self.state = State.REPORT_START
         self.client = client
         self.message = None
+        # self.message_content = None
         
         # 1 is Imminent Danger, 2 is Spam, 3 is Nudity or Graphic, 4 is Disinformation, 5 is Hate speech/harrassment, 6 is Other
         self.abuse_type = None
+        self.requires_forwarding = False
+        self.forward_abuse_string = '' #used to detail the first level abuse
+        self.specific_abuse_string = ''#used to detail the second level abuse
+        self.keep_AI = True
         
     
     async def handle_message(self, message):
@@ -77,11 +98,13 @@ class Report:
                 return ["It seems this channel was deleted or never existed. Please try again or say `cancel` to cancel."]
             try:
                 message = await channel.fetch_message(int(m.group(3)))
+
             except discord.errors.NotFound:
                 return ["It seems this message was deleted or never existed. Please try again or say `cancel` to cancel."]
 
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.AWAIT_CONTENT_TYPE
+            self.message = message
             # return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
             #         "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
             # return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
@@ -105,9 +128,13 @@ class Report:
                 self.abuse_type = None
                 if curr_abuse == 3:
                     # TODO: insert code here to actually send to moderation team
+                    self.requires_forwarding = True
+                    self.forward_abuse_string = ABUSE_STRINGS[curr_abuse]
                     return CLOSING_MESSAGES[curr_abuse]
                 elif curr_abuse == 6:
                     # TODO: insert code here to actually send to moderation team
+                    self.requires_forwarding = True
+                    self.forward_abuse_string = ABUSE_STRINGS[curr_abuse]
                     return CLOSING_MESSAGES[curr_abuse]
             else:
                 self.state = State.AWAIT_SPECIFIC_TYPE
@@ -133,6 +160,10 @@ class Report:
                 self.abuse_type = None
             
             # TODO: insert code here to actually send to moderation team
+            self.requires_forwarding = True
+            self.forward_abuse_string = ABUSE_STRINGS[curr_abuse]
+            self.specific_abuse_string = SPECIFIC_ABUSE_STRINGS[curr_abuse][selection-1]
+            # implement for the specific abuse type
             return CLOSING_MESSAGES[curr_abuse]
             
         # this block implements the AI removal feature
@@ -146,9 +177,9 @@ class Report:
             self.abuse_type = None
             # TODO: Do something with the user's response
             if selection == 'yes':
-                pass
+                self.keep_AI = False
             if selection == 'no':
-                pass
+                self.keep_AI = True
             
             return ['Done!']
 

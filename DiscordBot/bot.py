@@ -79,6 +79,8 @@ class ModBot(discord.Client):
             return
 
         author_id = message.author.id
+        author = message.author
+
         responses = []
 
         # Only respond to messages if they're part of a reporting flow
@@ -96,6 +98,21 @@ class ModBot(discord.Client):
 
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():
+            
+            if self.reports[author_id].requires_forwarding:
+                # Forward the report to the mod channel
+                mod_channel = self.mod_channels[self.reports[author_id].message.guild.id]
+                send_message = f"Forwarded report from {author}\n"
+                send_message += f"Message: {self.reports[author_id].message.content}\n"
+                send_message += f'Author of the message: {self.reports[author_id].message.author.name}\n'
+                send_message += f"Abuse type: {self.reports[author_id].forward_abuse_string}\n"
+                if self.reports[author_id].specific_abuse_string:
+                    send_message += f"Specific abuse: {self.reports[author_id].specific_abuse_string}\n"
+                if not self.reports[author_id].keep_AI:
+                    send_message += "The user would like to not see AI-generated content anymore.\n"
+                
+                await mod_channel.send(send_message)
+            
             self.reports.pop(author_id)
 
     async def handle_channel_message(self, message):
