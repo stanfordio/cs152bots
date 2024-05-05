@@ -118,7 +118,6 @@ class Report:
             
             await message.channel.send("Sorry, I don't understand what you mean by this emoji. Please react to the previous message with either 1️⃣, 2️⃣, 3️⃣, or 4️⃣")
             return
-        
 
         if self.state == State.BLOCK_USER:
             if payload.message_id != self.block_user_message_id:
@@ -126,9 +125,11 @@ class Report:
                 return
             
             if str(payload.emoji) == '👍':
+                self.state = State.REPORT_COMPLETE
                 await message.channel.send("You have chosen to block the user, and we have processed your request. We appreciate your help in maintaining a safe community environment.")
                 return
             elif str(payload.emoji) == '👎':
+                self.state = State.REPORT_COMPLETE
                 await message.channel.send("You have chosen not to block the user. We appreciate your help in maintaining a safe community environment.")
                 return
             
