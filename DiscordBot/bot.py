@@ -8,6 +8,7 @@ import re
 import requests
 from report import Report
 import pdb
+from moderator import ModReport
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -34,6 +35,7 @@ class ModBot(discord.Client):
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
+        self.mod_reports = {}
         
         self.awaiting_mod_decisions = {1: {}, 2: {}, 3:{}, 4:{}, 5:{}} # Maps from abuse types to a list of tuples containing report id, the message object, and images
         self.caseno_to_info = {} # Maps from report id to a tuple defined below
@@ -166,56 +168,76 @@ class ModBot(discord.Client):
         if not message.channel.name == f'group-{self.group_num}-mod':
             return
         
-        # print(message.content)
-        message_content = message.content.split()
-        if message_content[0] != 'RETRIEVE' and message_content[0] != 'EXECUTE':
-            return_message = 'Invalid command. Please type RETRIEVE followed by a case number, \'MOST RECENT\' or \'HIGH PRIORITY\' to retrieve a case or EXECUTE followed by a case number, target, and action to close a case.'
-            await message.channel.send(return_message)
+        author_id = message.author.id
+        author = message.author
+
+        # Only respond to messages if they're part of a reporting flow
+        if author_id not in self.mod_reports and not message.content.startswith(ModReport.START_KEYWORD):
+            return
+
+        # If we don't currently have an active report for this user, add one
+        if author_id not in self.mod_reports:
+            self.mod_reports[author_id] = ModReport(self)
         
-        if message_content[0] == 'RETRIEVE' and 'MOST RECENT' not in message.content.upper() and 'HIGH PRIORITY' not in message.content.upper():
-            try:
-                case_number = int(message_content[1])
-                case_number = '#' + str(case_number)
-                abuse_type = None
-                for key in self.awaiting_mod_decisions:
-                    if case_number in self.awaiting_mod_decisions[key]:
-                        abuse_type = key
-                        break
-                if abuse_type:
-                    package = self.awaiting_mod_decisions[abuse_type][case_number]
-                    await message.channel.send(package[0])
-                    if package[1]:
-                        await message.channel.send(file=await package[1].to_file())
-                    await message.channel.send(package[2])
-                else:
-                    await message.channel.send('Case not found.')
-            except:
-                await message.channel.send('Invalid case number.')
-        elif message_content[0] == 'RETRIEVE' and 'MOST RECENT' in message.content.upper():
-            if self.most_recent:
-                package = self.most_recent
-                await message.channel.send(package[0])
-                if package[1]:
-                    await message.channel.send(file=await package[1].to_file())
-                await message.channel.send(package[2])
-            else:
-                await message.channel.send('No cases found.')
-        elif message_content[0] == 'RETRIEVE' and 'HIGH PRIORITY' in message.content.upper():
-            # abuse 1 and 2 are high priority, the rest are not
-            for key in range(1, 3):
-                if self.awaiting_mod_decisions[key]:
-                    package = self.awaiting_mod_decisions[key][min(self.awaiting_mod_decisions[key].keys())]
-                    await message.channel.send(package[0])
-                    if package[1]:
-                        await message.channel.send(file=await package[1].to_file())
-                    await message.channel.send(package[2])
-                    break
-            else:
-                await message.channel.send('No high priority cases found.')
+        response = await self.mod_reports[author_id].handle_message(message, self.awaiting_mod_decisions, self.caseno_to_info, self.most_recent)
         
-        elif message.content[0] == 'EXECUTE':
-            #TODO: IMPLEMENT THIS WITH THE MODERATOR FLOW
-            pass
+        for r in response:
+            if type(r) == str:
+                await message.channel.send(r)
+            else:
+                await message.channel.send(file = r)
+            # await message.channel.send(r)
+        
+        # # print(message.content)
+        # message_content = message.content.split()
+        # if message_content[0] != 'RETRIEVE' and message_content[0] != 'EXECUTE':
+        #     return_message = 'Invalid command. Please type RETRIEVE followed by a case number, \'MOST RECENT\' or \'HIGH PRIORITY\' to retrieve a case or EXECUTE followed by a case number, target, and action to close a case.'
+        #     await message.channel.send(return_message)
+        
+        # if message_content[0] == 'RETRIEVE' and 'MOST RECENT' not in message.content.upper() and 'HIGH PRIORITY' not in message.content.upper():
+        #     try:
+        #         case_number = int(message_content[1])
+        #         case_number = '#' + str(case_number)
+        #         abuse_type = None
+        #         for key in self.awaiting_mod_decisions:
+        #             if case_number in self.awaiting_mod_decisions[key]:
+        #                 abuse_type = key
+        #                 break
+        #         if abuse_type:
+        #             package = self.awaiting_mod_decisions[abuse_type][case_number]
+        #             await message.channel.send(package[0])
+        #             if package[1]:
+        #                 await message.channel.send(file=await package[1].to_file())
+        #             await message.channel.send(package[2])
+        #         else:
+        #             await message.channel.send('Case not found.')
+        #     except:
+        #         await message.channel.send('Invalid case number.')
+        # elif message_content[0] == 'RETRIEVE' and 'MOST RECENT' in message.content.upper():
+        #     if self.most_recent:
+        #         package = self.most_recent
+        #         await message.channel.send(package[0])
+        #         if package[1]:
+        #             await message.channel.send(file=await package[1].to_file())
+        #         await message.channel.send(package[2])
+        #     else:
+        #         await message.channel.send('No cases found.')
+        # elif message_content[0] == 'RETRIEVE' and 'HIGH PRIORITY' in message.content.upper():
+        #     # abuse 1 and 2 are high priority, the rest are not
+        #     for key in range(1, 3):
+        #         if self.awaiting_mod_decisions[key]:
+        #             package = self.awaiting_mod_decisions[key][min(self.awaiting_mod_decisions[key].keys())]
+        #             await message.channel.send(package[0])
+        #             if package[1]:
+        #                 await message.channel.send(file=await package[1].to_file())
+        #             await message.channel.send(package[2])
+        #             break
+        #     else:
+        #         await message.channel.send('No high priority cases found.')
+        
+        # elif message.content[0] == 'EXECUTE':
+        #     #TODO: IMPLEMENT THIS WITH THE MODERATOR FLOW
+        #     pass
         
 
     
