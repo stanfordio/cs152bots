@@ -8,12 +8,15 @@ import re
 import requests
 from report import Report
 import pdb
+import openai
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
 logger.setLevel(logging.DEBUG)
-handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
-handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+handler = logging.FileHandler(
+    filename='discord.log', encoding='utf-8', mode='w')
+handler.setFormatter(logging.Formatter(
+    '%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
 logger.addHandler(handler)
 
 # There should be a file called 'tokens.json' inside the same folder as this file
@@ -27,13 +30,16 @@ with open(token_path) as f:
 
 
 class ModBot(discord.Client):
-    def __init__(self): 
+    def __init__(self):
         intents = discord.Intents.default()
         intents.message_content = True
         super().__init__(command_prefix='.', intents=intents)
+        # openai integration
+        self.openai = openai.OpenAI(
+            api_key='sample-api-key')
         self.group_num = None
-        self.mod_channels = {} # Map from guild to the mod channel id for that guild
-        self.reports = {} # Map from user IDs to the state of their report
+        self.mod_channels = {}  # Map from guild to the mod channel id for that guild
+        self.reports = {}  # Map from user IDs to the state of their report
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -46,21 +52,21 @@ class ModBot(discord.Client):
         if match:
             self.group_num = match.group(1)
         else:
-            raise Exception("Group number not found in bot's name. Name format should be \"Group # Bot\".")
+            raise Exception(
+                "Group number not found in bot's name. Name format should be \"Group # Bot\".")
 
         # Find the mod channel in each guild that this bot should report to
         for guild in self.guilds:
             for channel in guild.text_channels:
                 if channel.name == f'group-{self.group_num}-mod':
                     self.mod_channels[guild.id] = channel
-        
 
     async def on_message(self, message):
         '''
         This function is called whenever a message is sent in a channel that the bot can see (including DMs). 
         Currently the bot is configured to only handle messages that are sent over DMs or in your group's "group-#" channel. 
         '''
-        # Ignore messages from the bot 
+        # Ignore messages from the bot
         if message.author.id == self.user.id:
             return
 
@@ -73,7 +79,7 @@ class ModBot(discord.Client):
     async def handle_dm(self, message):
         # Handle a help message
         if message.content == Report.HELP_KEYWORD:
-            reply =  "Use the `report` command to begin the reporting process.\n"
+            reply = "Use the `report` command to begin the reporting process.\n"
             reply += "Use the `cancel` command to cancel the report process.\n"
             await message.channel.send(reply)
             return
@@ -103,13 +109,15 @@ class ModBot(discord.Client):
         if not message.channel.name == f'group-{self.group_num}':
             return
 
-        # Forward the message to the mod channel
-        mod_channel = self.mod_channels[message.guild.id]
-        await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-        scores = self.eval_text(message.content)
-        await mod_channel.send(self.code_format(scores))
+        # Evaluate message using OpenAI moderation endpoint
+        flag_type = await self.evaluate_message(message.content)
 
-    
+        if flag_type:
+            await self.handle_offensive_message(message, flag_type)
+        else:
+            mod_channel = self.mod_channels[message.guild.id]
+            await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
+
     def eval_text(self, message):
         ''''
         TODO: Once you know how you want to evaluate messages in your channel, 
@@ -117,14 +125,35 @@ class ModBot(discord.Client):
         '''
         return message
 
-    
     def code_format(self, text):
         ''''
         TODO: Once you know how you want to show that a message has been 
         evaluated, insert your code here for formatting the string to be 
         shown in the mod channel. 
         '''
-        return "Evaluated: '" + text+ "'"
+        return "Evaluated: '" + text + "'"
+
+    async def evaluate_message(self, message_content):
+        response = self.openai.moderations.create(input=message_content)
+        output = response.results[0]
+
+        # Check if the content is flagged
+        if output.flagged:
+            print(f"Flagged content: {message_content}")
+            print(f"Output: {output}")
+            # Check which categories are flagged
+            flagged_categories = [
+                category for category, flagged in output.categories.dict().items() if flagged]
+
+            # Return the first flagged category as the flag type
+            if flagged_categories:
+                return flagged_categories[0]
+        return None
+
+    async def handle_offensive_message(self, message, flag_type):
+        # Handle offensive message here based on the flag type
+        await message.delete()
+        await message.author.send(f"Your message was flagged as potentially harmful ({flag_type}) and has been removed.")
 
 
 client = ModBot()
