@@ -8,6 +8,7 @@ import re
 import requests
 from report import Report, State
 import pdb
+from modReport import ModReport, ModState
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -35,6 +36,7 @@ class ModBot(discord.Client):
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
+        self.mod_reports = {} # Map from moderator IDs to the state of their mod report
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -90,6 +92,13 @@ class ModBot(discord.Client):
             # The bot does not have permissions to access message
             return
 
+        # if reaction is added to a message in the mod channel, handle it
+        if message.channel.name == f'group-{self.group_num}-mod':
+            await self.mod_reports[payload.user_id].handle_reaction(payload, message)
+            if self.mod_reports[payload.user_id].report_complete():
+                self.mod_reports.pop(payload.user_id)
+            return
+        
         # Only listen for reactions to messages made by the bot, in a private DM, and reacting user is part of reporting flow
         if message.author.id != self.user.id or payload.guild_id or payload.user_id not in self.reports: 
             return
@@ -130,14 +139,35 @@ class ModBot(discord.Client):
 
     async def handle_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel
-        if not message.channel.name == f'group-{self.group_num}':
-            return
+        # if not message.channel.name == f'group-{self.group_num}':
+        #     return
 
-        # Forward the message to the mod channel
-        mod_channel = self.mod_channels[message.guild.id]
-        await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-        scores = self.eval_text(message.content)
-        await mod_channel.send(self.code_format(scores))
+
+        # If in group-16 channel, forward the message to the mod channel -> change later because we only send flagged messages
+        if message.channel.name == f'group-{self.group_num}':
+            mod_channel = self.mod_channels[message.guild.id]
+            await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
+            scores = self.eval_text(message.content)
+            await mod_channel.send(self.code_format(scores))
+        elif message.channel.name == f'group-{self.group_num}-mod':
+            # This is a message from a moderator in the mod channel
+            # Let the ModReport class handle this message
+            # If we don't currently have an active report for this user, add one
+            author_id = message.author.id
+            if author_id not in self.mod_reports:
+                self.mod_reports[author_id] = ModReport(self)
+
+            # Let the report class handle this message
+            await self.mod_reports[author_id].handle_message(message)
+
+            # If the report is complete or cancelled, remove it from our map
+            if self.mod_reports[author_id].report_complete():
+                self.mod_reports.pop(author_id)
+
+
+            # mod_report = ModReport(self)
+            # await mod_report.handle_message(message)
+            # self.mod_reports[message.author.id] = mod_report
 
     
     def eval_text(self, message):
