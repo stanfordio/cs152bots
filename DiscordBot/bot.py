@@ -104,6 +104,7 @@ class ModBot(discord.Client):
             # If the report is complete or cancelled, remove it from our map
             if self.reports[payload.user_id].report_complete():
                 self.reports.pop(payload.user_id)
+        # If reaction made to mod channel
         elif message.channel.name == f'group-{self.group_num}-mod':
             await self.mod_reports[payload.user_id].handle_reaction(payload, message)
             if self.mod_reports[payload.user_id].report_complete():
