@@ -198,12 +198,13 @@ class Report:
                 return [self.INCORRECT_RESPONSE]
 
         if self.state == State.EXPECT_TARGET_SUBJECT: 
-            target_subject = message.content
+            self.message['target_subject'] = message.content
             self.state = State.EXPECT_VIOLENCEORNO
             return ["Does the reported message encourage violence?\n1. Yes\n2. No\n Please respond with 1 or 2."] 
 
         
         if self.state == State.REPORT_THANKYOU:
+            await self.client.mod_channels[1211760623969370122].send(self.message)
             self.state = State.REPORT_MOREORNOT
             return ["Thank you for submitting this report. We will review the reported content and determine whether the post will be flagged, removed, or kept up. If the user\’s content makes you uncomfortable, you can use the block feature to no longer see their content.\n" 
                    + "Are there additional posts you would like to report?\n1. Yes\n2. No\n Please with respond with one of 1 or 2."]
@@ -212,6 +213,9 @@ class Report:
 
     def report_cancelled(self):
         return self.state == State.REPORT_CANCELLED
+    
+    def report_thankyou(self):
+        return self.state == State.REPORT_THANKYOU
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
