@@ -17,6 +17,7 @@ class State(Enum):
     READY_TO_SUBMIT = auto()
     SUBMIT_OR_NO = auto()
     REPORT_COMPLETE = auto()
+    REPORT_CANCELLED = auto()
     REPORT_THANKYOU = auto()
     REPORT_MOREORNOT = auto()
 
@@ -191,7 +192,7 @@ class Report:
                 # INSERT CODE TO SEND TO MODERATOR CHANNEL
                 self.state = State.REPORT_THANKYOU
             elif (message.content == '2'):
-                self.state = State.REPORT_COMPLETE
+                self.state = State.REPORT_CANCELLED
                 return ["Report cancelled."]
             else: 
                 return [self.INCORRECT_RESPONSE]
@@ -209,8 +210,8 @@ class Report:
         
         return []
 
-    def incorrect_response_format(self):
-        return ["Please ensure the response is in the correct format."]
+    def report_cancelled(self):
+        return self.state == State.REPORT_CANCELLED
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE

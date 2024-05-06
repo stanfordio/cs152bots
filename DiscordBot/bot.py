@@ -94,9 +94,14 @@ class ModBot(discord.Client):
         for r in responses:
             await message.channel.send(r)
 
-        # If the report is complete or cancelled, remove it from our map
-        if self.reports[author_id].report_complete():
+        # If the report is cancelled, remove it from our map
+        if self.reports[author_id].report_cancelled():
             self.reports.pop(author_id)
+
+        # Forward user flow to moderator 
+        if self.reports[author_id].report_complete():
+            await self.mod_channels[1211760623969370122].send(self.reports[author_id].message)
+
 
     async def handle_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel
