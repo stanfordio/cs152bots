@@ -143,12 +143,8 @@ class ModBot(discord.Client):
                 
                 self.most_recent = (start_message, image, end_message, msg, self.reports[author_id].abuse_type, self.reports[author_id].report_no)
                 
-                await mod_channel.send('Most recent report added to the queue for review:\n')
-                await mod_channel.send(start_message)
-                if image:
-                    await mod_channel.send(file=await image.to_file())
-                await mod_channel.send(end_message)
-                # await mod_channel.send(end_message)
+                update = f'There was a new report added to the queue for review. There are now {len(self.caseno_to_info)} reports in the queue.'
+                await mod_channel.send(update)
             
             self.reports.pop(author_id)
 
