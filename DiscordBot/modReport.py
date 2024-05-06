@@ -7,6 +7,7 @@ class ModState(Enum):
     AWAITING_MESSAGE = auto()
     MESSAGE_IDENTIFIED = auto()
     REPORT_COMPLETE = auto()
+    
     HARASSMENT_CHOSEN = auto()
 
     OFFENSIVE_CONTENT_CHOSEN = auto()
@@ -18,7 +19,12 @@ class ModState(Enum):
     OFFENSIVE_VIOLENCE_OTHER = auto()
 
     URGENT_VIOLENCE_CHOSEN = auto()
+    URGENT_SELF_HARM = auto()
+    URGENT_DIRECT_THREAT = auto()
+
     OTHERS_CHOSEN = auto()
+    OTHERS_REVIEW_TEAM = auto()
+
     BLOCK_USER = auto()
 
 class ModReport:
@@ -30,6 +36,7 @@ class ModReport:
         self.flagged_message = None
         self.mod_channel = None
         self.follow_up_message_id = None
+        self.linked_message = None
     
     async def handle_message(self, message):
         '''
@@ -46,6 +53,7 @@ class ModReport:
         if self.state == ModState.AWAITING_MESSAGE:
             # print('awaiting message')
             # Parse out the three ID strings from the message link
+            self.linked_message = message
             m = re.search('/(\d+)/(\d+)/(\d+)', message.content)
             if not m:
                 await message.channel.send("I'm sorry, I couldn't read that link. Please try again.")
@@ -107,6 +115,23 @@ class ModReport:
                 # Invalid reaction, ignore it
                 return
             
+        # OTHERS FLOW --------------------------------------------------------------
+        elif self.state == ModState.OTHERS_CHOSEN:
+            if reaction == '1️⃣':
+                self.state = ModState.AWAITING_MESSAGE
+                await self.handle_message(self.linked_message)
+            elif reaction == '2️⃣':
+                await self.mod_channel.send("Sending to three-person review team for further approval. This moderation process is complete and further action will be pending.")
+                self.state = ModState.REPORT_COMPLETE
+            else:
+                # Invalid reaction, ignore it
+                return
+            
+        # HARASSMENT FLOW --------------------------------------------------------------
+
+
+
+        # OFFENSIVE CONTENT FLOW --------------------------------------------------------------   
         elif self.state == ModState.OFFENSIVE_CONTENT_CHOSEN:
             if reaction == '1️⃣':
                 self.state = ModState.OFFENSIVE_CONTENT_NOT_INCITING_VIOLENCE
@@ -191,18 +216,62 @@ class ModReport:
                 await self.handle_offensive_content_inciting_violence_reaction()
                 self.state = ModState.OFFENSIVE_CONTENT_INCITING_VIOLENCE
             elif reaction == '2️⃣':
-                await self.mod_channel.send("Sending to three-person review team for further approval. This moderation process is complete and furhter action will be pending.")
+                await self.mod_channel.send("Sending to three-person review team for further approval. This moderation process is complete and further action will be pending.")
                 self.state = ModState.REPORT_COMPLETE
             else:
                 # Invalid reaction, ignore it
                 return
 
+        # URGENT VIOLENCE FLOW --------------------------------------------------------------
+
+        elif self.state == ModState.URGENT_VIOLENCE_CHOSEN:
+            if reaction == '1️⃣':
+                self.state = ModState.URGENT_SELF_HARM
+                await self.handle_urgent_self_harm_reaction()
+            elif reaction == '2️⃣':
+                self.state = ModState.URGENT_DIRECT_THREAT
+                await self.handle_urgent_direct_threat_reaction()
+            else:
+                # Invalid reaction, ignore it
+                return
+            
+        elif self.state == ModState.URGENT_SELF_HARM:
+            if reaction == '1️⃣':
+                # send resources to user
+                await self.flagged_message.author.send("We have seen your message and are here to help. Here are some mental health resources: [link]")
+                # remove post
+                await self.flagged_message.delete()
+                await self.mod_channel.send("Removed post and sent mental health resources to user. The moderation process is complete.")
+                self.state = ModState.REPORT_COMPLETE
+            elif reaction == '2️⃣':
+                # removing post
+                await self.flagged_message.delete()
+                await self.mod_channel.send("Removed post. The moderation process is complete.")
+                self.state = ModState.REPORT_COMPLETE
+            else:
+                # Invalid reaction, ignore it
+                return
+
+        
+
+
+    # OTHERS FLOW ----------------------------------------------------------
+    async def handle_others_reaction(self):
+        # ask if fits with other high level categories
+        await self.send_follow_up_question(
+                "Does this fit with the other categories (Harassment, Offensive Content, Urgent Violence)? React for yes or no.\n"
+                "1️⃣ - Yes -> Choose appropriate category\n"
+                "2️⃣ - No -> Forward to review team")
+        
+    # HARASSMENT FLOW --------------------------------------------------------------
 
     async def handle_harassment_reaction(self):
         # Ask follow-up questions specific to harassment
         pass
         # await self.send_follow_up_question("Is the message sexually graphic content, CSAM, relates to protected characteristics, or drug use? (React with 1️⃣ for Yes, 2️⃣ for No)")
     
+
+    # OFFENSIVE CONTENT FLOW --------------------------------------------------------------
     async def handle_offensive_content_reaction(self):
         # Ask follow-up questions specific to offensive content
         # await self.send_follow_up_question("Is this message inciting violence? (React with 1️⃣ for Yes, 2️⃣ for No)")
@@ -254,16 +323,25 @@ class ModReport:
                 "Does this fit with the other categories of inciting violence? React for yes or no.\n"
                 "1️⃣ - Yes -> Choose appropriate category\n"
                 "2️⃣ - No -> Forward to review team")
+        
+    # URGENT VIOLENCE FLOW --------------------------------------------------------------
     
     async def handle_urgent_violence_reaction(self):
-        # Handle urgent violence reaction (if needed)
-        # This could involve taking immediate action or escalating the issue
-        pass
+        # Is the urgent violence related to self harm or a direct threat to another user?
+        await self.send_follow_up_question(
+                "Please react with a corresponding number to categorize the urgent violence.\n"
+                "1️⃣ - Self Harm -> May remove post or send mental health resources\n"
+                "2️⃣ - Direct Threat on Another User -> May escalate to ban, suspension, content removal, or law enforcement")
     
-    async def handle_others_reaction(self):
-        # Handle "Others" reaction (if needed)
-        # This could involve asking for more details or other follow-up actions
-        pass
+    async def handle_urgent_self_harm_reaction(self):
+        # Ask to remove post or send mental health resources if the enough veracity
+        await self.send_follow_up_question(
+                "Please determine the veracity of the post and react for one of the options:\n"
+                "1️⃣ - Real issue -> Send mental health resources to user\n"
+                "2️⃣ - No real issue -> Remove post")
+        
+    
+    # Helper functions ----------------------------------------------------------
     
     async def send_follow_up_question(self, question):
         # Send a follow-up question and update the state
