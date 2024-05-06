@@ -13,6 +13,7 @@ class State(Enum):
     OTHERS_CHOSEN = auto()
     BLOCK_USER = auto()
     INCITING_VIOLENCE_CHOSEN = auto()
+    NOT_IMMEDIATE_DANGER = auto()
 
 class Report:
     START_KEYWORD = "report"
@@ -28,6 +29,8 @@ class Report:
         self.harassment_type_message_id = None
         self.offensive_content_type_message_id = None
         self.inciting_violence_message_id = None
+        self.immediate_danger_message_id = None
+        self.urgent_violence_category_message_id = None
     
     async def handle_message(self, message):
         '''
@@ -127,7 +130,12 @@ class Report:
                 return
             elif str(payload.emoji) == '3️⃣':
                 self.state = State.URGENT_VIOLENCE_CHOSEN
-                await message.channel.send("You've reported urgent violence")
+                sent_message = await message.channel.send(
+                    "Are you in immediate danger?\n"
+                    "If so, please react to this message with 👍.\n"
+                    "Otherwise, react to this message with 👎."
+                )
+                self.immediate_danger_message_id = sent_message.id
                 return
             elif str(payload.emoji) == '4️⃣':
                 self.state = State.OTHERS_CHOSEN
@@ -300,6 +308,49 @@ class Report:
                 return
             
             await message.channel.send("Sorry, I don't understand what you mean by this emoji. Please react to the previous message with either 1️⃣, 2️⃣, 3️⃣, 4️⃣ or 5️⃣")
+            return
+        
+        if self.state == State.URGENT_VIOLENCE_CHOSEN:
+            if payload.message_id != self.immediate_danger_message_id:
+                await message.channel.send("Please respond by reacting directly to the block confirmation message above with the appropriate emoji.")
+                return
+            
+            if str(payload.emoji) == '👍':
+                self.state = State.REPORT_COMPLETE
+                await message.channel.send("Please call 911. We will address this report with the highest priority.")
+                return
+            elif str(payload.emoji) == '👎':
+                self.state = State.NOT_IMMEDIATE_DANGER
+                sent_message = await message.channel.send(
+                    "What category of violence would you classify this as:\n"
+                    "1️⃣ - Self Harm\n"
+                    "2️⃣ - Directed Threat\n")
+                self.urgent_violence_category_message_id = sent_message.id
+                return
+            
+            await message.channel.send("Sorry, I don't understand what you mean by this emoji. Please react to the previous message with either 👍 or 👎")
+            return
+        
+        if self.state == State.NOT_IMMEDIATE_DANGER:
+            if payload.message_id != self.urgent_violence_category_message_id:
+                await message.channel.send("Please respond by reacting directly to the block confirmation message above with the appropriate emoji.")
+                return
+            
+            if str(payload.emoji) == '1️⃣':
+                self.state = State.REPORT_COMPLETE
+                await message.channel.send("Thank you for reporting. We will contact local authorities")
+                return
+            elif str(payload.emoji) == '2️⃣':
+                self.state = State.BLOCK_USER
+                sent_message = await message.channel.send(
+                    "Thank you for your report. Would you like to block this user?\n"
+                    "If so, please react to this message with 👍.\n"
+                    "Otherwise, react to this message with 👎."
+                )
+                self.block_user_message_id = sent_message.id
+                return
+            
+            await message.channel.send("Sorry, I don't understand what you mean by this emoji. Please react to the previous message with either 1️⃣ or 2️⃣")
             return
 
         if self.state == State.BLOCK_USER:
