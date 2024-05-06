@@ -91,24 +91,26 @@ class ModBot(discord.Client):
         except discord.Forbidden:
             # The bot does not have permissions to access message
             return
+        
+        # Only listen for reactions to messages made by the bot
+        if message.author.id != self.user.id:
+            return
+        
+        # If reaction is made to a private DM for a user that's currently in reporting flow
+        if not payload.guild_id and payload.user_id in self.reports:
+            # Let user report class handle the reaction
+            await self.reports[payload.user_id].handle_reaction(payload, message)
 
-        # if reaction is added to a message in the mod channel, handle it
-        if message.channel.name == f'group-{self.group_num}-mod':
+            # If the report is complete or cancelled, remove it from our map
+            if self.reports[payload.user_id].report_complete():
+                self.reports.pop(payload.user_id)
+        elif message.channel.name == f'group-{self.group_num}-mod':
             await self.mod_reports[payload.user_id].handle_reaction(payload, message)
             if self.mod_reports[payload.user_id].report_complete():
                 self.mod_reports.pop(payload.user_id)
             return
         
-        # Only listen for reactions to messages made by the bot, in a private DM, and reacting user is part of reporting flow
-        if message.author.id != self.user.id or payload.guild_id or payload.user_id not in self.reports: 
-            return
-        
-        # Let report class handle the reaction
-        await self.reports[payload.user_id].handle_reaction(payload, message)
-
-        # If the report is complete or cancelled, remove it from our map
-        if self.reports[payload.user_id].report_complete():
-            self.reports.pop(payload.user_id)
+        return
 
 
     async def handle_dm(self, message):
