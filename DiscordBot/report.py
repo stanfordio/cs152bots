@@ -7,6 +7,7 @@ class State(Enum):
     AWAITING_MESSAGE = auto()
     MESSAGE_IDENTIFIED = auto()
     REPORT_COMPLETE = auto()
+    REPORT_CANCELLED = auto()
     HARASSMENT_CHOSEN = auto()
     OFFENSIVE_CONTENT_CHOSEN = auto()
     URGENT_VIOLENCE_CHOSEN = auto()
@@ -41,7 +42,7 @@ class Report:
         '''
 
         if message.content == self.CANCEL_KEYWORD:
-            self.state = State.REPORT_COMPLETE
+            self.state = State.REPORT_CANCELLED
             await message.channel.send("Report cancelled.")
             return
         
@@ -387,6 +388,9 @@ class Report:
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
+    
+    def report_cancelled(self):
+        return self.state == State.REPORT_CANCELLED
     
 
 

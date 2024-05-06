@@ -101,11 +101,15 @@ class ModBot(discord.Client):
             # Let user report class handle the reaction
             await self.reports[payload.user_id].handle_reaction(payload, message)
 
-            # If the report is complete or cancelled, remove it from our map
+            # If the report is complete, forward to mod channel and remove it from our map
             if self.reports[payload.user_id].report_complete():
                 mod_channel = self.mod_channels[self.reports[payload.user_id].message.guild.id]
                 await self.reports[payload.user_id].send_report_to_mod_channel(mod_channel)
                 self.reports.pop(payload.user_id)
+            # If the report is cancelled, just remove it from the map
+            elif self.reports[payload.user_id].report_cancelled():
+                self.reports.pop(payload.user_id)
+
         # If reaction made to mod channel
         elif message.channel.name == f'group-{self.group_num}-mod':
             await self.mod_reports[payload.user_id].handle_reaction(payload, message)
@@ -142,6 +146,9 @@ class ModBot(discord.Client):
         if self.reports[author_id].report_complete():
             mod_channel = self.mod_channels[self.reports[author_id].message.guild.id]
             await self.reports[author_id].send_report_to_mod_channel(mod_channel)
+            self.reports.pop(author_id)
+        # If the report is cancelled, just remove it from the map
+        elif self.reports[author_id].report_cancelled():
             self.reports.pop(author_id)
         
         return
