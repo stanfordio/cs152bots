@@ -12,6 +12,7 @@ class State(Enum):
     URGENT_VIOLENCE_CHOSEN = auto()
     OTHERS_CHOSEN = auto()
     BLOCK_USER = auto()
+    INCITING_VIOLENCE_CHOSEN = auto()
 
 class Report:
     START_KEYWORD = "report"
@@ -25,6 +26,8 @@ class Report:
         self.abuse_category_message_id = None
         self.block_user_message_id = None
         self.harassment_type_message_id = None
+        self.offensive_content_type_message_id = None
+        self.inciting_violence_message_id = None
     
     async def handle_message(self, message):
         '''
@@ -113,7 +116,14 @@ class Report:
                 return
             elif str(payload.emoji) == '2️⃣':
                 self.state = State.OFFENSIVE_CONTENT_CHOSEN
-                await message.channel.send("You've reported offensive content")
+                sent_message = await message.channel.send(
+                    "Please react with the corresponding number for which type of offensive content you're reporting:\n"
+                    "1️⃣ - Protected Characteristics (race, color, religion etc.)\n"
+                    "2️⃣ - Sexually Graphic Content\n"
+                    "3️⃣ - Child Sexual Abuse Material\n"
+                    "4️⃣ - Drug Use\n"
+                    "5️⃣ - Inciting/Glorifying  Violence\n")
+                self.offensive_content_type_message_id = sent_message.id
                 return
             elif str(payload.emoji) == '3️⃣':
                 self.state = State.URGENT_VIOLENCE_CHOSEN
@@ -169,6 +179,117 @@ class Report:
                 self.block_user_message_id = sent_message.id
                 return
             elif str(payload.emoji) == '5️⃣':
+                self.state = State.BLOCK_USER
+                sent_message = await message.channel.send(
+                    "Thank you for your report. Would you like to block this user?\n"
+                    "If so, please react to this message with 👍.\n"
+                    "Otherwise, react to this message with 👎."
+                )
+                self.block_user_message_id = sent_message.id
+                return
+            
+            await message.channel.send("Sorry, I don't understand what you mean by this emoji. Please react to the previous message with either 1️⃣, 2️⃣, 3️⃣, 4️⃣ or 5️⃣")
+            return
+        
+        if self.state == State.OFFENSIVE_CONTENT_CHOSEN:
+            if payload.message_id != self.offensive_content_type_message_id:
+                await message.channel.send("Please react to the message that contains emoji options to choose from.")
+                return
+            
+            if str(payload.emoji) == '1️⃣': # Protected Characteristics
+                self.state = State.BLOCK_USER
+                sent_message = await message.channel.send(
+                    "Thank you for your report. Would you like to block this user?\n"
+                    "If so, please react to this message with 👍.\n"
+                    "Otherwise, react to this message with 👎."
+                )
+                self.block_user_message_id = sent_message.id
+                return
+            elif str(payload.emoji) == '2️⃣': # Sexually Graphic Content
+                self.state = State.BLOCK_USER
+                sent_message = await message.channel.send(
+                    "Thank you for your report. Would you like to block this user?\n"
+                    "If so, please react to this message with 👍.\n"
+                    "Otherwise, react to this message with 👎."
+                )
+                self.block_user_message_id = sent_message.id
+                return
+            elif str(payload.emoji) == '3️⃣': # Child Sexual Abuse Material
+                self.state = State.BLOCK_USER
+                sent_message = await message.channel.send(
+                    "Thank you for your report. Would you like to block this user?\n"
+                    "If so, please react to this message with 👍.\n"
+                    "Otherwise, react to this message with 👎."
+                )
+                self.block_user_message_id = sent_message.id
+                return
+            elif str(payload.emoji) == '4️⃣': # Drug Use
+                self.state = State.BLOCK_USER
+                sent_message = await message.channel.send(
+                    "Thank you for your report. Would you like to block this user?\n"
+                    "If so, please react to this message with 👍.\n"
+                    "Otherwise, react to this message with 👎."
+                )
+                self.block_user_message_id = sent_message.id
+                return
+            elif str(payload.emoji) == '5️⃣': # Inciting/Glorifying Violence
+                self.state = State.INCITING_VIOLENCE_CHOSEN
+                sent_message = await message.channel.send(
+                    "Please react with the corresponding number for which type of violence you're reporting:\n"
+                    "1️⃣ - Dangerous Acts\n"
+                    "2️⃣ - Terrorism\n"
+                    "3️⃣ - Animal Abuse\n"
+                    "4️⃣ - Depiction of Physical Violence\n"
+                    "5️⃣ - Other\n"
+                )
+                self.inciting_violence_message_id = sent_message.id
+                return
+            
+            await message.channel.send("Sorry, I don't understand what you mean by this emoji. Please react to the previous message with either 1️⃣, 2️⃣, 3️⃣, 4️⃣ or 5️⃣")
+            return
+        
+        if self.state == State.INCITING_VIOLENCE_CHOSEN:
+            if payload.message_id != self.inciting_violence_message_id:
+                await message.channel.send("Please react to the message that contains emoji options to choose from.")
+                return
+            
+            if str(payload.emoji) == '1️⃣': # Dangerous Acts
+                self.state = State.BLOCK_USER
+                sent_message = await message.channel.send(
+                    "Thank you for your report. Would you like to block this user?\n"
+                    "If so, please react to this message with 👍.\n"
+                    "Otherwise, react to this message with 👎."
+                )
+                self.block_user_message_id = sent_message.id
+                return
+            elif str(payload.emoji) == '2️⃣': # Terrorism
+                self.state = State.BLOCK_USER
+                sent_message = await message.channel.send(
+                    "Thank you for your report. Would you like to block this user?\n"
+                    "If so, please react to this message with 👍.\n"
+                    "Otherwise, react to this message with 👎."
+                )
+                self.block_user_message_id = sent_message.id
+                return
+            elif str(payload.emoji) == '3️⃣': # Animal Abuse
+                self.state = State.BLOCK_USER
+                sent_message = await message.channel.send(
+                    "Thank you for your report. Would you like to block this user?\n"
+                    "If so, please react to this message with 👍.\n"
+                    "Otherwise, react to this message with 👎."
+                )
+                self.block_user_message_id = sent_message.id
+                return
+            elif str(payload.emoji) == '4️⃣': # Depiction of Physical Violence
+                self.state = State.BLOCK_USER
+                sent_message = await message.channel.send(
+                    "Thank you for your report. Would you like to block this user?\n"
+                    "If so, please react to this message with 👍.\n"
+                    "Otherwise, react to this message with 👎."
+                )
+                self.block_user_message_id = sent_message.id
+                return
+            elif str(payload.emoji) == '5️⃣': # Other
                 self.state = State.BLOCK_USER
                 sent_message = await message.channel.send(
                     "Thank you for your report. Would you like to block this user?\n"
