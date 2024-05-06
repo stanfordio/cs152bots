@@ -51,12 +51,16 @@ class Report:
     START_KEYWORD = "report"
     CANCEL_KEYWORD = "cancel"
     HELP_KEYWORD = "help"
+    
+    report_no = 0
 
     def __init__(self, client):
         self.state = State.REPORT_START
         self.client = client
         self.message = None
-        # self.message_content = None
+
+        self.report_no = '#' + str(Report.report_no)
+        Report.report_no += 1
         
         # 1 is Imminent Danger, 2 is Spam, 3 is Nudity or Graphic, 4 is Disinformation, 5 is Hate speech/harrassment, 6 is Other
         self.abuse_type = None
@@ -75,6 +79,7 @@ class Report:
 
         if message.content == self.CANCEL_KEYWORD:
             self.state = State.REPORT_COMPLETE
+            Report.report_no -= 1
             return ["Report cancelled."]
         
         if self.state == State.REPORT_START:
@@ -125,7 +130,7 @@ class Report:
             if self.abuse_type not in SPECIFIC_OPTIONS:
                 self.state = State.REPORT_COMPLETE
                 curr_abuse = self.abuse_type
-                self.abuse_type = None
+                # self.abuse_type = None
                 if curr_abuse == 3:
                     # TODO: insert code here to actually send to moderation team
                     self.requires_forwarding = True
@@ -153,11 +158,11 @@ class Report:
             if self.abuse_type == 4 or self.abuse_type == 5:
                 self.state = State.AWAIT_AI_REMOVAL
                 curr_abuse = self.abuse_type
-                self.abuse_type = None
+                # self.abuse_type = None
             else:
                 self.state = State.REPORT_COMPLETE
                 curr_abuse = self.abuse_type
-                self.abuse_type = None
+                # self.abuse_type = None
             
             # TODO: insert code here to actually send to moderation team
             self.requires_forwarding = True
@@ -174,7 +179,7 @@ class Report:
                 return ["Please type yes or no."]
             
             self.state = State.REPORT_COMPLETE
-            self.abuse_type = None
+            # self.abuse_type = None
             # TODO: Do something with the user's response
             if selection == 'yes':
                 self.keep_AI = False
