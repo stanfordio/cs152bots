@@ -12,6 +12,10 @@ class ModState(Enum):
     OFFENSIVE_CONTENT_CHOSEN = auto()
     OFFENSIVE_CONTENT_NOT_INCITING_VIOLENCE = auto()
     OFFENSIVE_CONTENT_INCITING_VIOLENCE = auto()
+    OFFENSIVE_DANGEROUS_DEPICTION = auto()
+    OFFENSIVE_TERRORISM = auto()
+    OFFENSIVE_ANIMAL_ABUSE = auto()
+    OFFENSIVE_VIOLENCE_OTHER = auto()
 
     URGENT_VIOLENCE_CHOSEN = auto()
     OTHERS_CHOSEN = auto()
@@ -25,6 +29,7 @@ class ModReport:
         self.client = client
         self.flagged_message = None
         self.mod_channel = None
+        self.follow_up_message_id = None
     
     async def handle_message(self, message):
         '''
@@ -75,17 +80,17 @@ class ModReport:
                 "3️⃣ - Urgent Violence\n"
                 "4️⃣ - Others/I don't like this")
             self.abuse_category_message_id = sent_message.id
+            self.follow_up_message_id = sent_message.id
             return
     
     async def handle_reaction(self, payload, message):
-        if self.state == ModState.MESSAGE_IDENTIFIED:
-            if payload.message_id != self.abuse_category_message_id:
-                # If the reaction is not on the abuse category message, ignore it
-                await self.mod_channel.send("Please react to the message that contains emoji options to choose from.")
-                return
+        if payload.message_id != self.follow_up_message_id:
+            # If the reaction is not on the follow-up message, ignore it
+            await self.mod_channel.send("Please react to the message that contains emoji options to choose from.")
+            return
             
-            reaction = str(payload.emoji)
-
+        reaction = str(payload.emoji)
+        if self.state == ModState.MESSAGE_IDENTIFIED:
             if reaction == '1️⃣':
                 self.state = ModState.HARASSMENT_CHOSEN
                 await self.handle_harassment_reaction()
@@ -103,33 +108,17 @@ class ModReport:
                 return
             
         elif self.state == ModState.OFFENSIVE_CONTENT_CHOSEN:
-            if payload.message_id != self.follow_up_message_id:
-                # If the reaction is not on the follow-up message, ignore it
-                await self.mod_channel.send("Please react to the message that contains emoji options to choose from.")
-                return
-            
-            reaction = str(payload.emoji)
-
             if reaction == '1️⃣':
                 self.state = ModState.OFFENSIVE_CONTENT_NOT_INCITING_VIOLENCE
-                # await self.send_follow_up_question("Please review the message and take appropriate action.")
                 await self.handle_offensive_content_not_inciting_violence_reaction()
             elif reaction == '2️⃣':
                 self.state = ModState.OFFENSIVE_CONTENT_INCITING_VIOLENCE
                 await self.handle_offensive_content_inciting_violence_reaction()
-                
             else:
                 # Invalid reaction, ignore it
                 return
             
-        elif self.state == ModState.OFFENSIVE_CONTENT_NOT_INCITING_VIOLENCE:
-            if payload.message_id != self.follow_up_message_id:
-                # If the reaction is not on the follow-up message, ignore it
-                await self.mod_channel.send("Please react to the message that contains emoji options to choose from.")
-                return
-            
-            reaction = str(payload.emoji)
-
+        elif self.state == ModState.OFFENSIVE_CONTENT_NOT_INCITING_VIOLENCE or self.state == ModState.OFFENSIVE_DANGEROUS_DEPICTION:
             if reaction == '1️⃣':
                 # remove post
                 await self.mod_channel.send("Removing post...")
@@ -141,10 +130,73 @@ class ModReport:
             elif reaction == '2️⃣':
                 await self.mod_channel.send("Canceled manual moderation.")
                 self.state = ModState.REPORT_COMPLETE
-                
             else:
                 # Invalid reaction, ignore it
                 return
+            
+        elif self.state == ModState.OFFENSIVE_CONTENT_INCITING_VIOLENCE:
+            if reaction == '1️⃣':
+                self.state = ModState.OFFENSIVE_DANGEROUS_DEPICTION
+                await self.handle_dangerous_depiction_violence_reaction()
+            elif reaction == '2️⃣':
+                self.state = ModState.OFFENSIVE_TERRORISM
+                await self.handle_offensive_terrorism_reaction()
+            elif reaction == '3️⃣':
+                self.state = ModState.OFFENSIVE_ANIMAL_ABUSE
+                await self.handle_offensive_animal_abuse_reaction()
+            elif reaction == '4️⃣':
+                self.state = ModState.OFFENSIVE_VIOLENCE_OTHER
+                await self.handle_offensive_violence_other_reaction()
+            else:
+                # Invalid reaction, ignore it
+                return
+            
+        elif self.state == ModState.OFFENSIVE_TERRORISM:
+            if reaction == '1️⃣':
+                # ban user
+                await self.mod_channel.send("Removed post, banned user, and sent automatic report to law enforcement. The moderation process is complete.")
+                await self.flagged_message.channel.send(f"User {self.flagged_message.author.name} has been banned.")
+                
+                # removing post
+                await self.flagged_message.delete()
+
+                # notify law enforcement
+                # basically do nothing... just a simulation
+
+                self.state = ModState.REPORT_COMPLETE
+            elif reaction == '2️⃣':
+                await self.mod_channel.send("Canceled manual moderation.")
+                self.state = ModState.REPORT_COMPLETE
+            else:
+                # Invalid reaction, ignore it
+                return
+            
+        elif self.state == ModState.OFFENSIVE_ANIMAL_ABUSE:
+            if reaction == '1️⃣':
+                # removing post
+                await self.flagged_message.delete()
+                # notify APS
+                # basically do nothing... just a simulation
+                await self.mod_channel.send("Removed post and sent automatic report to animal protective services. The moderation process is complete.")
+                self.state = ModState.REPORT_COMPLETE
+            elif reaction == '2️⃣':
+                await self.mod_channel.send("Canceled manual moderation.")
+                self.state = ModState.REPORT_COMPLETE
+            else:
+                # Invalid reaction, ignore it
+                return
+            
+        elif self.state == ModState.OFFENSIVE_VIOLENCE_OTHER:
+            if reaction == '1️⃣': # yes, fits with other inciting violence categories
+                await self.handle_offensive_content_inciting_violence_reaction()
+                self.state = ModState.OFFENSIVE_CONTENT_INCITING_VIOLENCE
+            elif reaction == '2️⃣':
+                await self.mod_channel.send("Sending to three-person review team for further approval. This moderation process is complete and furhter action will be pending.")
+                self.state = ModState.REPORT_COMPLETE
+            else:
+                # Invalid reaction, ignore it
+                return
+
 
     async def handle_harassment_reaction(self):
         # Ask follow-up questions specific to harassment
@@ -156,7 +208,7 @@ class ModReport:
         # await self.send_follow_up_question("Is this message inciting violence? (React with 1️⃣ for Yes, 2️⃣ for No)")
         await self.send_follow_up_question(
                 "Please react with the corresponding number to deal with offensive content:\n"
-                "1️⃣ - Sexually graphic content, CSAM, protected characteristics, or drug use -> remove post\n"
+                "1️⃣ - Sexually graphic content, CSAM, protected characteristics, or drug use -> Remove post\n"
                 "2️⃣ - Inciting Violence -> continue, escalate to outside services, or remove post")
         
     async def handle_offensive_content_not_inciting_violence_reaction(self):
@@ -164,11 +216,44 @@ class ModReport:
         await self.send_follow_up_question(
                 "Please react with a corresponding number to confirm action:\n"
                 "1️⃣ - Remove Post\n"
-                "2️⃣ - Cancel ")
+                "2️⃣ - Cancel")
 
     async def handle_offensive_content_inciting_violence_reaction(self):
         # Handle offensive content that is inciting violence
-        pass
+        await self.send_follow_up_question(
+                "Please react with a corresponding number to further categorize inciting/glorifying violence:\n"
+                "1️⃣ - Dangerous Acts, or Depiction of Physical Violence -> Remove post\n"
+                "2️⃣ - Terrorism -> Escalate to law enforcement\n"
+                "3️⃣ - Animal Abuse -> Escalate to animal protective services\n"
+                "4️⃣ - Other")
+        
+    async def handle_dangerous_depiction_violence_reaction(self):
+        # Ask to remove post for offensive content that is a dangerous act or depiction of physical violence
+        await self.send_follow_up_question(
+                "Please react with a corresponding number to confirm action:\n"
+                "1️⃣ - Remove Post\n"
+                "2️⃣ - Cancel")
+        
+    async def handle_offensive_terrorism_reaction(self):
+        # Ask to remove post, ban user, and notify law enforcement
+        await self.send_follow_up_question(
+                "Please react with a corresponding number to confirm action:\n"
+                "1️⃣ - Remove post, ban user, and report case to law enforcement\n"
+                "2️⃣ - Cancel")
+        
+    async def handle_offensive_animal_abuse_reaction(self):
+        # ask to remove post and notify law enforcement
+        await self.send_follow_up_question(
+                "Please react with a corresponding number to confirm action:\n"
+                "1️⃣ - Remove post and report case to animal protective services\n"
+                "2️⃣ - Cancel")
+        
+    async def handle_offensive_violence_other_reaction(self):
+        # ask if fits with other categories
+        await self.send_follow_up_question(
+                "Does this fit with the other categories of inciting violence? React for yes or no.\n"
+                "1️⃣ - Yes -> Choose appropriate category\n"
+                "2️⃣ - No -> Forward to review team")
     
     async def handle_urgent_violence_reaction(self):
         # Handle urgent violence reaction (if needed)
