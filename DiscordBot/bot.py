@@ -103,6 +103,8 @@ class ModBot(discord.Client):
 
             # If the report is complete or cancelled, remove it from our map
             if self.reports[payload.user_id].report_complete():
+                mod_channel = self.mod_channels[self.reports[payload.user_id].message.guild.id]
+                await self.reports[payload.user_id].send_report_to_mod_channel(mod_channel)
                 self.reports.pop(payload.user_id)
         # If reaction made to mod channel
         elif message.channel.name == f'group-{self.group_num}-mod':
@@ -131,14 +133,18 @@ class ModBot(discord.Client):
 
         # If we don't currently have an active report for this user, add one
         if author_id not in self.reports:
-            self.reports[author_id] = Report(self)
+            self.reports[author_id] = Report(self, message.author)
 
         # Let the report class handle this message
         await self.reports[author_id].handle_message(message)
 
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():
+            mod_channel = self.mod_channels[self.reports[author_id].message.guild.id]
+            await self.reports[author_id].send_report_to_mod_channel(mod_channel)
             self.reports.pop(author_id)
+        
+        return
 
     async def handle_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel

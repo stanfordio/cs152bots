@@ -20,7 +20,8 @@ class Report:
     CANCEL_KEYWORD = "cancel"
     HELP_KEYWORD = "help"
 
-    def __init__(self, client):
+    def __init__(self, client, reporter):
+        self.reporter = reporter
         self.state = State.REPORT_START
         self.client = client
         self.message = None
@@ -68,7 +69,7 @@ class Report:
                 await message.channel.send("It seems this channel was deleted or never existed. Please try again or say `cancel` to cancel.")
                 return
             try:
-                identified_message = await channel.fetch_message(int(m.group(3)))
+                self.message = await channel.fetch_message(int(m.group(3)))
             except discord.errors.NotFound:
                 await message.channel.send("It seems this message was deleted or never existed. Please try again or say `cancel` to cancel.")
                 return
@@ -77,7 +78,7 @@ class Report:
             self.state = State.MESSAGE_IDENTIFIED
             sent_message = await message.channel.send(
                 f"I found this message:\n"
-                f"```{identified_message.author.name}: {identified_message.content}```\n"
+                f"```{self.message.author.name}: {self.message.content}```\n"
                 "Please react with the corresponding number for the reason of your report:\n"
                 "1️⃣ - Harassment\n"
                 "2️⃣ - Offensive Content\n"
@@ -370,6 +371,17 @@ class Report:
             await message.channel.send("Sorry, I don't understand what you mean by this emoji. Please react to the previous message with either 👍 or 👎")
             return
         
+        return
+    
+    async def send_report_to_mod_channel(self, mod_channel):
+        # Only forward report if the report is complete
+        if self.state != State.REPORT_COMPLETE:
+            return
+        
+        await mod_channel.send(
+            f'User {self.reporter.name} just filed a report against the message:\n'
+            f"```{self.message.author.name}: {self.message.content}```\n"
+            )
         return
 
 
