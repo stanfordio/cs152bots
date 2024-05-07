@@ -37,6 +37,7 @@ class ModBot(discord.Client):
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
         self.mod_reports = {} # Map from moderator IDs to the state of their mod report
+        self.user_flag_counts = {} # Map from user IDs to the number of times they've been flagged
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -104,8 +105,11 @@ class ModBot(discord.Client):
             # If the report is complete or cancelled, remove it from our map
             if self.reports[payload.user_id].report_complete():
                 self.reports.pop(payload.user_id)
-        elif message.channel.name == f'group-{self.group_num}-mod':
+        # elif message.channel.name == f'group-{self.group_num}-mod':
+        elif payload.user_id in self.mod_reports:
             await self.mod_reports[payload.user_id].handle_reaction(payload, message)
+
+            # if the report is complete or cancelled, remove it from our map
             if self.mod_reports[payload.user_id].report_complete():
                 self.mod_reports.pop(payload.user_id)
             return
