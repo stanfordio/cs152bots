@@ -102,8 +102,13 @@ class ModBot(discord.Client):
             # Let user report class handle the reaction
             await self.reports[payload.user_id].handle_reaction(payload, message)
 
-            # If the report is complete or cancelled, remove it from our map
+            # If the report is complete, forward to mod channel and remove it from our map
             if self.reports[payload.user_id].report_complete():
+                mod_channel = self.mod_channels[self.reports[payload.user_id].message.guild.id]
+                await self.reports[payload.user_id].send_report_to_mod_channel(mod_channel)
+                self.reports.pop(payload.user_id)
+            # If the report is cancelled, just remove it from the map
+            elif self.reports[payload.user_id].report_cancelled():
                 self.reports.pop(payload.user_id)
         # elif message.channel.name == f'group-{self.group_num}-mod':
         elif payload.user_id in self.mod_reports:
@@ -134,14 +139,21 @@ class ModBot(discord.Client):
 
         # If we don't currently have an active report for this user, add one
         if author_id not in self.reports:
-            self.reports[author_id] = Report(self)
+            self.reports[author_id] = Report(self, message.author)
 
         # Let the report class handle this message
         await self.reports[author_id].handle_message(message)
 
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():
+            mod_channel = self.mod_channels[self.reports[author_id].message.guild.id]
+            await self.reports[author_id].send_report_to_mod_channel(mod_channel)
             self.reports.pop(author_id)
+        # If the report is cancelled, just remove it from the map
+        elif self.reports[author_id].report_cancelled():
+            self.reports.pop(author_id)
+        
+        return
 
     async def handle_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel
