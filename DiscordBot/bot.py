@@ -111,9 +111,19 @@ class ModBot(discord.Client):
 
             # If the report is complete, forward to mod channel and remove it from our map
             if self.reports[payload.user_id].report_complete():
+                # update the count of times the user has been flagged
+                flagged_user_id = self.reports[payload.user_id].message.author.id
+                if flagged_user_id in self.user_flag_counts:
+                    self.user_flag_counts[flagged_user_id] += 1
+                else:
+                    self.user_flag_counts[flagged_user_id] = 1
+
                 mod_channel = self.mod_channels[self.reports[payload.user_id].message.guild.id]
                 await self.reports[payload.user_id].send_report_to_mod_channel(mod_channel)
                 self.reports.pop(payload.user_id)
+
+                
+
             # If the report is cancelled, just remove it from the map
             elif self.reports[payload.user_id].report_cancelled():
                 self.reports.pop(payload.user_id)
@@ -186,7 +196,7 @@ class ModBot(discord.Client):
             # If we don't currently have an active report for this user, add one
             author_id = message.author.id
             if author_id not in self.mod_reports:
-                self.mod_reports[author_id] = ModReport(self, self.three_person_review_team)
+                self.mod_reports[author_id] = ModReport(self, self.three_person_review_team, self.user_flag_counts)
 
             # Let the report class handle this message
             await self.mod_reports[author_id].handle_message(message)

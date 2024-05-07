@@ -31,7 +31,7 @@ class ModState(Enum):
 class ModReport:
     START_KEYWORD = "mod"
 
-    def __init__(self, client, three_person_team_channel):
+    def __init__(self, client, three_person_team_channel, user_flag_counts):
         self.state = ModState.REPORT_START
         self.client = client
         self.flagged_message = None
@@ -40,6 +40,7 @@ class ModReport:
         self.linked_message = None
         self.dm_channel = None
         self.three_person_team_channel = three_person_team_channel
+        self.user_flag_counts = user_flag_counts
     
     async def handle_message(self, message):
         '''
@@ -398,8 +399,11 @@ class ModReport:
         
     async def handle_harassment_take_action_reaction(self):
         # based on how many times the user has been flagged, choose an option
+        flag_counts = 0
+        if self.flagged_message.author.id in self.user_flag_counts:
+            flag_counts = self.user_flag_counts[self.flagged_message.author.id]
         await self.send_follow_up_question(
-                f"The user {self.flagged_message.author.name} has been previously flagged X times. Choose an option for action\n"
+                f"The user {self.flagged_message.author.name} has been previously flagged {flag_counts} times. Choose an option for action\n"
                 "1️⃣ - Less than 5 times -> Remove post\n"
                 "2️⃣ - Greater than 5 times -> Suspend user\n"
                 "3️⃣ - Greater than 10 times -> Ban user\n"
