@@ -31,7 +31,7 @@ class ModState(Enum):
 class ModReport:
     START_KEYWORD = "mod"
 
-    def __init__(self, client):
+    def __init__(self, client, three_person_team_channel):
         self.state = ModState.REPORT_START
         self.client = client
         self.flagged_message = None
@@ -39,6 +39,7 @@ class ModReport:
         self.follow_up_message_id = None
         self.linked_message = None
         self.dm_channel = None
+        self.three_person_team_channel = three_person_team_channel
     
     async def handle_message(self, message):
         '''
@@ -122,7 +123,7 @@ class ModReport:
                 self.state = ModState.OTHERS_CHOSEN
                 await self.handle_others_reaction()
             elif reaction == '5️⃣':
-                await self.dm_channel.send("Canceled manual report.")
+                await self.dm_channel.send("Canceled manual moderation.")
                 self.state = ModState.REPORT_COMPLETE
             else:
                 # Invalid reaction, ignore it
@@ -134,8 +135,13 @@ class ModReport:
                 self.state = ModState.AWAITING_MESSAGE
                 await self.handle_message(self.linked_message)
             elif reaction == '2️⃣':
-                await self.dm_channel.send("Sending to three-person review team for further approval. This moderation process is complete and further action will be pending.")
-                self.state = ModState.REPORT_COMPLETE
+                # send to review team
+                await self.three_person_team_channel.send(
+                    f"User flagged the following message as 'Other'. Now pending further moderation.\n"
+                    f"```{self.flagged_message.content}```")
+
+                await self.dm_channel.send("Report sent to three-person review team for further moderation. This moderation process is complete and further action will be pending.")
+                self.state = ModState.OTHERS_REVIEW_TEAM
             elif reaction == '3️⃣':
                 # cancel
                 await self.dm_channel.send("Canceled manual moderation.")
@@ -291,8 +297,13 @@ class ModReport:
                 await self.handle_offensive_content_inciting_violence_reaction()
                 self.state = ModState.OFFENSIVE_CONTENT_INCITING_VIOLENCE
             elif reaction == '2️⃣':
-                await self.dm_channel.send("Sending to three-person review team for further approval. This moderation process is complete and further action will be pending.")
-                self.state = ModState.REPORT_COMPLETE
+                # send to review team
+                await self.three_person_team_channel.send(
+                    f"User flagged the following message as 'Inciting Violence -> Other'. Now pending further moderation.\n"
+                    f"```{self.flagged_message.content}```")
+
+                await self.dm_channel.send("Report sent to three-person review team for further moderation. This moderation process is complete and further action will be pending.")
+                self.state = ModState.OTHERS_REVIEW_TEAM
             elif reaction == '3️⃣':
                 # cancel
                 await self.dm_channel.send("Canceled manual moderation.")
@@ -488,3 +499,6 @@ class ModReport:
 
     def report_complete(self):
         return self.state == ModState.REPORT_COMPLETE
+    
+    def report_in_review_team(self):
+        return self.state == ModState.OTHERS_REVIEW_TEAM

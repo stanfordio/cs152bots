@@ -9,6 +9,7 @@ import requests
 from report import Report, State
 import pdb
 from modReport import ModReport, ModState
+from threePersonReport import ThreePersonReport
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -37,7 +38,9 @@ class ModBot(discord.Client):
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
         self.mod_reports = {} # Map from moderator IDs to the state of their mod report
+        self.three_mod_reports = {} # Map from moderator IDs to the state of their 3 person mod report
         self.user_flag_counts = {} # Map from user IDs to the number of times they've been flagged
+        self.three_person_review_team = None # The channel where the three person review team is located
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -57,6 +60,9 @@ class ModBot(discord.Client):
             for channel in guild.text_channels:
                 if channel.name == f'group-{self.group_num}-mod':
                     self.mod_channels[guild.id] = channel
+                
+                if channel.name == f'group-{self.group_num}-3-person-review-team':
+                    self.three_person_review_team = channel
         
 
     async def on_message(self, message):
@@ -96,6 +102,7 @@ class ModBot(discord.Client):
         # Only listen for reactions to messages made by the bot
         if message.author.id != self.user.id:
             return
+
         
         # If reaction is made to a private DM for a user that's currently in reporting flow
         if not payload.guild_id and payload.user_id in self.reports:
@@ -111,13 +118,18 @@ class ModBot(discord.Client):
             elif self.reports[payload.user_id].report_cancelled():
                 self.reports.pop(payload.user_id)
         # elif message.channel.name == f'group-{self.group_num}-mod':
-        elif payload.user_id in self.mod_reports:
+        elif not payload.guild_id and payload.user_id in self.mod_reports:
             await self.mod_reports[payload.user_id].handle_reaction(payload, message)
 
-            # if the report is complete or cancelled, remove it from our map
-            if self.mod_reports[payload.user_id].report_complete():
+            # if the report is complete or cancelled or was forwarded to the 3 person team, remove it from our map
+            if self.mod_reports[payload.user_id].report_complete() or self.mod_reports[payload.user_id].report_in_review_team():
                 self.mod_reports.pop(payload.user_id)
-            return
+        
+        elif not payload.guild_id and payload.user_id in self.three_mod_reports:
+            await self.three_mod_reports[payload.user_id].handle_reaction(payload, message)
+
+            if self.three_mod_reports[payload.user_id].report_complete():
+                self.three_mod_reports.pop(payload.user_id)
         
         return
 
@@ -163,17 +175,18 @@ class ModBot(discord.Client):
 
         # If in group-16 channel, forward the message to the mod channel -> change later because we only send flagged messages
         if message.channel.name == f'group-{self.group_num}':
-            mod_channel = self.mod_channels[message.guild.id]
-            await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-            scores = self.eval_text(message.content)
-            await mod_channel.send(self.code_format(scores))
+            # mod_channel = self.mod_channels[message.guild.id]
+            # await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
+            # scores = self.eval_text(message.content)
+            # await mod_channel.send(self.code_format(scores))
+            pass
         elif message.channel.name == f'group-{self.group_num}-mod':
             # This is a message from a moderator in the mod channel
             # Let the ModReport class handle this message
             # If we don't currently have an active report for this user, add one
             author_id = message.author.id
             if author_id not in self.mod_reports:
-                self.mod_reports[author_id] = ModReport(self)
+                self.mod_reports[author_id] = ModReport(self, self.three_person_review_team)
 
             # Let the report class handle this message
             await self.mod_reports[author_id].handle_message(message)
@@ -186,6 +199,16 @@ class ModBot(discord.Client):
             # mod_report = ModReport(self)
             # await mod_report.handle_message(message)
             # self.mod_reports[message.author.id] = mod_report
+        # mod message in 3 person team channel
+        elif message.channel.name == f'group-{self.group_num}-3-person-review-team':
+            author_id = message.author.id
+            if author_id not in self.three_mod_reports:
+                self.three_mod_reports[author_id] = ThreePersonReport(self, self.three_person_review_team)
+
+            await self.three_mod_reports[author_id].handle_message(message)
+
+            if self.three_mod_reports[author_id].report_complete():
+                self.three_mod_reports.pop(author_id)
 
     
     def eval_text(self, message):
