@@ -156,10 +156,9 @@ async def handle_mod_response(self, message, mod_channel):
     if not_waiting_for_response(self):
         if message.content == "load test":
             await mod_channel.send(f'System: Loading test data')
-            await status_message(self, mod_channel)
-
             self.report_database.create_test_data()
             await mod_channel.send(f'System: {self.report_database.report_count()} reports loaded in Database')
+            await status_message(self, mod_channel)
     
         if message.content == "help" or message.content == "status":
             await status_message(self, mod_channel)
