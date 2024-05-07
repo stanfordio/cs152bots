@@ -55,8 +55,17 @@ class Report:
 
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.MESSAGE_IDENTIFIED
-            return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
-                    "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
+            reply = "I found this message:" + "```" + message.author.name + ": " + message.content + "```" + "\n\n"
+            reply += "Why are you reporting this message? Please select the number corresponding to the appropriate category.\n"
+            reply += "1. Spam.\n"
+            reply += "2. Offensive content.\n"
+            reply += "3. Nudity and sexual content.\n"
+            reply += "4. Fraud or scam.\n"
+            reply += "5. Misinformation.\n"
+            reply += "6. Hate and harassment.\n"
+            reply += "7. Child sexual abuse material.\n"
+            reply += "8. Intellectual property theft.\n"
+            return [reply]
         
         if self.state == State.MESSAGE_IDENTIFIED:
             return ["<insert rest of reporting flow here>"]
