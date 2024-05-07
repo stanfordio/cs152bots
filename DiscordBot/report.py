@@ -62,11 +62,8 @@ class Report:
             #        "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
         
         if self.state == State.MESSAGE_IDENTIFIED:
-            
             f = open('DiscordBot/users_log.json')
             users_log = json.load(f)
-
-            print(users_log)
 
             # If user exists, update
             if message.author.name in users_log:
@@ -79,9 +76,10 @@ class Report:
             with open('DiscordBot/users_log.json', 'w', encoding='utf-8') as f:
                 json.dump(users_log, f)
 
+            print(users_log)
 
             self.state == State.REPORT_COMPLETE
-            return ["I've incremented", "```" + message.author.name + "'s report count to " + str(users_log[message.author.name]) + "```"]
+            return ["Thank you for the report. I've incremented", message.author.name + "'s report count to " + str(users_log[message.author.name]) + "."]
             
 
         return []
