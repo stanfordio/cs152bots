@@ -1,6 +1,8 @@
 from enum import Enum, auto
 import discord
 import re
+import pandas as pd
+import json
 
 class State(Enum):
     REPORT_START = auto()
@@ -55,11 +57,32 @@ class Report:
 
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.MESSAGE_IDENTIFIED
-            return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
-                    "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
+
+            #return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
+            #        "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
         
         if self.state == State.MESSAGE_IDENTIFIED:
-            return ["<insert rest of reporting flow here>"]
+            
+            f = open('DiscordBot/users_log.json')
+            users_log = json.load(f)
+
+            print(users_log)
+
+            # If user exists, update
+            if message.author.name in users_log:
+                users_log[message.author.name] += 1
+            # Otherwise, add in the new user
+            else:
+                users_log[message.author.name] = 1
+
+            # Write to log file
+            with open('DiscordBot/users_log.json', 'w', encoding='utf-8') as f:
+                json.dump(users_log, f)
+
+
+            self.state == State.REPORT_COMPLETE
+            return ["I've incremented", "```" + message.author.name + "'s report count to " + str(users_log[message.author.name]) + "```"]
+            
 
         return []
 

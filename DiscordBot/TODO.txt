@@ -1,0 +1,8 @@
+TODOS: 
+- Generate a label -- we focus primarily on crypto/pig butchering
+    - Eg: Ask user if this is a crypto-/pig-butchering related issue
+    - If yes: in scope -- continue investigation; otherwise not in scope point to other resources
+- Begin setting up consequences -- eg, reports > # = mute, kick, ban, etc
+
+Completed: 
+- Set up basic json file to track # of user reports
