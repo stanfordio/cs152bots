@@ -1,0 +1,6 @@
+name: cs152bot
+channels:
+  - defaults
+dependencies:
+  - python
+  - requests
