@@ -100,7 +100,9 @@ class Report:
                 return ["Please select a different reporting reason.", \
                     "1. Misleading/false information from government group\n2. Spam\n3. Nudity\n4. Bullying\n5. Fraud/Scam\n" + 
                     "Please respond with one of 1, 2, 3, 4, or 5."]
-            if (message.content in ['1', '2', '3', '4']):
+            if (message.content == '6'):
+                self.message['posting_entity'] = "Do not know"
+            if (message.content in ['1', '2', '3', '4', '6']):
                 self.state = State.CONTENT_TYPE_IDENTIFIED
                 return ["Please select one type of content that the reported message falls under.\n1. I just don\'t like it\n2. Dis/Misinformation\n" + 
                     "3. Inciting Harassment\n4. Hate Speech\n5. Swaying others opinion\n Please respond with one of 1, 2, 3, 4, or 5."]
@@ -114,7 +116,7 @@ class Report:
                 self.message['reason'] = "Misleading/false information from government group" 
                 self.state = State.POSTING_IDENTITY_IDENTIFIED
                 return ["Please select the affiliation of the posting entity.\n1. Government Official\n2. Government Agency\n3. Government State-Controlled Media\n" +
-                        "4. Ex-Government Official\n5. Not Government Entity."]
+                        "4. Ex-Government Official\n5. Not Government Entity.\n 6. Do not know."]
             if message.content == '2':
                 self.message['reason'] = "Spam"
             if message.content == '3':
