@@ -7,7 +7,7 @@ class State(Enum):
     AWAITING_MESSAGE = auto()
     MESSAGE_IDENTIFIED = auto()
     AWAITING_CATEGORY = auto()
-    CATEGORY_IDENTIFIED = auto()
+    TERROR_IDENTIFIED = auto()
     REPORT_COMPLETE = auto()
 
 class Report:
@@ -62,15 +62,28 @@ class Report:
                     #"This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
         
         if self.state == State.MESSAGE_IDENTIFIED:
-            self.state = State.CATEGORY_IDENTIFIED
-            return ["Thank you for reporting a message with " + message + ". We will respond appropriately!"]
-
-
-
-        if self.state == State.CATEGORY_IDENTIFIED:
-            self.state = State.REPORT_COMPLETE
-            return ["<insert rest of reporting flow here>"]
+            try:
+                if (message.content == "offensive content" or message.content == "harassment" or message.content == "spam"):
+                    self.state = State.REPORT_COMPLETE
+                    return ["Thank you for reporting a message with " + message.content + ". We will respond appropriately!"]
+                elif (message.content != "terrorist activity"):
+                    self.state = State.REPORT_COMPLETE
+                    return ["It appears that " + message.content + " is not a valid category. Please enter a valid category from the options above"]
+                else:
+                    self.state = State.TERROR_IDENTIFIED
+                    return ["Please select the type of terrorist activity: glorification and/or promotion of terrorism | financing terrorism | account represents a terrorist entity | terrorist recruitment | direct threat or incitement to violence"]
             
+            except Exception as e:
+                return ["What is happening? This is: ", str(e)]
+
+        if self.state == State.TERROR_IDENTIFIED:
+            try: 
+                self.state = State.REPORT_COMPLETE
+                return ["You have reported " + message.content + ". Thank you for reporting. We take the safety of our users and communities seriously. The content moderation team will review the activity and determine the appropriate action, which may involve contacting local authorities."]
+            
+            except Exception as e:
+                return ["Uhhhh, here's an error: ", str(e)]
+        
         return []
 
     def report_complete(self):
