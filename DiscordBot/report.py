@@ -22,7 +22,7 @@ class Report:
         self.state = State.REPORT_START
         self.client = client
         self.message = None
-        self.reported_message = None
+        self.reported_content = None
 
         self.report_type = "miscellaneous"
         self.level_one_categories = ["offensive content", "harassment", "spam", "terrorist activity"]
@@ -60,7 +60,7 @@ class Report:
                 return ["It seems this channel was deleted or never existed. Please try again or say `cancel` to cancel."]
             try:
                 message = await channel.fetch_message(int(m.group(3)))
-                self.reported_message = [guild, channel, message]
+                self.reported_content = [guild, channel, message]
             except discord.errors.NotFound:
                 return ["It seems this message was deleted or never existed. Please try again or say `cancel` to cancel."]
 
@@ -127,9 +127,9 @@ class Report:
         
         return []
     
-    def get_report_type(self):
-        return self.report_type
-    
+    def get_report_info(self):
+        return [self.report_type, self.reported_content]
+
     def report_moderate_ready(self):
         return self.state == State.MODERATE_READY
 
