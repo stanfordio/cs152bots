@@ -8,17 +8,25 @@ class State(Enum):
     MESSAGE_IDENTIFIED = auto()
     AWAITING_CATEGORY = auto()
     TERROR_IDENTIFIED = auto()
+    MODERATE_READY = auto()
     REPORT_COMPLETE = auto()
 
 class Report:
     START_KEYWORD = "report"
     CANCEL_KEYWORD = "cancel"
     HELP_KEYWORD = "help"
+    
+    
 
     def __init__(self, client):
         self.state = State.REPORT_START
         self.client = client
         self.message = None
+        self.reported_message = None
+
+        self.report_type = "miscellaneous"
+        self.level_one_categories = ["offensive content", "harassment", "spam", "terrorist activity"]
+        self.level_two_cateogires = ["glorification or promotion", "financing", "recruitment", "threat or incitement", "account belongs to terrorist entity"]
     
     async def handle_message(self, message):
         '''
@@ -52,43 +60,78 @@ class Report:
                 return ["It seems this channel was deleted or never existed. Please try again or say `cancel` to cancel."]
             try:
                 message = await channel.fetch_message(int(m.group(3)))
+                self.reported_message = [guild, channel, message]
             except discord.errors.NotFound:
                 return ["It seems this message was deleted or never existed. Please try again or say `cancel` to cancel."]
 
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.MESSAGE_IDENTIFIED
-            return ["I !!!!!!!!!!!!!!!!!! found this message:", "```" + message.author.name + ": " + message.content + "```", \
-                    "Please select one of the categories for this message: terrorist activity | offensive content | harassment | spam"]
-                    #"This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
-        
+
+            reply = "I found this message:", "```" + message.author.name + ": " + message.content + "```"
+            reply += "Please select one of the following categories for your report: \n"
+            reply += "|"
+            for category in self.level_one_categories:
+                reply += " "
+                reply += category
+                reply += " |"
+            return [reply]
+
         if self.state == State.MESSAGE_IDENTIFIED:
             try:
-                if (message.content == "offensive content" or message.content == "harassment" or message.content == "spam"):
-                    self.state = State.REPORT_COMPLETE
-                    return ["Thank you for reporting a message with " + message.content + ". We will respond appropriately!"]
-                elif (message.content != "terrorist activity"):
-                    self.state = State.REPORT_COMPLETE
-                    return ["It appears that " + message.content + " is not a valid category. Please enter a valid category from the options above"]
-                else:
+                if (message.content.lower() not in self.level_one_categories):
+                    reply = "The category you wrote, '" + message.content + "', is not a valid category. Please reenter one of the given options. \n"
+                    reply += "|"
+                    for category in self.level_one_categories:
+                        reply += " "
+                        reply += category
+                        reply += " |"
+                    return [reply]
+                
+                elif (message.content.lower() in self.level_one_categories and message.content.lower() != "terrorist activity"): ## category isn't terorrism but is valid
+                    self.report_type = message.content
+                    self.state = State.MODERATE_READY
+                    reply = "Thank you for reporting a message as being " + message.content.lower() + ". We will respond appropriately!"
+                    return [reply]
+                
+                else: ## category is terrorism
                     self.state = State.TERROR_IDENTIFIED
-                    return ["Please select the type of terrorist activity: glorification and/or promotion of terrorism | financing terrorism | account represents a terrorist entity | terrorist recruitment | direct threat or incitement to violence"]
-            
+                    reply = "Please specify what kind of terrorist activity: \n"
+                    reply += "|"
+                    for category in self.level_two_categories:
+                        reply += " "
+                        reply += category
+                        reply += " |"
+                    return [reply]
+                    
             except Exception as e:
                 return ["What is happening? This is: ", str(e)]
 
         if self.state == State.TERROR_IDENTIFIED:
             try: 
-                self.state = State.REPORT_COMPLETE
-                return ["You have reported " + message.content + ". Thank you for reporting. We take the safety of our users and communities seriously. The content moderation team will review the activity and determine the appropriate action, which may involve contacting local authorities."]
-            
+                if (message.content.lower() not in self.level_two_categories):
+                    reply = "The category you wrote, '" + message.content + "', is not a valid category. Please reenter one of the given options. \n"
+                    reply += "|"
+                    for category in self.level_two_categories:
+                        reply += " "
+                        reply += category
+                        reply += " |"
+                    return [reply]
+                else:
+                    self.report_type = message.content
+                    self.state = State.MODERATE_READY
+                    reply = "Thank you for reporting a message as being " + message.content.lower() + ". We will respond appropriately!"
+                    return [reply]
+
             except Exception as e:
                 return ["Uhhhh, here's an error: ", str(e)]
         
         return []
+    
+    def get_report_type(self):
+        return self.report_type
+    
+    def report_moderate_ready(self):
+        return self.state == State.MODERATE_READY
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
-    
-
-
-    
