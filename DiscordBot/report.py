@@ -19,7 +19,7 @@ class Report:
     BLOCK_KEYWORD = "block"
 
     def __init__(self, client):
-        self.state = State.REPORT_START
+        self.state = None  # Allows transition between `report` and `block` midway through processes
         self.client = client
         self.message = None
         self.reported_user = None
@@ -34,8 +34,11 @@ class Report:
         if message.content == self.CANCEL_KEYWORD:
             self.state = State.REPORT_COMPLETE
             return ["Process cancelled."]
+
+        if message.content.startswith(self.BLOCK_KEYWORD):
+            return await self.handle_block(message)
         
-        if self.state == State.REPORT_START:
+        if message.content.startswith(self.START_KEYWORD):
             reply =  "Thank you for starting the reporting process. "
             reply += "Say `help` at any time for more information.\n\n"
             reply += "Please copy paste the link to the message you want to report.\n"
@@ -77,19 +80,21 @@ class Report:
     async def handle_block(self, message):
         if message.content == self.CANCEL_KEYWORD:
             self.state = State.BLOCK_COMPLETE
+
+        if message.content.startswith(self.START_KEYWORD):
+            return await self.handle_message(message)
         
-        if self.state == State.REPORT_START or message.content.startswith(self.BLOCK_KEYWORD):
+        if message.content.startswith(self.BLOCK_KEYWORD):
             self.state = State.BLOCK_START
             reply = "Thank you for starting the blocking process.\n"
             reply += "Say `help` at any time for more information.\n\n"
-            reply += "Please type the username of the user you want to block.\n"
+            reply += "Please copy paste the username of the user you want to block.\n"
             reply += "You can obtain this by right-clicking the user, clicking `Profile,` and copying the username."
             self.state = State.AWAITING_BLOCK
             return [reply]
 
         if self.state == State.AWAITING_BLOCK:
             self.reported_user = message.content.lower()
-            # reply = "The user '" + identified_user + "' has been blocked."
             reply = "Please confirm that you would like to block '" + self.reported_user + "'\n"
             reply += "You will no longer be able to interact with them.\n"
             reply += "Please reply with `yes` or `no`."
