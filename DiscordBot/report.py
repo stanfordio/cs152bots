@@ -130,7 +130,7 @@ class Report:
                     if message.content not in ['1', '2', '3', '4', '5']:
                         return ["please enter a valid number ONLY (1, 2, 3, 4, 5)"]
                     else:
-                        self.result["Abuse Subsection"] = options[int(message.content)]
+                        self.result["Abuse Subsection"] = options[int(message.content)-1]
                         more_info = "Would you like to provide any additional context for our content moderation team to review? (Please share below if yes, else reply no) \n"
                         self.abuse_type = 4
                         return [more_info]
@@ -158,7 +158,7 @@ class Report:
                     if message.content not in ['1', '2', '3', '4', '5']:
                         return ["please enter a valid number ONLY (1, 2, 3, 4, 5)"]
                     else:
-                        self.result["Abuse Subsection"] = options[int(message.content)]
+                        self.result["Abuse Subsection"] = options[int(message.content)-1]
                         more_info = "Would you like to provide any additional context for our content moderation team to review? (Please share below if yes, else reply no) \n"
                         self.abuse_type = 4
                         return [more_info]
@@ -185,7 +185,7 @@ class Report:
                     if message.content not in ['1', '2', '3', '4', '5']:
                         return ["please enter a valid number ONLY (1, 2, 3, 4, 5)"]
                     else:
-                        self.result["Abuse Subsection"] = options[int(message.content)]
+                        self.result["Abuse Subsection"] = options[int(message.content)-1]
                         more_info = "Would you like to provide any additional context for our content moderation team to review? (Please share below if yes, else reply no) \n"
                         self.abuse_type = 4
                         return [more_info]
@@ -210,7 +210,7 @@ class Report:
                     if message.content not in ['1', '2', '3']:
                         return ["please enter a valid number ONLY (1, 2, 3)"]
                     else:
-                        self.result["Abuse Subsection"] = options[int(message.content)]
+                        self.result["Abuse Subsection"] = options[int(message.content)-1]
                         more_info = "Would you like to provide any additional context for our content moderation team to review? (Please share below if yes, else reply no) \n"
                         self.abuse_type = 4
                         return [more_info]
