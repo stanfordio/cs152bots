@@ -7,8 +7,9 @@ class State(Enum):
     AWAITING_MESSAGE = auto()
     MESSAGE_IDENTIFIED = auto()
     REPORT_COMPLETE = auto()
-    AWAITING_BLOCK = auto()
     BLOCK_START = auto()
+    AWAITING_BLOCK = auto()
+    AWAITING_BLOCK_CONFIRM = auto()
     BLOCK_COMPLETE = auto()
 
 class Report:
@@ -21,6 +22,7 @@ class Report:
         self.state = State.REPORT_START
         self.client = client
         self.message = None
+        self.reported_user = None
     
     async def handle_message(self, message):
         '''
@@ -78,7 +80,7 @@ class Report:
         
         if self.state == State.REPORT_START or message.content.startswith(self.BLOCK_KEYWORD):
             self.state = State.BLOCK_START
-            reply = "Thank you for starting the blocking process. "
+            reply = "Thank you for starting the blocking process.\n"
             reply += "Say `help` at any time for more information.\n\n"
             reply += "Please type the username of the user you want to block.\n"
             reply += "You can obtain this by right-clicking the user, clicking `Profile,` and copying the username."
@@ -86,8 +88,19 @@ class Report:
             return [reply]
 
         if self.state == State.AWAITING_BLOCK:
-            identified_user = message.content.lower()
-            reply = "The user '" + identified_user + "' has been blocked."
+            self.reported_user = message.content.lower()
+            # reply = "The user '" + identified_user + "' has been blocked."
+            reply = "Please confirm that you would like to block '" + self.reported_user + "'\n"
+            reply += "You will no longer be able to interact with them.\n"
+            reply += "Please reply with `yes` or `no`."
+            self.state = State.AWAITING_BLOCK_CONFIRM
+            return [reply]
+        
+        if self.state == State.AWAITING_BLOCK_CONFIRM:
+            if message.content.lower() == "yes":
+                reply = "Thank you. User '" + self.reported_user + "' has been blocked."
+            else:
+                reply = "Thank you. User '" + self.reported_user + "' has not been blocked."
             return [reply]
 
         return []
