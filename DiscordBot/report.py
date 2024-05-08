@@ -7,11 +7,15 @@ class State(Enum):
     AWAITING_MESSAGE = auto()
     MESSAGE_IDENTIFIED = auto()
     REPORT_COMPLETE = auto()
+    AWAITING_BLOCK = auto()
+    BLOCK_START = auto()
+    BLOCK_COMPLETE = auto()
 
 class Report:
     START_KEYWORD = "report"
     CANCEL_KEYWORD = "cancel"
     HELP_KEYWORD = "help"
+    BLOCK_KEYWORD = "block"
 
     def __init__(self, client):
         self.state = State.REPORT_START
@@ -27,7 +31,7 @@ class Report:
 
         if message.content == self.CANCEL_KEYWORD:
             self.state = State.REPORT_COMPLETE
-            return ["Report cancelled."]
+            return ["Process cancelled."]
         
         if self.state == State.REPORT_START:
             reply =  "Thank you for starting the reporting process. "
@@ -36,7 +40,7 @@ class Report:
             reply += "You can obtain this link by right-clicking the message and clicking `Copy Message Link`."
             self.state = State.AWAITING_MESSAGE
             return [reply]
-        
+
         if self.state == State.AWAITING_MESSAGE:
             # Parse out the three ID strings from the message link
             m = re.search('/(\d+)/(\d+)/(\d+)', message.content)
@@ -63,10 +67,31 @@ class Report:
 
         return []
 
+
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
-    
 
 
-    
+    async def handle_block(self, message):
+        if message.content == self.CANCEL_KEYWORD:
+            self.state = State.BLOCK_COMPLETE
+        
+        if self.state == State.REPORT_START or message.content.startswith(self.BLOCK_KEYWORD):
+            self.state = State.BLOCK_START
+            reply = "Thank you for starting the blocking process. "
+            reply += "Say `help` at any time for more information.\n\n"
+            reply += "Please type the username of the user you want to block.\n"
+            reply += "You can obtain this by right-clicking the user, clicking `Profile,` and copying the username."
+            self.state = State.AWAITING_BLOCK
+            return [reply]
 
+        if self.state == State.AWAITING_BLOCK:
+            identified_user = message.content.lower()
+            reply = "The user '" + identified_user + "' has been blocked."
+            return [reply]
+
+        return []
+
+
+    def block_complete(self):
+        return self.state == State.BLOCK_COMPLETE
