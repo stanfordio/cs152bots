@@ -57,7 +57,7 @@ class Report:
 
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.MESSAGE_IDENTIFIED
-            return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
+            return ["I !!!!!!!!!!!!!!!!!! found this message:", "```" + message.author.name + ": " + message.content + "```", \
                     "Please select one of the categories for this message: terrorist activity | offensive content | harassment | spam"]
                     #"This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
         
