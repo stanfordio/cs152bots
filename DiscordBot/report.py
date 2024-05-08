@@ -16,6 +16,11 @@ class State(Enum):
     INCITING_VIOLENCE_CHOSEN = auto()
     NOT_IMMEDIATE_DANGER = auto()
 
+class PriorityLevel(Enum):
+    LOW = "Low"
+    MEDIUM = "Medium"
+    HIGH = "High"
+
 class Report:
     START_KEYWORD = "report"
     CANCEL_KEYWORD = "cancel"
@@ -33,6 +38,9 @@ class Report:
         self.inciting_violence_message_id = None
         self.immediate_danger_message_id = None
         self.urgent_violence_category_message_id = None
+        self.priority_level = PriorityLevel.LOW
+        self.other_explanation = None
+        self.final_state = None
     
     async def handle_message(self, message):
         '''
@@ -90,6 +98,8 @@ class Report:
         
         if self.state == State.OTHERS_CHOSEN:
             # TODO: Save this message somehow
+            self.other_explanation = message.content
+            self.final_state = "Others/I don't like this"
 
             self.state = State.BLOCK_USER
             sent_message = await message.channel.send(
@@ -152,8 +162,9 @@ class Report:
                 await message.channel.send("Please react to the message that contains emoji options to choose from.")
                 return
             
-            if str(payload.emoji) == '1️⃣':
+            if str(payload.emoji) == '1️⃣': # Trolling
                 self.state = State.BLOCK_USER
+                self.final_state = "Trolling"
                 sent_message = await message.channel.send(
                     "Thank you for your report. Would you like to block this user?\n"
                     "If so, please react to this message with 👍.\n"
@@ -161,8 +172,9 @@ class Report:
                 )
                 self.block_user_message_id = sent_message.id
                 return
-            elif str(payload.emoji) == '2️⃣':
+            elif str(payload.emoji) == '2️⃣': # Impersonation
                 self.state = State.BLOCK_USER
+                self.final_state = "Impersonation"
                 sent_message = await message.channel.send(
                     "Thank you for your report. Would you like to block this user?\n"
                     "If so, please react to this message with 👍.\n"
@@ -170,8 +182,10 @@ class Report:
                 )
                 self.block_user_message_id = sent_message.id
                 return
-            elif str(payload.emoji) == '3️⃣':
+            elif str(payload.emoji) == '3️⃣': # Directed Hate Speech
                 self.state = State.BLOCK_USER
+                self.priority_level = PriorityLevel.MEDIUM
+                self.final_state = "Directed Hate Speech"
                 sent_message = await message.channel.send(
                     "Thank you for your report. Would you like to block this user?\n"
                     "If so, please react to this message with 👍.\n"
@@ -179,8 +193,9 @@ class Report:
                 )
                 self.block_user_message_id = sent_message.id
                 return
-            elif str(payload.emoji) == '4️⃣':
+            elif str(payload.emoji) == '4️⃣': # Doxing
                 self.state = State.BLOCK_USER
+                self.final_state = "Doxing"
                 sent_message = await message.channel.send(
                     "Thank you for your report. Would you like to block this user?\n"
                     "If so, please react to this message with 👍.\n"
@@ -188,8 +203,10 @@ class Report:
                 )
                 self.block_user_message_id = sent_message.id
                 return
-            elif str(payload.emoji) == '5️⃣':
+            elif str(payload.emoji) == '5️⃣': # Unwanted Sexual Content
                 self.state = State.BLOCK_USER
+                self.priority_level = PriorityLevel.HIGH
+                self.final_state = "Unwanted Sexual Content"
                 sent_message = await message.channel.send(
                     "Thank you for your report. Would you like to block this user?\n"
                     "If so, please react to this message with 👍.\n"
@@ -208,6 +225,8 @@ class Report:
             
             if str(payload.emoji) == '1️⃣': # Protected Characteristics
                 self.state = State.BLOCK_USER
+                self.priority_level = PriorityLevel.MEDIUM
+                self.final_state = "Protected Characteristics"
                 sent_message = await message.channel.send(
                     "Thank you for your report. Would you like to block this user?\n"
                     "If so, please react to this message with 👍.\n"
@@ -217,6 +236,8 @@ class Report:
                 return
             elif str(payload.emoji) == '2️⃣': # Sexually Graphic Content
                 self.state = State.BLOCK_USER
+                self.priority_level = PriorityLevel.MEDIUM
+                self.final_state = "Sexually Graphic Content"
                 sent_message = await message.channel.send(
                     "Thank you for your report. Would you like to block this user?\n"
                     "If so, please react to this message with 👍.\n"
@@ -226,6 +247,8 @@ class Report:
                 return
             elif str(payload.emoji) == '3️⃣': # Child Sexual Abuse Material
                 self.state = State.BLOCK_USER
+                self.priority_level = PriorityLevel.HIGH
+                self.final_state = "Child Sexual Abuse Material"
                 sent_message = await message.channel.send(
                     "Thank you for your report. Would you like to block this user?\n"
                     "If so, please react to this message with 👍.\n"
@@ -235,6 +258,7 @@ class Report:
                 return
             elif str(payload.emoji) == '4️⃣': # Drug Use
                 self.state = State.BLOCK_USER
+                self.final_state = "Drug Use"
                 sent_message = await message.channel.send(
                     "Thank you for your report. Would you like to block this user?\n"
                     "If so, please react to this message with 👍.\n"
@@ -265,6 +289,8 @@ class Report:
             
             if str(payload.emoji) == '1️⃣': # Dangerous Acts
                 self.state = State.BLOCK_USER
+                self.priority_level = PriorityLevel.MEDIUM
+                self.final_state = "Inciting/Glorifying Dangerous Acts"
                 sent_message = await message.channel.send(
                     "Thank you for your report. Would you like to block this user?\n"
                     "If so, please react to this message with 👍.\n"
@@ -274,6 +300,8 @@ class Report:
                 return
             elif str(payload.emoji) == '2️⃣': # Terrorism
                 self.state = State.BLOCK_USER
+                self.priority_level = PriorityLevel.MEDIUM
+                self.final_state = "Inciting/Glorifying Terrorism"
                 sent_message = await message.channel.send(
                     "Thank you for your report. Would you like to block this user?\n"
                     "If so, please react to this message with 👍.\n"
@@ -283,6 +311,8 @@ class Report:
                 return
             elif str(payload.emoji) == '3️⃣': # Animal Abuse
                 self.state = State.BLOCK_USER
+                self.priority_level = PriorityLevel.MEDIUM
+                self.final_state = "Inciting/Glorifying Animal Abuse"
                 sent_message = await message.channel.send(
                     "Thank you for your report. Would you like to block this user?\n"
                     "If so, please react to this message with 👍.\n"
@@ -292,6 +322,7 @@ class Report:
                 return
             elif str(payload.emoji) == '4️⃣': # Depiction of Physical Violence
                 self.state = State.BLOCK_USER
+                self.final_state = "Inciting/Glorifying Physical Violence"
                 sent_message = await message.channel.send(
                     "Thank you for your report. Would you like to block this user?\n"
                     "If so, please react to this message with 👍.\n"
@@ -301,6 +332,7 @@ class Report:
                 return
             elif str(payload.emoji) == '5️⃣': # Other
                 self.state = State.BLOCK_USER
+                self.final_state = "Inciting/Glorifying Violence"
                 sent_message = await message.channel.send(
                     "Thank you for your report. Would you like to block this user?\n"
                     "If so, please react to this message with 👍.\n"
@@ -319,6 +351,8 @@ class Report:
             
             if str(payload.emoji) == '👍':
                 self.state = State.REPORT_COMPLETE
+                self.priority_level = PriorityLevel.HIGH
+                self.final_state = "Immediate Danger"
                 await message.channel.send("Please call 911. We will address this report with the highest priority.")
                 return
             elif str(payload.emoji) == '👎':
@@ -340,10 +374,14 @@ class Report:
             
             if str(payload.emoji) == '1️⃣':
                 self.state = State.REPORT_COMPLETE
+                self.priority_level = PriorityLevel.HIGH
+                self.final_state = "Self Harm"
                 await message.channel.send("Thank you for reporting. We will contact local authorities")
                 return
             elif str(payload.emoji) == '2️⃣':
                 self.state = State.BLOCK_USER
+                self.priority_level = PriorityLevel.HIGH
+                self.final_state = "Directed Threat"
                 sent_message = await message.channel.send(
                     "Thank you for your report. Would you like to block this user?\n"
                     "If so, please react to this message with 👍.\n"
@@ -375,15 +413,29 @@ class Report:
         return
     
     async def send_report_to_mod_channel(self, mod_channel):
-        # Only forward report if the report is complete
         if self.state != State.REPORT_COMPLETE:
             return
-        
-        await mod_channel.send(
-            f'User {self.reporter.name} just filed a report against the message:\n'
-            f"```{self.message.author.name}: {self.message.content}```\n"
-            )
-        return
+
+        color_dict = {
+            PriorityLevel.LOW: discord.Color.blue(),
+            PriorityLevel.MEDIUM: discord.Color.gold(),
+            PriorityLevel.HIGH: discord.Color.red()
+        }
+        color = color_dict.get(self.priority_level, discord.Color.default())
+
+        embed = discord.Embed(
+            title="New Report Filed",
+            description=f"User {self.reporter.name} filed a report against the following message:",
+            color=color
+        )
+        embed.add_field(name="Message Content", value=f"```{self.message.author.name}: {self.message.content}```", inline=False)
+        embed.add_field(name="Priority", value=self.priority_level.value, inline=True)
+        embed.add_field(name="Reported by", value=self.reporter.name, inline=True)
+        embed.add_field(name="Reported abuse type", value=self.final_state, inline=False)
+        if self.other_explanation:
+            embed.add_field(name="User explanation", value=self.other_explanation, inline=False)
+
+        await mod_channel.send(embed=embed)
 
 
     def report_complete(self):

@@ -122,8 +122,6 @@ class ModBot(discord.Client):
                 await self.reports[payload.user_id].send_report_to_mod_channel(mod_channel)
                 self.reports.pop(payload.user_id)
 
-                
-
             # If the report is cancelled, just remove it from the map
             elif self.reports[payload.user_id].report_cancelled():
                 self.reports.pop(payload.user_id)
