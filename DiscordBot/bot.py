@@ -93,10 +93,13 @@ class ModBot(discord.Client):
         responses = await self.reports[author_id].handle_message(message)
         for r in responses:
             await message.channel.send(r.get("response"), view=r.get("view"))
+            if r.get("summary"):
+                mod_channel = self.mod_channels[r.get("reported_message").guild.id]
+                await mod_channel.send(r.get("summary"))
+
 
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():
-            await message.channel.send("Report complete")
             self.reports.pop(author_id)
 
     async def handle_channel_message(self, message):
