@@ -18,12 +18,17 @@ class State(Enum):
 
 class Moderator:
     START_KEYWORD = "moderate"
+    CANCEL_KEYWORD = "cancel"
     def __init__(self, client):
-        # self.bot = bot
         self.client = client
         self.state = None
 
     async def handle_moderation(self, message, reports_queue):
+
+        if message.content == self.CANCEL_KEYWORD:
+            self.state = State.END
+            return ["Moderation cancelled."]
+        
         # Check if the message is the "moderate" command
         if message.content == "moderate":
             self.state = State.MODERATE_INIT
@@ -139,7 +144,7 @@ class Moderator:
             elif message.content == "3":
                 self.state = State.NUM_VIOLATIONS
                 reply = "This post has been categorized as hate speech.\n"
-                reply += await self.delete_message_with_url(reports_queue[0]['link'], reports_queue[0]['author'], "hate speech against")
+                reply += await self.delete_message_with_url(reports_queue[0]['link'], reports_queue[0]['author'], "hate speech against " + reports_queue[0]['target_subject'])
                 reply += "Do this user have 3 or more violations in the past month?\n"
                 reply += "1. Yes\n"
                 reply += "2. No\n"
