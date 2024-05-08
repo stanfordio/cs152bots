@@ -8,6 +8,8 @@ import re
 import requests
 from report import Report
 import pdb
+from moderate import Moderate
+
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -34,6 +36,7 @@ class ModBot(discord.Client):
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
+        self.reports_test = {"1": "i am doing the hate speeches"}
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -70,6 +73,7 @@ class ModBot(discord.Client):
         else:
             await self.handle_dm(message)
 
+
     async def handle_dm(self, message):
         # Handle a help message
         if message.content == Report.HELP_KEYWORD:
@@ -98,23 +102,38 @@ class ModBot(discord.Client):
         if self.reports[author_id].report_complete():
             self.reports.pop(author_id)
 
+
     async def handle_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel
-        if not message.channel.name == f'group-{self.group_num}':
+        if message.channel.name == f'group-{self.group_num}':
             return
-
-        # Forward the message to the mod channel
+        else:
+            await self.handle_mod_channel_message(message)
+              
+    async def handle_mod_channel_message(self, message):
         mod_channel = self.mod_channels[message.guild.id]
-        await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-        scores = self.eval_text(message.content)
-        await mod_channel.send(self.code_format(scores))
+        if message.content.lower() == 'see all reports':
+            await mod_channel.send(f'Here are all reports:')
+            for id, report in self.reports.items():
+                await mod_channel.send(f'ID {id}, Message: {report.message.content}')
+        else:
+            await mod_channel.send("Please type 'see all reports' to see reports.")
 
-    
+
+    async def mod_flow(self, mod_channel, message):
+        moderate = Moderate(mod_channel, message)
+        await moderate.start_mod_flow()
+        await moderate.handle_message(message)
+
+
+
     def eval_text(self, message):
         ''''
         TODO: Once you know how you want to evaluate messages in your channel, 
         insert your code here! This will primarily be used in Milestone 3. 
         '''
+        
+        
         return message
 
     

@@ -25,6 +25,7 @@ class Report:
         self.state = State.REPORT_START
         self.client = client
         self.message = None
+        self.reported_message = None
         self.current_step = 0
     
     async def handle_message(self, message):
@@ -73,6 +74,7 @@ class Report:
 
                 # we've found the message
                 self.state = State.MESSAGE_IDENTIFIED
+                self.reported_message = message
                 reply = "I found this message: " + message.author.name + ": " + message.content + "\n"
                 reply += "Is this hateful conduct? Please say `yes` or `no`."
                 self.state = State.AWAITING_MESSAGE
