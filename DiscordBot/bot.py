@@ -128,7 +128,7 @@ class ModBot(discord.Client):
             id, report = next(iter(self.reports.items()))
             await mod_channel.send(f"Now handling user's {id} report:")
             self.reports.pop(id)
-            await mod_channel.send(f'ID {id}, Message: {report.reported_message.content}')
+            await mod_channel.send(f'ID {id}, Message: {report.reported_message}')
             self.current_moderation = Moderate(mod_channel, id, report)
             self.HANDLING_REPORT = True
 
