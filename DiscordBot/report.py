@@ -230,7 +230,7 @@ class Report:
             else:
                 self.state = State.REPORT_COMPLETE 
                 if message.content.lower() == "yes":  
-                    return ["Okay" + self.result["Reported User"] + " has been blocked. Stay safe and feel free to reach out again."]
+                    return ["Okay " + self.result["Reported User"] + " has been blocked. Stay safe and feel free to reach out again."]
                 else:
                     return ["Okay " + self.result["Reported User"] + " will not be blocked. Stay safe and feel free to reach out again."]
         return []
