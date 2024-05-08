@@ -14,7 +14,7 @@ class Moderate:
         self.mod_channel = mod_channel
         self.reported_id = id
         self.report = report
-        self.offender_id = report.reported_message.author.id
+        self.offender_id = report.reported_message['content'].author.id
         self.violations = {}
         self.current_step = 0
 

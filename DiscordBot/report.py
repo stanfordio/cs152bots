@@ -23,7 +23,7 @@ class Report:
         self.state = State.REPORT_START
         self.client = client
         self.message = None
-        self.reported_message = None
+        self.reported_message = {'content': None, 'hate_speech_type': None, 'more_info': None}
         self.current_step = 0
     
     async def handle_message(self, message):
@@ -68,7 +68,7 @@ class Report:
 
                 # we've found the message
                 self.state = State.MESSAGE_IDENTIFIED
-                self.reported_message = message
+                self.reported_message['content'] = message
                 reply = "I found this message: " + message.author.name + ": " + message.content + "\n"
                 reply += "Is this hateful conduct? Please say `yes` or `no`."
                 self.state = State.AWAITING_MESSAGE
@@ -105,7 +105,7 @@ class Report:
             # step 2: user picked the relevant hate speech type, now decides whether to submit or continue
             if self.current_step == 2:
                 if message.content in self.HATE_SPEECH_TYPES:
-                    # we need to add this message content to the final message that is submitted
+                    self.reported_message['hate_speech_type'] = message.content
                     reply = "You have classified this message as " + message.content + ". "
                     if message.content == "threatening violence":
                         reply = "Since `threatening violence` could pose a real-world danger, we will mute the account of the user who sent this message for 1-3 days as we review your report."
@@ -128,14 +128,15 @@ class Report:
                     self.state = State.AWAITING_MESSAGE
                     self.current_step = 4
                     return [reply]
-                else:
+                elif message.content != self.SUBMIT_KEYWORD:
                     reply = "Please say `submit` to submit, `continue` to add more information, or `cancel` to cancel your report."
                     self.state = State.AWAITING_MESSAGE
                     return [reply]
             
             # step 4: user has added more information, now wants to submit
             if self.current_step == 4:
-                if message.content.startswith("more information:"):
+                if message.content.startswith("More information:"):
+                    self.reported_message['more_info'] = message.content.split("More information:")[1].strip()
                     reply = "Thank you for adding more information. Are you ready to submit? Please say `submit` to submit your report."
                     self.state = State.AWAITING_MESSAGE
                     self.current_step = 5
