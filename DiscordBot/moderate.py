@@ -18,14 +18,6 @@ class Moderate:
         self.violations = {}
         self.current_step = 0
 
-    async def start_mod_flow(self):
-        await self.mod_channel.send("How much of a threat is this? (minor, moderate, major)")
-        self.state = State.THREAT_LEVEL
-
-    async def handle_message(self, message):
-        print('hello')
-        await self.mod_channel.send("Moooooo i'm working")
-
     async def add_violation(self, userId):
         if userId in self.violations:
             self.violations[userId] += 1
@@ -59,6 +51,22 @@ class Moderate:
                 reply = "Invalid action."
 
             self.state = State.DONE
+
+        elif self.current_step == None:
+            reply = "Provided your choices, this content may pose a serious and/or violent threat.\n"
+            reply += "The comment has been removed and the account has been banned.\n"
+            reply += "Do you suspect that the offedner commited an illegal crime or someone is in need of immediate assistance?"
+            self.current_step = None
+
+        elif self.current_step == None:
+            if message == "yes":
+                reply = ""
+            elif message == "no":
+                reply = ""
+            else:
+                reply = "This respons is invalid. Please respond 'yes' or 'no'."
+
+            self.finished_report = True
         
         print('hello')
         return reply
