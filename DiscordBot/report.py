@@ -67,7 +67,7 @@ class Report:
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.MESSAGE_IDENTIFIED
 
-            reply = "I found this message:", "```" + message.author.name + ": " + message.content + "```"
+            reply = "I found this message:" + "```" + message.author.name + ": " + message.content + "```"
             reply += "Please select one of the following categories for your report: \n"
             reply += "|"
             for category in self.level_one_categories:
