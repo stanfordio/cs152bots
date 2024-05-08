@@ -115,11 +115,14 @@ class ModBot(discord.Client):
         mod_channel = self.mod_channels[message.guild.id]
         
         if self.HANDLING_REPORT:
-            await self.current_moderation.handle_message(message)
-            
+            reply = await self.current_moderation.handle_message(message.content)
+            await mod_channel.send(reply)
+    
+
         elif message.content.lower() == 'handle report':
             if not self.reports:
                 await mod_channel.send(f'There are currently 0 reports.')
+                
                 return
 
             id, report = next(iter(self.reports.items()))
@@ -128,7 +131,6 @@ class ModBot(discord.Client):
             await mod_channel.send(f'ID {id}, Message: {report.reported_message.content}')
             self.current_moderation = Moderate(mod_channel, id, report)
             self.HANDLING_REPORT = True
-            await self.current_moderation.handle_message(message)
 
         else:
             await mod_channel.send("Please type 'handle report' to see oldest report.")
