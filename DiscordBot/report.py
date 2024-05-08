@@ -8,10 +8,21 @@ class State(Enum):
     MESSAGE_IDENTIFIED = auto()
     REPORT_COMPLETE = auto()
 
+    # Abuse Types
+    SPAM = auto()
+    OFFENSIVE_CONTENT = auto()
+    NUDITY = auto()
+    FRAUD = auto()
+    MISINFORMATION = auto()
+    HATE_HARASSMENT = auto()
+    CSAM = auto()
+    INTELLECTUAL = auto()
+
 class Report:
     START_KEYWORD = "report"
     CANCEL_KEYWORD = "cancel"
     HELP_KEYWORD = "help"
+    REPORTING_OPTIONS = ["1", "2", "3", "4", "5", "6", "7", "8"]
 
     def __init__(self, client):
         self.state = State.REPORT_START
@@ -68,11 +79,34 @@ class Report:
             return [reply]
         
         if self.state == State.MESSAGE_IDENTIFIED:
-            return ["<insert rest of reporting flow here>"]
+            if message.content not in self.REPORTING_OPTIONS:
+                return ["That is not a valid option. Please select the number corresponding to the appropriate category for reporting this message, or say `cancel` to cancel."]
+
+            self.classify_report(message)
 
         return []
+    
 
-    def report_complete(self):
+    def classify_report(self, message):
+        if message.content == "1":
+            self.state = State.SPAM
+        elif message.content == "2":
+            self.state = State.OFFENSIVE_CONTENT
+        elif message.content == "3":
+            self.state = State.NUDITY
+        elif message.content == "4":
+            self.state = State.FRAUD
+        elif message.content == "5":
+            self.state = State.MISINFORMATION
+        elif message.content == "6":
+            self.state = State.HATE_HARASSMENT
+        elif message.content == "7":
+            self.state = State.CSAM
+        else:
+            self.state = State.INTELLECTUAL
+
+
+    def is_report_complete(self):
         return self.state == State.REPORT_COMPLETE
     
 
