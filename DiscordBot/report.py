@@ -26,9 +26,10 @@ class Report:
     CANCEL_KEYWORD = "cancel"
     HELP_KEYWORD = "help"
     INCORRECT_RESPONSE = "Please ensure the response is in the correct format."
+    REPORT_MESSAGE = {'message': None}
 
     def __init__(self, client):
-        self.state = State.REPORT_START
+        self.state = None
         self.client = client
         self.message = {}
         # self.message has fields: message, author, reason, posting_entity, content_type, dismisinfo_category, target_group
@@ -51,7 +52,8 @@ class Report:
                 self.state = State.REPORT_COMPLETE
                 return["The reporting process is complete."]
         
-        if self.state == State.REPORT_START:
+        if message.content == self.START_KEYWORD or self.state == State.REPORT_START:
+            self.state = State.REPORT_START
             reply =  "Thank you for starting the reporting process. "
             reply += "Say `help` at any time for more information.\n\n"
             reply += "Please copy paste the link to the message you want to report.\n"
@@ -78,6 +80,7 @@ class Report:
             # Here we've found the message - it's up to you to decide what to do next!
             self.message['message'] = message.content
             self.message['author'] = message.author.name
+            self.message['link'] = message.jump_url # The link to the reported message
             self.state = State.MESSAGE_IDENTIFIED
             return ["Please select a reason for reporting this message:", "```" + message.author.name + ": " + message.content + "```", \
                     "1. Misleading/false information from government group\n2. Spam\n3. Nudity\n4. Bullying\n5. Fraud/Scam\n" + 
@@ -205,6 +208,7 @@ class Report:
         
         if self.state == State.REPORT_THANKYOU:
             await self.client.mod_channels[1211760623969370122].send(self.message)
+            self.REPORT_MESSAGE['message'] = self.message
             self.state = State.REPORT_MOREORNOT
             return ["Thank you for submitting this report. We will review the reported content and determine whether the post will be flagged, removed, or kept up. If the user\’s content makes you uncomfortable, you can use the block feature to no longer see their content.\n" 
                    + "Are there additional posts you would like to report?\n1. Yes\n2. No\n Please with respond with one of 1 or 2."]

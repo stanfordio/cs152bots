@@ -8,6 +8,7 @@ import re
 import requests
 from report import Report
 import pdb
+from moderate import Moderator
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -34,6 +35,8 @@ class ModBot(discord.Client):
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
+        self.reports_queue = [] # Queue of reports to be sent to the mod channel
+        self.moderator = Moderator(self)
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -82,7 +85,8 @@ class ModBot(discord.Client):
         responses = []
 
         # Only respond to messages if they're part of a reporting flow
-        if author_id not in self.reports and not message.content.startswith(Report.START_KEYWORD):
+        if author_id not in self.reports and not message.content.startswith(Report.START_KEYWORD)\
+                        and not message.content.startswith(Moderator.START_KEYWORD):
             return
 
         # If we don't currently have an active report for this user, add one
@@ -94,6 +98,12 @@ class ModBot(discord.Client):
         for r in responses:
             await message.channel.send(r)
 
+        if Report.REPORT_MESSAGE['message'] is not None:
+            self.reports_queue.append(Report.REPORT_MESSAGE['message'].copy())
+            # print("\n\nReports queue: \n")
+            # print(self.reports_queue)
+            Report.REPORT_MESSAGE['message'] = None
+        
         # If the report is cancelled, remove it from our map
         if self.reports[author_id].report_cancelled():
             self.reports.pop(author_id)
@@ -101,6 +111,10 @@ class ModBot(discord.Client):
         # If the report is complete, remove from our map 
         if self.reports[author_id].report_complete():
             self.reports.pop(author_id)
+
+        moderator_responses = await self.moderator.handle_moderation(message, self.reports_queue)
+        for r in moderator_responses:
+            await message.channel.send(r)
 
 
     async def handle_channel_message(self, message):
