@@ -10,6 +10,8 @@ class Moderate:
     def __init__(self, mod_channel, id, report):
         self.state = State.START
         self.mod_channel = mod_channel
+        self.id = id
+        self.report = report
 
     async def start_mod_flow(self):
         await self.mod_channel.send("How much of a threat is this? (minor, moderate, major)")
