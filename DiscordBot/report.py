@@ -9,6 +9,8 @@ class State(Enum):
     AWAITING_MESSAGE = auto()
     MESSAGE_IDENTIFIED = auto()
     REPORT_COMPLETE = auto()
+    # New State Added to handle awaiting the reason for the report
+    AWAITING_REASON = auto()
 
 class Report:
     START_KEYWORD = "report"
@@ -18,7 +20,8 @@ class Report:
     def __init__(self, client):
         self.state = State.REPORT_START
         self.client = client
-        self.message = None
+        self.message = None # To store the discord.Message object
+        self.report_reason = ""  # To store the reason for the report
     
     async def handle_message(self, message):
         '''
@@ -51,16 +54,26 @@ class Report:
             if not channel:
                 return ["It seems this channel was deleted or never existed. Please try again or say `cancel` to cancel."]
             try:
-                message = await channel.fetch_message(int(m.group(3)))
+                self.message = await channel.fetch_message(int(m.group(3)))
             except discord.errors.NotFound:
                 return ["It seems this message was deleted or never existed. Please try again or say `cancel` to cancel."]
 
             # Here we've found the message - it's up to you to decide what to do next!
-            self.state = State.MESSAGE_IDENTIFIED
+            self.state = State.AWAITING_REASON
+            return ["I found this message:", f"```{self.message.author.name}: {self.message.content}```",
+                    "What is the reason you reported this message?",
+                    "- Spam", "- Harmful Content", "- Harassment", "- Danger", "- Other"]
 
+        if self.state == State.AWAITING_REASON:
+            self.report_reason = message.content  # Store the reason for the report
+            self.state = State.REPORT_COMPLETE
+            # Optionally, log the report or perform other actions here
+            return [f"Thank you for the report. Reason: {self.report_reason}. Your report has been filed."]
             #return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
             #        "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
         
+
+        # USED LATER
         if self.state == State.MESSAGE_IDENTIFIED:
             f = open('DiscordBot/users_log.json')
             users_log = json.load(f)

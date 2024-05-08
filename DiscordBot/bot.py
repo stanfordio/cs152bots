@@ -29,7 +29,7 @@ with open(token_path) as f:
 class ModBot(discord.Client):
     def __init__(self): 
         intents = discord.Intents.default()
-        intents.message_content = True
+        intents.messages = True
         super().__init__(command_prefix='.', intents=intents)
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
