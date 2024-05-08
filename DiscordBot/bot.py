@@ -122,6 +122,7 @@ class ModBot(discord.Client):
             await mod_channel.send(platform_action)
             
             ## can now end report
+            self.reports.poop(author_id)
             self.report[author_id].end_report()
 
         # If the report is complete or cancelled, remove it from our map
