@@ -6,6 +6,7 @@ class State(Enum):
     REPORT_START = auto()
     AWAITING_MESSAGE = auto()
     MESSAGE_IDENTIFIED = auto()
+    BLOCK_USER = auto()
     REPORT_COMPLETE = auto()
 
     # Abuse Types
@@ -82,14 +83,25 @@ class Report:
             if message.content not in self.REPORTING_OPTIONS:
                 return ["That is not a valid option. Please select the number corresponding to the appropriate category for reporting this message, or say `cancel` to cancel."]
 
-            self.classify_report(message)
+            reply = self.classify_report(message)
+            return reply
+        
+        if self.state == State.BLOCK_USER:
+            if message.content != "yes" and message.content != "no":
+                return ["That is not a valid option. Please reply with `yes` or `no`."]
+            
+            self.state = State.REPORT_COMPLETE
+            if message.content == "yes":
+                return ["Thank you. The user has been blocked."]
+            else: 
+                return []
 
         return []
     
 
     def classify_report(self, message):
         if message.content == "1":
-            self.state = State.SPAM
+            return self.complete_report()
         elif message.content == "2":
             self.state = State.OFFENSIVE_CONTENT
         elif message.content == "3":
@@ -101,9 +113,18 @@ class Report:
         elif message.content == "6":
             self.state = State.HATE_HARASSMENT
         elif message.content == "7":
-            self.state = State.CSAM
+            return self.complete_report()
         else:
             self.state = State.INTELLECTUAL
+
+
+    def complete_report(self):
+        self.state = State.BLOCK_USER
+        reply = "Thank you for submitting a report. Our content moderation will review the report and take appropriate action. This may include contacting local authorities.\n\n"
+        reply += "Would you like to block the user whose message you just reported?\n"
+        reply += "You will no longer be able to interact with them.\n"
+        reply += "Please reply with `yes` or `no`."
+        return [reply]
 
 
     def is_report_complete(self):
@@ -111,5 +132,4 @@ class Report:
     
 
 
-    
 
