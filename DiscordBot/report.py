@@ -26,7 +26,7 @@ class Report:
 
         self.report_type = "miscellaneous"
         self.level_one_categories = ["offensive content", "harassment", "spam", "terrorist activity"]
-        self.level_two_cateogires = ["glorification or promotion", "financing", "recruitment", "threat or incitement", "account belongs to terrorist entity"]
+        self.level_two_categories = ["glorification or promotion", "financing", "recruitment", "threat or incitement", "account belongs to terrorist entity"]
     
     async def handle_message(self, message):
         '''
