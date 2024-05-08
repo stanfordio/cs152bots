@@ -62,7 +62,10 @@ class ModBot(discord.Client):
         '''
         # Ignore messages from the bot 
         if message.author.id == self.user.id:
+            print("From bot:", message.content)
             return
+
+        print("From user:", message.content)
 
         # Check if this message was sent in a server ("guild") or if it's a DM
         if message.guild:
@@ -91,6 +94,10 @@ class ModBot(discord.Client):
 
         # Let the report class handle this message; forward all the messages it returns to uss
         responses = await self.reports[author_id].handle_message(message)
+
+        if responses is None: 
+            return
+
         for r in responses:
             await message.channel.send(r)
 
