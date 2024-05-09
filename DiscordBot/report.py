@@ -144,7 +144,7 @@ class Report:
             #reported_channel = reported_content[1]
             reported_message = reported_content[2]
             if (report_type in self.level_one_categories and report_type != "terrorist activity"):
-                reply = "MESSAGE_TO_REPORTED_USER \n\n"
+                reply = "\nMESSAGE_TO_REPORTED_USER \n\n"
                 reply += reported_message.author.name + ", you have been reported for the following message: \n"
                 reply += "```" + reported_message.author.name + ": " + reported_message.content + "```"
                 reply += "This message was reported as " + report_type + ", which is a violation of our community guidelines \n"
@@ -153,7 +153,7 @@ class Report:
                 return reply
             else: ## report_type is a segment of terrorist activity
                 ## will expand this to match to flow later
-                reply = "MESSAGE_TO_REPORTED_USER \n\n"
+                reply = "\nMESSAGE_TO_REPORTED_USER \n"
                 reply += reported_message.author.name + ", you have been reported for the following message: \n"
                 reply += "```" + reported_message.author.name + ": " + reported_message.content + "```"
                 reply += "This message was reported as " + report_type + ", which is a violation of our community guidelines \n"
@@ -170,7 +170,7 @@ class Report:
             #reported_guild = reported_content[0]
             #reported_channel = reported_content[1]
             reported_message = reported_content[2]
-            reply = "SERVER_ACTION \n"
+            reply = "\nSERVER_ACTION \n"
             reply += "The following message has been deleted from the platform after a report: \n"
             reply += "```" + reported_message.author.name + ": " + reported_message.content + "```" + "\n"
             return reply
