@@ -7,6 +7,7 @@ import logging
 import re
 import requests
 from report import Report
+from mod import Mod
 import pdb
 
 # Set up logging to the console
@@ -34,6 +35,7 @@ class ModBot(discord.Client):
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
+        self.mod_flows = {} # Map from moderator's ID to state of their mod flow
         self.mod_channel = None
 
     async def on_ready(self):
@@ -68,7 +70,10 @@ class ModBot(discord.Client):
 
         # Check if this message was sent in a server ("guild") or if it's a DM
         if message.guild:
-            await self.handle_channel_message(message)
+            if message.channel == self.mod_channel:
+                await self.handle_mod_message(message)
+            else:
+                await self.handle_channel_message(message)
         else:
             await self.handle_dm(message)
 
@@ -111,7 +116,24 @@ class ModBot(discord.Client):
         scores = self.eval_text(message.content)
         await mod_channel.send(self.code_format(scores))
 
-    
+    async def handle_mod_message(self, message):
+        author_id = message.author.id
+        responses = []
+        if author_id not in self.mod_flows and not message.content.startswith(Mod.START_KEYWORD):
+            return
+        # If we don't currently have an active mod class for this user, add one
+        if author_id not in self.mod_flows:
+            self.mod_flows[author_id] = Mod(self)
+        
+        # Let the report class handle this message; forward all the messages it returns to uss
+        responses = await self.mod_flows[author_id].handle_message(message, self.mod_channel)
+        for r in responses:
+            await message.channel.send(r)
+
+        # If the report is complete or cancelled, remove it from our map
+        if self.mod_flows[author_id].report_complete():
+            self.mod_flows.pop(author_id)
+        
     def eval_text(self, message):
         ''''
         TODO: Once you know how you want to evaluate messages in your channel, 

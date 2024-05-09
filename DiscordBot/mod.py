@@ -3,22 +3,23 @@ import discord
 import re
 
 class State(Enum):
-    REPORT_START = auto()
-    AWAITING_MESSAGE = auto()
-    MESSAGE_IDENTIFIED = auto()
-    SELECT_TYPE = auto()
-    SUB_TYPE = auto()
-    REPORT_SUBMITTED = auto()
-    ASK_BLOCK_USER = auto()
+    MOD_START = auto()
+    DANGER = auto()
+    HATE_SPEECH = auto()
+    SEVERITY = auto()
+    FALSIFIED = auto()
+    FLAG = auto()
+    TERRORISM = auto()
+    REPEAT_TERRORISM = auto()
     FINAL_MESSAGE = auto()
 
-class Report:
-    START_KEYWORD = "report"
+class Mod:
+    START_KEYWORD = "mod"
     CANCEL_KEYWORD = "cancel"
     HELP_KEYWORD = "help"
 
     def __init__(self, client):
-        self.state = State.REPORT_START
+        self.state = State.MOD_START
         self.client = client
         self.message = None
         self.report_type = None
@@ -31,74 +32,122 @@ class Report:
         '''
         if message.content == self.CANCEL_KEYWORD:
             self.state = State.FINAL_MESSAGE
-            return ["Report cancelled."]
+            return ["Moderation flow cancelled."]
 
-        if self.state == State.REPORT_START:
-            reply = "Thank you for starting the reporting process. Say `help` at any time for more information.\n\n"
-            reply += "Please copy and paste the link to the message you want to report."
-            self.state = State.AWAITING_MESSAGE
+        if self.state == State.MOD_START:
+            reply = "Thank you for starting the moderation process. Say `help` at any time for more information.\n\n"
+            reply += "Is there imminent danger? State 'Yes' or 'No'."
+            self.state = State.DANGER
             return [reply]
         
-        if self.state == State.AWAITING_MESSAGE:
-            m = re.search('/(\d+)/(\d+)/(\d+)', message.content)
-            if not m:
-                return ["Invalid link. Please try again or say `cancel` to cancel."]
-            guild = self.client.get_guild(int(m.group(1)))
-            if not guild:
-                return ["I'm not in the reported guild. Please add me and try again."]
-            channel = guild.get_channel(int(m.group(2)))
-            if not channel:
-                return ["Channel not found. Please try again or say `cancel` to cancel."]
-            try:
-                self.message = await channel.fetch_message(int(m.group(3)))
-            except discord.errors.NotFound:
-                return ["Message not found. Please try again or say `cancel` to cancel."]
-            
-            self.state = State.SELECT_TYPE
-            self.reported_message = self.message
-            return ["Message found:", f"```{self.message.author.name}: {self.message.content}```",
-                    "Please select the type of issue:",
-                    "1. Harassment  2. Offensive Content  3. Spam  4. Imminent Danger"]
+        if self.state == State.DANGER:
+            # m = re.search('/(\d+)/(\d+)/(\d+)', message.content)
+            # if not m:
+            #     return ["Invalid link. Please try again or say `cancel` to cancel."]
+            # guild = self.client.get_guild(int(m.group(1)))
+            # if not guild:
+            #     return ["I'm not in the reported guild. Please add me and try again."]
+            # channel = guild.get_channel(int(m.group(2)))
+            # if not channel:
+            #     return ["Channel not found. Please try again or say `cancel` to cancel."]
+            # try:
+            #     self.message = await channel.fetch_message(int(m.group(3)))
+            # except discord.errors.NotFound:
+            #     return ["Message not found. Please try again or say `cancel` to cancel."]
+            if message.content.lower() != "yes" and message.content.lower() != "no":
+                return ["Invalid selection. Please try again."]
+            elif message.content.lower() == "yes":
+                self.state = State.SEVERITY
+                reply = "This has been classified as a high priority message. \n\n"
+                reply += "Please classify this message in terms of severity: 'Low', 'Medium', 'High'"
+                return [reply]
+            else:
+                self.state = State.HATE_SPEECH
+                return ["Is this an instance of hate speech? State 'Yes' or 'No'."]
 
-        if self.state == State.SELECT_TYPE:
-            if message.content.isdigit() and 1 <= int(message.content) <= 4:
-                self.report_type = int(message.content)
-                reply = ["Please specify:"]
-                if self.report_type == 1:
-                    reply.append("1. Bullying  2. Stalking  3. Doxxing  4. Backlash")
-                elif self.report_type == 2:
-                    reply.append("1. Hate speech  2. Sexually explicit content  3. Child abuse  4. Extremist content")
-                elif self.report_type == 3:
-                    reply.append("1. Misinformation  2. Fraud/Extortion  3. Impersonation")
-                elif self.report_type == 4:
-                    reply.append("1. Credible threat  2. Violence  3. Self harm")
-                self.state = State.SUB_TYPE
-                return reply
+        if self.state == State.HATE_SPEECH:
+            if message.content.lower() != "yes" and message.content.lower() != "no":
+                return ["Invalid selection. Please try again."]
+            self.state = State.SEVERITY
+            if message.content.lower() == "yes":
+                reply = "This has been classified as a high priority message. \n\n"
+                reply += "Please classify this message in terms of severity: 'Low', 'Medium', 'High'"
+                return [reply]
+            else:
+                reply = "This has been classified as a lower priority message. \n\n"
+                reply += "Please classify this message in terms of severity: 'Low', 'Medium', 'High'"
+                return [reply]
+
+        if self.state == State.SEVERITY:
+            severity = message.content.strip().lower()
+            if severity == "low":
+                reply = "Is this a false report? State 'Yes' or 'No'."
+                self.state = State.FALSIFIED
+                return [reply]
+            elif severity == "medium":
+                reply = "Has this user been flagged for posting offensive content over 5 times this month? State 'Yes' or 'No'."
+                self.state = State.FLAG
+                return [reply]
+            elif severity == "high":
+                reply = "Is this content related to terrorism? State 'Yes' or 'No'."
+                self.state = State.TERRORISM
+                return [reply]
             else:
                 return ["Invalid selection. Please try again."]
         
-        if self.state == State.SUB_TYPE:
-            if message.content.isdigit() and 1 <= int(message.content) <= 4:
-                self.sub_type = int(message.content)
-                self.state = State.REPORT_SUBMITTED
-                response = ["Thank you for reporting this message."]
-                if self.report_type == 4:  # Imminent Danger
-                    response.append("Our content moderation team will review this message and take the appropriate actions moving forward. This may include contacting law enforcement and removing the user from our platform.")
-                else:
-                    response.append("Our content moderation team will review this message and take the appropriate actions, which may include removing this user from our platform.")
-                response.append("Would you like to block this user? This will prevent them from sending you messages in the future.")
-                self.state = State.ASK_BLOCK_USER
-                return response
+        if self.state == State.FALSIFIED:
+            falsified = message.content.strip().lower()
+            if falsified == "yes":
+                self.state = State.FINAL_MESSAGE
+                reply = "If this user has reported 5 or more false reports, we will temporarily suspend their account. \n\n"
+                reply += "Otherwise, we will ask them to please ensure that future reports are correctly classified to avoid account suspension."
+                return [reply]
+            elif falsified == "no":
+                self.state = State.FINAL_MESSAGE
+                reply = "It looks like this was a minor incident. No action taken at this time."
+                return [reply]
             else:
-                return ["Invalid subtype selected. Please try again or say `cancel` to cancel."]
+                return ["Invalid selection. Please try again."]
+
+        if self.state == State.FLAG:
+            flag = message.content.strip().lower()
+            if flag == "yes":
+                self.state = State.FINAL_MESSAGE
+                reply = "We have temporarily suspended the user's account for many reports of content that violate community guidelines. No further action is necessary."
+                return [reply]
+            elif flag == "no":
+                self.state = State.FINAL_MESSAGE
+                reply = "We have notified the user to please refrain from posting content that violates community guidelines. No further action is necessary."
+                return [reply]
+            else:
+                return ["Invalid selection. Please try again."]
+
+        if self.state == State.TERRORISM:
+            terror = message.content.strip().lower()
+            if terror == "yes":
+                reply = "We have deleted this content, flagged the user, and issued them a warning. \n\n"
+                reply += "We will report this content to the FBI and local law enforcement and add the content to the GIFCT Database.\n\n"
+                reply += "Has the user been flagged for terrorism content multiple times by multiple users? State 'Yes' or 'No'."
+                self.state = State.REPEAT_TERRORISM
+                return [reply]
+            elif terror == "no":
+                self.state = State.FLAG
+                return ["Has this user been flagged for posting offensive content over 5 times this month? State 'Yes' or 'No'."]
+            else:
+                return ["Invalid selection. Please try again."]
         
-        if self.state == State.ASK_BLOCK_USER:
-            # Logic to handle user's choice about blocking could be implemented here.
-            self.state = State.FINAL_MESSAGE
-            
-            # Logic to handle forwarding report to mod channel
-            await mod_channel.send(f'ALERT: A message has been reported. \n{self.reported_message.author.name}: "{self.reported_message.content}"')
-            return ["Thanks for your response. We'll take it from here!"]
+        if self.state == State.REPEAT_TERRORISM:
+            repeat = message.content.strip().lower()
+            if repeat == "yes":
+                self.state = State.FINAL_MESSAGE
+                reply = "We are decrypting the user's account to flag their social network and deleting their account."
+                return [reply]
+            elif repeat == "no":
+                self.state = State.FINAL_MESSAGE
+                reply = "We have notified the user to please refrain from posting content that violates community guidelines. No further action is necessary."
+                return [reply]
+            else:
+                return ["Invalid selection. Please try again."]
 
         if self.state == State.FINAL_MESSAGE:
             return ["Thank you!"]
