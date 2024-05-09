@@ -12,11 +12,31 @@ class State(Enum):
     REPORT_COMPLETE = auto()
     # New State Added to handle awaiting the reason for the report
     AWAITING_REASON = auto()
+    REASON_SELECTED = auto()
+    AWAITING_SUB_REASON = auto()
+    AWAITING_CUSTOM_REASON = auto()
+    ASK_BLOCK_USER = auto()
 
 class Report:
     START_KEYWORD = "report"
     CANCEL_KEYWORD = "cancel"
     HELP_KEYWORD = "help"
+    REPORT_REASONS = {
+        "1": "Spam",
+        "2": "Harmful Content",
+        "3": "Harassment",
+        "4": "Danger",
+        "5": "Other"
+    }
+    SUB_REASONS = {
+        "Spam": {"1": "S1", "2": "S2", "3": "S3"},
+        "Harmful Content": {"1": "Violent content", "2": "Hateful content", "3": "Dangerous information"},
+        "Harassment": {"1": "Bullying", "2": "Stalking", "3": "Threats"},
+        "Danger": {"1": "Immediate physical harm", "2": "Public endangerment", "3": "Illegal activities"},
+        "Other": {"1": "Privacy invasion", "2": "Intellectual property violation", "3": "Fraud"}
+    }
+
+
 
     def __init__(self, client):
         self.state = State.REPORT_START
@@ -78,19 +98,59 @@ class Report:
 
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.AWAITING_REASON
-            return ["I found this message:", f"```{self.message.author.name}: {self.message.content}```",
-                    "What is the reason you reported this message?",
-                    "- Spam", "- Harmful Content", "- Harassment", "- Danger", "- Other"]
-
+            reason_prompt = "Why are you reporting this message? Type the number:\n"
+            for number, reason in self.REPORT_REASONS.items():
+                reason_prompt += f"{number}: {reason}\n"
+            return [reason_prompt]
+        
         if self.state == State.AWAITING_REASON:
-            self.report_reason = message.content  # Store the reason for the report
-            self.state = State.REPORT_COMPLETE
-            return [f"Thank you for the report. Reason: {self.report_reason}. Your report has been filed."]
+            if message.content.strip() in self.REPORT_REASONS:
+                self.report_reason = self.REPORT_REASONS[message.content.strip()]
+                if self.report_reason == "Other":
+                    self.state = State.AWAITING_CUSTOM_REASON
+                    return ["Please type your specific reason for reporting:"]
+                else:
+                    sub_reason_prompt = "Please select the specific issue:\n"
+                    for number, reason in self.SUB_REASONS[self.report_reason].items():
+                        sub_reason_prompt += f"{number}: {reason}\n"
+                    self.state = State.AWAITING_SUB_REASON
+                    return [sub_reason_prompt]
+            else:
+                return ["Invalid selection. Please enter a valid number for the reason."]
+        
+        if self.state == State.AWAITING_SUB_REASON:
+            if message.content.strip() in self.SUB_REASONS[self.report_reason]:
+                self.sub_reason = self.SUB_REASONS[self.report_reason][message.content.strip()]
+                self.state = State.ASK_BLOCK_USER
+                if self.message:
+                    await self.client.delete_reported_message(self.message)
+                return [f"Thank you for the report. Reason: {self.report_reason}. Specific issue: {self.sub_reason}. Your report has been filed and the message has been deleted. Would you like to block the user? Reply with 'y' for yes or 'n' for no."]
+            else:
+                return ["Invalid selection. Please enter a valid number for the specific issue."]
+        
+        if self.state == State.AWAITING_CUSTOM_REASON:
+            self.sub_reason = message.content 
+            self.state = State.ASK_BLOCK_USER
+            if self.message:
+                await self.client.delete_reported_message(self.message)
+            return [f"Thank you for the report. Custom reason: {self.sub_reason}. Your report has been filed and the message has been deleted. Would you like to block the user? Reply with 'y' for yes or 'n' for no."]
+        
+        # TODO: IMPLEMENT FUNCTION TO BLOCK USER
+        if self.state == State.ASK_BLOCK_USER:
+            if message.content.lower() == 'y':
+                # TODO: CREATE FUNCTION HERE
+                # await self.client.block_user(self.message.author)
+                self.state = State.REPORT_COMPLETE
+                return ["The user has been blocked. Thank you for your report."]
+            elif message.content.lower() == 'n':
+                self.state = State.REPORT_COMPLETE
+                return ["The user has not been blocked. Thank you for your report."]
+            else:
+                return ["Invalid response. Please reply with 'y' for yes or 'n' for no."]
+
         
         if self.state == State.REPORT_COMPLETE:
-            # if self.message:
-            #     await self.client.delete_reported_message(self.message)
-            return ["The message has been deleted successfully."]
+            return [""]
 
         return []
 
