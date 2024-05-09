@@ -119,7 +119,7 @@ class ModBot(discord.Client):
                     reply += "Report received of: " + report_type + "\n"
                     reply += "The reported message sent was in this guild: " + str(reported_guild) + "\n"
                     reply += "And in this channel: " + str(reported_channel) + "\n"
-                    reply += "This was the reported message:" + "```" + reported_message.author.name + ": " + reported_message.content + "```" + " \n \n \n"
+                    reply += "This was the reported message:" + "```" + reported_message.author.name + ": " + reported_message.content + "```" + "\n-\n-\n"
                     await asyncio.sleep(10)
                     await mod_channel.send(reply)
 
