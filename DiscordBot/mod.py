@@ -41,19 +41,6 @@ class Mod:
             return [reply]
         
         if self.state == State.DANGER:
-            # m = re.search('/(\d+)/(\d+)/(\d+)', message.content)
-            # if not m:
-            #     return ["Invalid link. Please try again or say `cancel` to cancel."]
-            # guild = self.client.get_guild(int(m.group(1)))
-            # if not guild:
-            #     return ["I'm not in the reported guild. Please add me and try again."]
-            # channel = guild.get_channel(int(m.group(2)))
-            # if not channel:
-            #     return ["Channel not found. Please try again or say `cancel` to cancel."]
-            # try:
-            #     self.message = await channel.fetch_message(int(m.group(3)))
-            # except discord.errors.NotFound:
-            #     return ["Message not found. Please try again or say `cancel` to cancel."]
             if message.content.lower() != "yes" and message.content.lower() != "no":
                 return ["Invalid selection. Please try again."]
             elif message.content.lower() == "yes":
