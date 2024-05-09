@@ -127,13 +127,15 @@ class ModBot(discord.Client):
                     self.report[author_id].end_report()
 
             except Exception as e:
-                return ["Uhhhh, here's an error: ", str(e)]
+                await message.channel.send("Uhhhh, here's an error: " + str(e))
+                return
 
             # If the report is complete or cancelled, remove it from our map
             if self.reports[author_id].report_complete():
                 self.reports.pop(author_id)
         except Exception as e:
-            return ["bruh, here's an error: ", str(e)]
+            await message.channel.send("Uhhhh, here's an error: " + str(e))
+            return
 
     async def handle_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel
