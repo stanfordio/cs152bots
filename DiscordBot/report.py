@@ -149,7 +149,7 @@ class Report:
                 reply += "```" + reported_message.author.name + ": " + reported_message.content + "```"
                 reply += "This post was reported as " + report_type + ", which is a violation of our community guidelines \n"
                 reply += "Your post has been deleted and your account has been indefinitely suspended \n"
-                reply += "You may appeal by writing to fake_email@fake_platform.com"  + " \n \n"
+                reply += "You may appeal by writing to fake_email@fake_platform.com" + " \n \n \n"
                 return reply
             else: ## report_type is a segment of terrorist activity
                 ## will expand this to match to flow later
@@ -162,7 +162,7 @@ class Report:
                 else:
                     reply += "We do not allow content that promotes, supports, glorifies, or incites terrorist activity\n"
                 reply += "Your post has been deleted and your account has been indefinitely suspended \n"
-                reply += "You may appeal by writing to fake_email@fake_platform.com"  + " \n \n"
+                reply += "You may appeal by writing to fake_email@fake_platform.com" + " \n \n \n"
                 return reply
             
         except Exception as e:
@@ -173,15 +173,15 @@ class Report:
             report_type, reported_content = self.get_report_info()
 
             reported_message = reported_content[2]
-            reply = "\n\nSERVER_ACTION \n"
+            reply = "\nSERVER_ACTION \n"
             reply += "The following post has been deleted from the platform after a report: \n"
             reply += "```" + reported_message.author.name + ": " + reported_message.content + "```" + "\n"
 
             if report_type == "glorification or promotion":
-                reply += "The content has been also been uploaded to the GIFCT hash bank."  + " \n \n"
+                reply += "The content has been also been uploaded to the GIFCT hash bank." + " \n \n \n"
 
             elif report_type in self.level_two_categories:
-                reply += "A report of this incident has been sent to local authorities and/or the FBI, including the nature of the violation, user information, and activity."  + " \n \n"
+                reply += "A report of this incident has been sent to local authorities and/or the FBI, including the nature of the violation, user information, and activity." + " \n \n \n"
 
             return reply
         
