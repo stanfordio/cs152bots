@@ -144,16 +144,16 @@ class Report:
             #reported_channel = reported_content[1]
             reported_message = reported_content[2]
             if (report_type in self.level_one_categories and report_type != "terrorist activity"):
-                reply = "\nMESSAGE_TO_REPORTED_USER \n"
+                reply = " \nMESSAGE_TO_REPORTED_USER \n"
                 reply += reported_message.author.name + ", you have been reported for the following message: \n"
                 reply += "```" + reported_message.author.name + ": " + reported_message.content + "```"
                 reply += "This post was reported as " + report_type + ", which is a violation of our community guidelines \n"
                 reply += "Your post has been deleted and your account has been indefinitely suspended \n"
-                reply += "You may appeal by writing to fake_email@fake_platform.com\n"
+                reply += "You may appeal by writing to fake_email@fake_platform.com"  + " \n \n"
                 return reply
             else: ## report_type is a segment of terrorist activity
                 ## will expand this to match to flow later
-                reply = "\nMESSAGE_TO_REPORTED_USER \n"
+                reply = " \nMESSAGE_TO_REPORTED_USER \n"
                 reply += reported_message.author.name + ", you have been reported for the following message: \n"
                 reply += "```" + reported_message.author.name + ": " + reported_message.content + "```"
                 reply += "This post was reported as " + report_type + ", which is a violation of our community guidelines \n"
@@ -162,7 +162,7 @@ class Report:
                 else:
                     reply += "We do not allow content that promotes, supports, glorifies, or incites terrorist activity\n"
                 reply += "Your post has been deleted and your account has been indefinitely suspended \n"
-                reply += "You may appeal by writing to fake_email@fake_platform.com\n"
+                reply += "You may appeal by writing to fake_email@fake_platform.com"  + " \n \n"
                 return reply
             
         except Exception as e:
@@ -178,10 +178,10 @@ class Report:
             reply += "```" + reported_message.author.name + ": " + reported_message.content + "```" + "\n"
 
             if report_type == "glorification or promotion":
-                reply += "The content has been also been uploaded to the GIFCT hash bank. \n"
+                reply += "The content has been also been uploaded to the GIFCT hash bank."  + " \n \n"
 
             elif report_type in self.level_two_categories:
-                reply += "A report of this incident has been sent to local authorities and/or the FBI, including the nature of the violation, user information, and activity. \n"
+                reply += "A report of this incident has been sent to local authorities and/or the FBI, including the nature of the violation, user information, and activity."  + " \n \n"
 
             return reply
         

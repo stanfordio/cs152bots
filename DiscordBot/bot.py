@@ -114,18 +114,18 @@ class ModBot(discord.Client):
                     reported_message = reported_content[2]
 
                     ## send logs message
-                    reply = "\n\nMESSAGE_TO_MODERATOR_LOGS: \n \n"
+                    reply = "MESSAGE_TO_MODERATOR_LOGS:\n"
                     reply += "Report received of: " + report_type + "\n"
                     reply += "The reported message sent was in this guild: " + str(reported_guild) + "\n"
                     reply += "And in this channel: " + str(reported_channel) + "\n"
-                    reply += "This was the reported message:" + "```" + reported_message.author.name + ": " + reported_message.content + "```" + "\n"
-                    await mod_channel.send(" \n \n" + reply)
+                    reply += "This was the reported message:" + "```" + reported_message.author.name + ": " + reported_message.content + "```" + " \n \n"
+                    await mod_channel.send(reply)
 
                     ## take appropriate actions
                     message_to_user = self.reports[author_id].get_moderation_message_to_user()
-                    await mod_channel.send(" \n \n" + message_to_user)
+                    await mod_channel.send(message_to_user)
                     platform_action = self.reports[author_id].get_platform_action()
-                    await mod_channel.send(" \n \n" + platform_action)
+                    await mod_channel.send(platform_action)
                     
                     ## can now end report
                     #self.reports.pop(author_id)
