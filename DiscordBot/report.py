@@ -119,7 +119,7 @@ class Report:
                 else:
                     self.report_type = message.content
                     self.state = State.MODERATE_READY
-                    reply = "Thank you for reporting a message as being " + message.content.lower() + ". We will respond appropriately."
+                    reply = "Thank you for reporting a message as being " + message.content.lower() + ". We will respond appropriately!"
                     return [reply]
 
             except Exception as e:
