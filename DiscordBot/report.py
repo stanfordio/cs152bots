@@ -2,22 +2,28 @@ from enum import Enum, auto
 import discord
 import re
 
+
+# options given to users to select from to make 
 SPECIFIC_OPTIONS = {
-    1: "Please select the type of imminent danger you see: 1. Credible threat of violence, 2. Suicidal content or self-harm.",
-    2: "Please select the type of spam you see: 1. Fraud, 2. Solicitation, 3. Impersonation.",
-    4: "Please select the type of disinformation you see: 1. Targeted at political candidates/figures, 2. Imposter, 3. False context, 4. Fabricated content,",
-    5: "Please select the type of hate speech/harrassment you see: 1. Bullying, 2. Hate speech directed at me/specific group of people, 3. Unwanted sexual content, 4. Revealing Private Information.",
+    1: "Please select the type of imminent danger you see:\n1. Credible threat of violence\n 2. Suicidal content or self-harm.",
+    2: "Please select the type of spam you see:\n1. Fraud\n2. Solicitation\n3. Impersonation.",
+    3: "Please select the type of nudity or graphic content you see:\n1. Of you (revenge porn or sextortion)\n2. Of a minor\n3. Harassment\n4. Other.",
+    4: "Please select the type of disinformation you see:\n1. Targeted at political candidates/figures\n2. Imposter\n3. False context\n4. Fabricated content.",
+    5: "Please select the type of hate speech/harrassment you see:\n1. Bullying\n2. Hate speech directed at me/specific group of people\n3. Unwanted sexual content\n4. Revealing Private Information.",
 }
 
+# closing messages given to the user, before their report is processed
 CLOSING_MESSAGES = {
     1: ["Thank you for reporting. Our content moderation team will review the report and decide on the appropriate response, notifying local authorities if necessary."],
     2: ['Thank you for reporting. Our content moderation team will review the report and decide on the appropriate response, notifying local authorities if necessary.'],
     3: ['Thank you for reporting. Our content moderation team will review this report and will take appropriate steps to flag, censor,  or remove this content.'],
     4: ['Thank you for reporting. Our content moderation team will review the report and decide on the appropriate actions. This may include flagging of the content as AI-generated.\nWould you like us to remove all detected AI-generated content in from your feed the future?'],
     5: ['Thank you for reporting. Our content moderation team will review the report and decide on the appropriate actions. This may include flagging of the content as AI-generated.\nWould you like us to remove all detected AI-generated content in from your feed the future?'],
-    6: ["Thank you for reporting. This content does not violate our policy as it does not cause significant confusion about the authenticity of the media."]
+    6: ["Thank you for reporting. This content does not violate our policy as it does not cause significant confusion about the authenticity of the media and/or it does not containt a person and does not fall within scope of this bot."]
 }
 
+
+# for the first level response
 ABUSE_STRINGS = {
     1: "Imminent Danger",
     2: "Spam",
@@ -27,9 +33,11 @@ ABUSE_STRINGS = {
     6: "Other"
 }
 
+# for the second level response
 SPECIFIC_ABUSE_STRINGS = {
     1: ["Credible threat of violence", "Suicidal content or self-harm"],
     2: ["Fraud", "Solicitation", "Impersonation"],
+    3: ["Of you (revenge porn or sextortion)", "Of a minor", 'Harassment', "Other"],
     4: ["Targeted at political candidates/figures", "Imposter", "False context", "Fabricated content"],
     5: ["Bullying", "Hate speech directed at me/specific group of people", "Unwanted sexual content", "Revealing Private Information"]
 }
@@ -44,8 +52,6 @@ class State(Enum):
     AWAIT_SPECIFIC_TYPE = auto()
     
     AWAIT_AI_REMOVAL = auto()
-    
-    # ADD MORE STATES HERE FOR DIFFERENT FLOW STUFF
 
 class Report:
     START_KEYWORD = "report"
@@ -111,11 +117,14 @@ class Report:
             self.state = State.AWAIT_CONTENT_TYPE
             self.message = message
             # return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
-            #         "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
-            # return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
             #         "if you want to report, please specify the type of AI-generated content you see."] \
-            return   [' You can select from 1. Imminent Danger, 2. Spam, 3. Nudity or Graphic, 4. Disinformation, 5. Hate speech/harrassment, 6. Other (including satire, memes, commentary, couterspeech, etc.)'] \
-                            + ['Please type the number of the content type you see.']
+                
+            out = ['Does the image contain any people? Do you think it is a deepfake and harmful? If so, please continue reading!\n']
+            out +=    [' You can select from\n1. Imminent Danger\n2. Spam\n3. Nudity or Graphic\n4. Disinformation\n5. Hate speech/harrassment\n6. Other (including satire, memes, commentary, couterspeech, etc.)\n'] \
+                            + ['Please type the number of the content type you see.\nIf the image has no people in it or is not harmful, then please press 6']
+            
+            
+            return out
 
             
         # this block determines the type of abuse the user is reporting
@@ -130,14 +139,11 @@ class Report:
             if self.abuse_type not in SPECIFIC_OPTIONS:
                 self.state = State.REPORT_COMPLETE
                 curr_abuse = self.abuse_type
-                # self.abuse_type = None
-                if curr_abuse == 3:
-                    # TODO: insert code here to actually send to moderation team
-                    self.requires_forwarding = True
-                    self.forward_abuse_string = ABUSE_STRINGS[curr_abuse]
-                    return CLOSING_MESSAGES[curr_abuse]
-                elif curr_abuse == 6:
-                    # TODO: insert code here to actually send to moderation team
+                # if curr_abuse == 3:
+                #     self.requires_forwarding = True
+                #     self.forward_abuse_string = ABUSE_STRINGS[curr_abuse]
+                #     return CLOSING_MESSAGES[curr_abuse]
+                if curr_abuse == 6:
                     self.requires_forwarding = True
                     self.forward_abuse_string = ABUSE_STRINGS[curr_abuse]
                     return CLOSING_MESSAGES[curr_abuse]
@@ -152,19 +158,17 @@ class Report:
             except:
                 return [SPECIFIC_OPTIONS[self.abuse_type]]
             
-            if (selection > 2 and self.abuse_type == 1) or (selection > 3 and self.abuse_type == 2 ) or (selection > 4 and self.abuse_type >=3):
+            if selection < 1 or (selection > 2 and self.abuse_type == 1) or (selection > 3 and self.abuse_type == 2 ) or (selection > 3 and self.abuse_type ==3) or (selection > 4 and self.abuse_type >=4):
                 return ["Please type a valid number of the content type you see."]
             
             if self.abuse_type == 4 or self.abuse_type == 5:
                 self.state = State.AWAIT_AI_REMOVAL
                 curr_abuse = self.abuse_type
-                # self.abuse_type = None
+
             else:
                 self.state = State.REPORT_COMPLETE
                 curr_abuse = self.abuse_type
-                # self.abuse_type = None
-            
-            # TODO: insert code here to actually send to moderation team
+
             self.requires_forwarding = True
             self.forward_abuse_string = ABUSE_STRINGS[curr_abuse]
             self.specific_abuse_string = SPECIFIC_ABUSE_STRINGS[curr_abuse][selection-1]
@@ -179,8 +183,6 @@ class Report:
                 return ["Please type yes or no."]
             
             self.state = State.REPORT_COMPLETE
-            # self.abuse_type = None
-            # TODO: Do something with the user's response
             if selection == 'yes':
                 self.keep_AI = False
             if selection == 'no':

@@ -132,8 +132,8 @@ class ModBot(discord.Client):
                     embed = msg.embeds[0]
                     start_message += 'Embed associated with the message attached:\n'
                     image = embed
-                end_message = f'MODERATORS PLEASE SELECT 1. Ignore 2. Warn 3. Delete 4. Ban 5. Delete + Warn 6. Delete + Ban\n'
-                end_message += '****REPORT END****\n'
+                # end_message = f'MODERATORS PLEASE SELECT 1. Ignore 2. Warn 3. Delete 4. Ban 5. Delete + Warn 6. Delete + Ban\n'
+                end_message = '****REPORT END****\n'
                 end_message += '=' * 20
                 
                 # maps from abuse type ot report number to a tuple of the starting message we send to the mod server, images, the ending message for the mod server, and the actual message in question.
@@ -143,7 +143,7 @@ class ModBot(discord.Client):
                 
                 self.most_recent = (start_message, image, end_message, msg, self.reports[author_id].abuse_type, self.reports[author_id].report_no)
                 
-                update = f'There was a new report added to the queue for review. There are now {len(self.caseno_to_info)} reports in the queue.'
+                update = f'There was a new report added to the queue for review. There are now {len(self.caseno_to_info)} report(s) in the queue. Please type `start` to begin reviewing the reports.'
                 await mod_channel.send(update)
             
             self.reports.pop(author_id)
@@ -182,6 +182,12 @@ class ModBot(discord.Client):
                 await message.channel.send(r)
             else:
                 await message.channel.send(file = r)
+        
+        if self.mod_reports[author_id].report_complete():
+            self.caseno_to_info.pop(self.mod_reports[author_id].report_no)
+            self.awaiting_mod_decisions[self.mod_reports[author_id].abuse_type].pop(self.mod_reports[author_id].report_no)
+            if self.most_recent[5] == self.mod_reports[author_id].report_no:
+                self.most_recent = None
 
     
     def eval_text(self, message):
