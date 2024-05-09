@@ -159,7 +159,8 @@ class Report:
                     self.last_step_question = next_options[0]
                     self.last_step_options = next_options[1:]
                     print(user_choice)
-                    if user_choice == 'yes':
+                    # SEND Message to Mod Channel
+                    if user_choice == 'Yes':
                         # Block the user
                         return ["The user has been blocked."]
                     else:
