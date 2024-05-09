@@ -131,40 +131,52 @@ class Report:
         return [self.report_type, self.reported_content]
     
     def get_moderation_message_to_user(self):
-        report_type, reported_content = self.get_report_info()
-        #reported_guild = reported_content[0]
-        #reported_channel = reported_content[1]
-        reported_message = reported_content[2]
-        if (report_type in self.level_one_categories and report_type != "terrorist activity"):
-            reply = "MESSAGE_TO_REPORTED_USER \n"
-            reply += reported_message.author.name + ", you have been reported for the following message: \n"
-            reply += "```" + reported_message.author.name + ": " + reported_message.content + "```"
-            reply += "This message was reported as " + report_type + ", which is a violation of our community guidelines \n"
-            reply += "Your message has been deleted and your account has been indefinitely suspended \n"
-            reply += "You may appeal by writing to fake_email@fake_platform.com"
-            return [reply]
-        else: ## report_type is a segment of terrorist activity
-            ## will expand this to match to flow later
-            reply = "MESSAGE_TO_REPORTED_USER \n"
-            reply += reported_message.author.name + ", you have been reported for the following message: \n"
-            reply += "```" + reported_message.author.name + ": " + reported_message.content + "```"
-            reply += "This message was reported as " + report_type + ", which is a violation of our community guidelines \n"
-            reply += "Your message has been deleted and your account has been indefinitely suspended \n"
-            reply += "You may appeal by writing to fake_email@fake_platform.com"
-            return [reply]
+        try:
+            report_type, reported_content = self.get_report_info()
+            #reported_guild = reported_content[0]
+            #reported_channel = reported_content[1]
+            reported_message = reported_content[2]
+            if (report_type in self.level_one_categories and report_type != "terrorist activity"):
+                reply = "MESSAGE_TO_REPORTED_USER \n"
+                reply += reported_message.author.name + ", you have been reported for the following message: \n"
+                reply += "```" + reported_message.author.name + ": " + reported_message.content + "```"
+                reply += "This message was reported as " + report_type + ", which is a violation of our community guidelines \n"
+                reply += "Your message has been deleted and your account has been indefinitely suspended \n"
+                reply += "You may appeal by writing to fake_email@fake_platform.com"
+                return [reply]
+            else: ## report_type is a segment of terrorist activity
+                ## will expand this to match to flow later
+                reply = "MESSAGE_TO_REPORTED_USER \n"
+                reply += reported_message.author.name + ", you have been reported for the following message: \n"
+                reply += "```" + reported_message.author.name + ": " + reported_message.content + "```"
+                reply += "This message was reported as " + report_type + ", which is a violation of our community guidelines \n"
+                reply += "Your message has been deleted and your account has been indefinitely suspended \n"
+                reply += "You may appeal by writing to fake_email@fake_platform.com"
+                return [reply]
+            
+        except Exception as e:
+                return ["Uhhhh, here's an error: ", str(e)]
 
     def get_platform_action(self):
-        report_type, reported_content = self.get_report_info()
-        #reported_guild = reported_content[0]
-        #reported_channel = reported_content[1]
-        reported_message = reported_content[2]
-        reply = "SERVER_ACTION \n"
-        reply += "The following message has been deleted from the platform after a report: \n"
-        reply += "```" + reported_message.author.name + ": " + reported_message.content + "```"
-        return [reply]
+        try:
+            report_type, reported_content = self.get_report_info()
+            #reported_guild = reported_content[0]
+            #reported_channel = reported_content[1]
+            reported_message = reported_content[2]
+            reply = "SERVER_ACTION \n"
+            reply += "The following message has been deleted from the platform after a report: \n"
+            reply += "```" + reported_message.author.name + ": " + reported_message.content + "```"
+            return [reply]
+        
+        except Exception as e:
+                return ["Uhhhh, here's an error: ", str(e)]
 
     def report_moderate_ready(self):
-        return self.state == State.MODERATE_READY
+        try:
+            return self.state == State.MODERATE_READY
+        
+        except Exception as e:
+                return ["Uhhhh, here's an error: ", str(e)]
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
