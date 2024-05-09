@@ -99,7 +99,11 @@ class ModBot(discord.Client):
 
             ### CURRENTLY TESTING - FEATURE FOR LOGGING REPORTS
             try: 
-                mod_channel = message.channel
+                mod_channel = None
+                for guild in self.guilds:
+                    for channel in guild.text_channels:
+                        if channel.name == f'group-{self.group_num}-mod':
+                            mod_channel = channel
 
             # If the report is ready to be moderated, send log to moderator in mod-channel
                 if self.reports[author_id].report_moderate_ready():
