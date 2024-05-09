@@ -18,6 +18,8 @@ logger.addHandler(handler)
 
 # There should be a file called 'tokens.json' inside the same folder as this file
 token_path = 'tokens.json'
+report_emoji = '🚩'
+
 if not os.path.isfile(token_path):
     raise Exception(f"{token_path} not found!")
 with open(token_path) as f:
@@ -29,7 +31,12 @@ with open(token_path) as f:
 class ModBot(discord.Client):
     def __init__(self): 
         intents = discord.Intents.default()
+        intents.messages = True
         intents.message_content = True
+        ## To allow the bot accept the reports via reactions instead of direct messages
+        intents.reactions = True
+        ## To let the bot know who the members are in the guild
+        intents.members = True
         super().__init__(command_prefix='.', intents=intents)
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
@@ -42,7 +49,7 @@ class ModBot(discord.Client):
         print('Press Ctrl-C to quit.')
 
         # Parse the group number out of the bot's name
-        match = re.search('[gG]roup (\d+) [bB]ot', self.user.name)
+        match = re.search(r'[gG]roup (\d+) [bB]ot', self.user.name)
         if match:
             self.group_num = match.group(1)
         else:
@@ -54,7 +61,6 @@ class ModBot(discord.Client):
                 if channel.name == f'group-{self.group_num}-mod':
                     self.mod_channels[guild.id] = channel
         
-
     async def on_message(self, message):
         '''
         This function is called whenever a message is sent in a channel that the bot can see (including DMs). 
@@ -109,7 +115,46 @@ class ModBot(discord.Client):
         scores = self.eval_text(message.content)
         await mod_channel.send(self.code_format(scores))
 
-    
+    # Adding a reaction to a message in a guild triggers this event
+    # Will help us accept reports via report_emoji
+    async def on_raw_reaction_add(self, payload):
+
+        # Check if the reaction is in a guild and not from the bot itself
+        if payload.guild_id and payload.user_id != self.user.id:
+            guild = discord.utils.find(lambda g: g.id == payload.guild_id, self.guilds)
+            if guild is None:
+                return
+            channel = guild.get_channel(payload.channel_id)
+            if channel is None:
+                return
+            message = await channel.fetch_message(payload.message_id)
+            member = guild.get_member(payload.user_id)
+
+            # Check if the reaction equals the predefined emoji for reporting
+            if str(payload.emoji) == report_emoji:
+                channel = payload.member.dm_channel or await payload.member.create_dm()
+                message = await self.get_channel(payload.channel_id).fetch_message(payload.message_id)
+                if payload.member.id not in self.reports:
+                    self.reports[payload.member.id] = Report(self)
+                await self.reports[payload.member.id].initiate_report(channel, message)
+
+    # This function is called when a user marks a message with the report_emoji
+    async def initiate_report(self, member, message):
+        if member.dm_channel is None:
+            await member.create_dm()
+        await member.dm_channel.send(f"The message by {message.author.display_name} is about to be reported to the Trust & Safety Team of Stanford's CS152 Group-25: '{message.content}'")
+        # Start the reporting process and send options in DM
+        if member.id not in self.reports:
+            self.reports[member.id] = Report(self)
+        await self.reports[member.id].start_new_report(member.dm_channel, message)
+
+    # This function is called when a user sends a message in a guild channel
+    async def start_new_report(self, message):
+        self.message = message
+        # Start with the first question or confirmation
+        reply = self.options_to_string(start_options)
+        return [reply]
+
     def eval_text(self, message):
         ''''
         TODO: Once you know how you want to evaluate messages in your channel, 
