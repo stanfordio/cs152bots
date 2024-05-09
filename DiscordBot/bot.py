@@ -1,4 +1,3 @@
-# bot.py
 import discord
 from discord.ext import commands
 import os
@@ -26,21 +25,54 @@ with open(token_path) as f:
     # If you get an error here, it means your token is formatted incorrectly. Did you put it in quotes?
     tokens = json.load(f)
     discord_token = tokens['discord']
-
+    
 class LegitimacyDropdown(Select):
-    def __init__(self):
-        options = [
-            SelectOption(label="Yes", description="This report is legitimate", value="legitimate"),
-            SelectOption(label="No", description="This report is not legitimate", value="not_legitimate")
-        ]
-        super().__init__(placeholder="Is this report legitimate?", min_values=1, max_values=1, options=options)
+    def __init__(self, mod_channel):
+        super().__init__(placeholder="Is this report legitimate?", min_values=1, max_values=1)
+        self.mod_channel = mod_channel
+        self.add_option(label="Yes", description="This report is legitimate", value="legitimate")
+        self.add_option(label="No", description="This report is not legitimate", value="not_legitimate")
 
     async def callback(self, interaction):
-        await interaction.response.send_message(f'Report legitimacy marked as: {self.values[0]}', ephemeral=True)
+        await interaction.response.defer()
+        report_status = f'Report legitimacy marked as: {self.values[0]}'
+        if self.values[0] == "legitimate":
+            view = View()
+            view.add_item(ReportReasonDropdown(self.mod_channel))
+            await self.mod_channel.send(content=f"{report_status}\nPlease verify the reason for reporting:", view=view)
+        else:
+            await self.mod_channel.send(report_status)
 
-def create_legitimacy_view():
+class ReportReasonDropdown(Select):
+    def __init__(self, mod_channel):
+        options = [
+            SelectOption(emoji="📫", label='Blackmail', value='Blackmail', description="You are being threatened to send cryptocurrency"),
+            SelectOption(emoji="💰", label='Investment Scam', value='Investment Scam', description="You sent cryptocurrency to a fraudulent individual"),
+            SelectOption(emoji="🔗", label='Suspicious Link', value='Suspicious Link', description="You received a link that may lead to a disreputable site"),
+            SelectOption(emoji="⚠️", label="Imminent Danger", value="Imminent Danger", description="You are in immediate danger"),
+            SelectOption(emoji="❓", label="Other", value="Other", description="You have a different reason for reporting")
+        ]
+        super().__init__(placeholder='Verify the reason for reporting', min_values=1, max_values=1, options=options)
+        self.mod_channel = mod_channel
+
+    async def callback(self, interaction):
+        report_status = f'Report reason verified as: {self.values[0]}'
+        await self.mod_channel.send(report_status)
+        await interaction.response.defer()
+        if self.values[0] in ["Imminent Danger", "Investment Scam", "Blackmail"]:
+            prompt_message = "Please type a message that can be sent to the authorities regarding this case."
+            await self.mod_channel.send(prompt_message)
+            await interaction.client.wait_for_user_reply(self.mod_channel, interaction.user)
+            more_stuff = 'more stuff'
+
+def create_legitimacy_view(mod_channel):
     view = View()
-    view.add_item(LegitimacyDropdown())
+    view.add_item(LegitimacyDropdown(mod_channel))
+    return view
+
+def create_report_reason_view(mod_channel):
+    view = View()
+    view.add_item(ReportReasonDropdown(mod_channel))
     return view
 
 class ModBot(discord.Client):
@@ -51,7 +83,6 @@ class ModBot(discord.Client):
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
-        self.selections = []
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -71,7 +102,16 @@ class ModBot(discord.Client):
             for channel in guild.text_channels:
                 if channel.name == f'group-{self.group_num}-mod':
                     self.mod_channels[guild.id] = channel
-        
+                    
+    async def wait_for_user_reply(self, channel, user):
+        def check(m):
+            return m.author == user and m.channel == channel
+
+        try:
+            message = await self.wait_for('message', check=check, timeout=300)  # 5 minutes timeout
+            await channel.send(f"Thank you for your response, {user.name}. A report has been filed with the authorities. Please wait for further instructions.")
+        except asyncio.TimeoutError:
+            await channel.send("You did not respond in time.")
 
     async def on_message(self, message):
         '''
@@ -81,7 +121,6 @@ class ModBot(discord.Client):
         # Ignore messages from the bot 
         if message.author.id == self.user.id:
             return
-
         # Check if this message was sent in a server ("guild") or if it's a DM
         if message.guild:
             await self.handle_channel_message(message)
@@ -113,7 +152,7 @@ class ModBot(discord.Client):
             await message.channel.send(r.get("response"), view=r.get("view"))
             if r.get("summary"):
                 mod_channel = self.mod_channels[r.get("reported_message").guild.id]
-                view = create_legitimacy_view()
+                view = create_legitimacy_view(mod_channel)
                 await mod_channel.send(r.get("summary"), view=view)
 
 
@@ -148,7 +187,6 @@ class ModBot(discord.Client):
         shown in the mod channel. 
         '''
         return "Evaluated: '" + text+ "'"
-
 
 client = ModBot()
 client.run(discord_token)
