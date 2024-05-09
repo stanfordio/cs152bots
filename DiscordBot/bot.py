@@ -1,5 +1,4 @@
 # bot.py
-# test by keely to see if i can push it
 import discord
 from discord.ext import commands
 import os
@@ -35,12 +34,10 @@ class ModBot(discord.Client):
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
+        self.mod_channel = None
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
-        """
-        testing git push
-        """
         for guild in self.guilds:
             print(f' - {guild.name}')
         print('Press Ctrl-C to quit.')
@@ -57,6 +54,7 @@ class ModBot(discord.Client):
             for channel in guild.text_channels:
                 if channel.name == f'group-{self.group_num}-mod':
                     self.mod_channels[guild.id] = channel
+                    self.mod_channel = channel
         
 
     async def on_message(self, message):
@@ -94,10 +92,10 @@ class ModBot(discord.Client):
             self.reports[author_id] = Report(self)
 
         # Let the report class handle this message; forward all the messages it returns to uss
-        responses = await self.reports[author_id].handle_message(message)
+        responses = await self.reports[author_id].handle_message(message, self.mod_channel)
         for r in responses:
             await message.channel.send(r)
-
+        
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():
             self.reports.pop(author_id)
