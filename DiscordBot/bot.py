@@ -68,7 +68,7 @@ class ModBot(discord.Client):
         if message.guild:
             await self.handle_channel_message(message)
         else:
-            await self.handle_dm(message)
+            await self.handle_dm(message)           
 
     async def handle_dm(self, message):
         # Handle a help message
@@ -77,6 +77,14 @@ class ModBot(discord.Client):
             reply += "Use the `cancel` command to cancel the report process.\n"
             await message.channel.send(reply)
             return
+        
+        if message.content == Report.CANCEL_KEYWORD:
+            if author_id not in self.reports:
+                reply = "No current reports"
+            else:
+                reply = "Ok cancelling"
+                self.reports.pop(message.author_id)
+            await message.channel.send(reply)
 
         author_id = message.author.id
         responses = []
