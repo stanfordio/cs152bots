@@ -8,6 +8,8 @@ import re
 import requests
 from report import Report
 import pdb
+from discord.components import SelectOption
+from discord.ui import Select, View
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -25,6 +27,21 @@ with open(token_path) as f:
     tokens = json.load(f)
     discord_token = tokens['discord']
 
+class LegitimacyDropdown(Select):
+    def __init__(self):
+        options = [
+            SelectOption(label="Yes", description="This report is legitimate", value="legitimate"),
+            SelectOption(label="No", description="This report is not legitimate", value="not_legitimate")
+        ]
+        super().__init__(placeholder="Is this report legitimate?", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction):
+        await interaction.response.send_message(f'Report legitimacy marked as: {self.values[0]}', ephemeral=True)
+
+def create_legitimacy_view():
+    view = View()
+    view.add_item(LegitimacyDropdown())
+    return view
 
 class ModBot(discord.Client):
     def __init__(self): 
@@ -34,6 +51,7 @@ class ModBot(discord.Client):
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
+        self.selections = []
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -95,7 +113,8 @@ class ModBot(discord.Client):
             await message.channel.send(r.get("response"), view=r.get("view"))
             if r.get("summary"):
                 mod_channel = self.mod_channels[r.get("reported_message").guild.id]
-                await mod_channel.send(r.get("summary"))
+                view = create_legitimacy_view()
+                await mod_channel.send(r.get("summary"), view=view)
 
 
         # If the report is complete or cancelled, remove it from our map
