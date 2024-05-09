@@ -4,6 +4,7 @@ import discord
 import re
 import pandas as pd
 import json
+import logging
 
 class State(Enum):
     REPORT_START = auto()
@@ -12,9 +13,10 @@ class State(Enum):
 
     # New States added to handle report reasons
     AWAITING_REASON = auto()
-    RECEIVED_REASON = auto()
-    AWAITING_MODERATION = auto()
-    LOG_REPORT = auto()
+    REASON_SELECTED = auto()
+    AWAITING_SUB_REASON = auto()
+    AWAITING_CUSTOM_REASON = auto()
+    ASK_BLOCK_USER = auto()
 
 class Report:
     '''
@@ -23,13 +25,22 @@ class Report:
     START_KEYWORD = "report"
     CANCEL_KEYWORD = "cancel"
     HELP_KEYWORD = "help"
-    REASON_CHOICES = ["Suspicious Link", "Harmful Content", "Harassment"]
-    DEFAULT_REPORT_DICTIONARY = {
-        "total_reports" : 1,
-        "Suspicious Link" : 0,
-        "Harmful Content" : 0,
-        "Harassment" : 0
-        }
+    REPORT_REASONS = {
+        "1": "Spam",
+        "2": "Harmful Content",
+        "3": "Harassment",
+        "4": "Danger",
+        "5": "Other"
+    }
+    SUB_REASONS = {
+        "Spam": {"1": "S1", "2": "S2", "3": "S3"},
+        "Harmful Content": {"1": "Violent content", "2": "Hateful content", "3": "Dangerous information"},
+        "Harassment": {"1": "Bullying", "2": "Stalking", "3": "Threats"},
+        "Danger": {"1": "Immediate physical harm", "2": "Public endangerment", "3": "Illegal activities"},
+        "Other": {"1": "Privacy invasion", "2": "Intellectual property violation", "3": "Fraud"}
+    }
+
+
 
     def __init__(self, client):
         self.state = State.REPORT_START
@@ -38,6 +49,23 @@ class Report:
         self.reported_message = None
         self.report_reason = ""  # To store the reason for the report
     
+    async def fetch_message_from_link(self, link):
+        # Example: link format "https://discord.com/channels/123456789012345678/987654321098765432/567890123456789012"
+        match = re.search(r'/channels/(\d+)/(\d+)/(\d+)', link)
+        if match:
+            guild_id, channel_id, message_id = map(int, match.groups())
+            guild = self.client.get_guild(guild_id)
+            channel = guild.get_channel(channel_id)
+            if channel:
+                try:
+                    self.message = await channel.fetch_message(message_id)
+                except discord.NotFound:
+                    print("Message not found during fetch.")
+                except discord.Forbidden:
+                    print("No permission to fetch the message.")
+                except discord.HTTPException as e:
+                    print(f"Failed to fetch message: {e}")
+
     async def handle_message(self, message):
         '''
         This function makes up the meat of the user-side reporting flow. It defines how we transition between states and what 
@@ -75,72 +103,59 @@ class Report:
 
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.AWAITING_REASON
-            self.reported_message = self.message
-            return ["I found this message:", f"```{self.message.author.name}: {self.reported_message.content}```",
-                    "What is the reason you reported this message? Please type clearly, taking mind of caps and spaces.",
-                    "- Suspicious Link\n- Harmful Content\n- Harassment"]
-
-        # Wait for reason
+            reason_prompt = "Why are you reporting this message? Type the number:\n"
+            for number, reason in self.REPORT_REASONS.items():
+                reason_prompt += f"{number}: {reason}\n"
+            return [reason_prompt]
+        
         if self.state == State.AWAITING_REASON:
-            print("Awaiting reason...")
-            # Store the reason for the report
-            if message.content not in self.REASON_CHOICES:
-                return [f"Invalid Report Reason. Please retry, typing or copying the options originally listed, or type CANCEL to cancel this operation."]
+            if message.content.strip() in self.REPORT_REASONS:
+                self.report_reason = self.REPORT_REASONS[message.content.strip()]
+                if self.report_reason == "Other":
+                    self.state = State.AWAITING_CUSTOM_REASON
+                    return ["Please type your specific reason for reporting:"]
+                else:
+                    sub_reason_prompt = "Please select the specific issue:\n"
+                    for number, reason in self.SUB_REASONS[self.report_reason].items():
+                        sub_reason_prompt += f"{number}: {reason}\n"
+                    self.state = State.AWAITING_SUB_REASON
+                    return [sub_reason_prompt]
             else:
-                self.report_reason = message.content  
-
-            self.state = State.RECEIVED_REASON
-            #return [f"You've logged \"{self.report_reason}\" as the reason for your report."]
-            reply = "You've logged \"" + self.report_reason + "\" as the reason for your report."
-            await message.channel.send(reply)
-            #return 
+                return ["Invalid selection. Please enter a valid number for the reason."]
+        
+        if self.state == State.AWAITING_SUB_REASON:
+            if message.content.strip() in self.SUB_REASONS[self.report_reason]:
+                self.sub_reason = self.SUB_REASONS[self.report_reason][message.content.strip()]
+                self.state = State.ASK_BLOCK_USER
+                if self.message:
+                    await self.client.delete_reported_message(self.message)
+                return [f"Thank you for the report. Reason: {self.report_reason}. Specific issue: {self.sub_reason}. Your report has been filed and the message has been deleted. Would you like to block the user? Reply with 'y' for yes or 'n' for no."]
+            else:
+                return ["Invalid selection. Please enter a valid number for the specific issue."]
+        
+        if self.state == State.AWAITING_CUSTOM_REASON:
+            self.sub_reason = message.content 
+            self.state = State.ASK_BLOCK_USER
+            if self.message:
+                await self.client.delete_reported_message(self.message)
+            return [f"Thank you for the report. Custom reason: {self.sub_reason}. Your report has been filed and the message has been deleted. Would you like to block the user? Reply with 'y' for yes or 'n' for no."]
+        
+        # TODO: IMPLEMENT FUNCTION TO BLOCK USER
+        if self.state == State.ASK_BLOCK_USER:
+            if message.content.lower() == 'y':
+                # TODO: CREATE FUNCTION HERE
+                # await self.client.block_user(self.message.author)
+                self.state = State.REPORT_COMPLETE
+                return ["The user has been blocked. Thank you for your report."]
+            elif message.content.lower() == 'n':
+                self.state = State.REPORT_COMPLETE
+                return ["The user has not been blocked. Thank you for your report."]
+            else:
+                return ["Invalid response. Please reply with 'y' for yes or 'n' for no."]
 
         
-        # The report_reason is valid in this case, we want to execute specific report pathways
-        #if self.state == State.RECEIVED_REASON:
-            print("Received reason...")
-
-            if self.report_reason == "Suspicious Link":
-                print("Report is Suspicious Link")
-                # Investigate Suspicious Link
-                # Forward to moderation team to check
-                await self.send_for_moderation()
-                self.state == State.LOG_REPORT
-            elif self.report_reason == "Harmful Content":
-                # 
-                pass
-            elif self.report_reason == "Harassment":
-                pass
-            elif self.report_reason == "":
-                pass
-
-            return
-
-
-        # Creates a log report, based on what the report reason is
-        if self.state == State.LOG_REPORT:
-            f = open('DiscordBot/users_log.json')
-            users_log = json.load(f)
-
-            # If user exists, update
-            if message.author.name in users_log:
-                users_log[message.author.name] += 1
-                users_log[message.author.name][self.report_reason] += 1
-            # Otherwise, add in the new user
-            else:
-                users_log[message.author.name] = self.DEFAULT_REPORT_DICTIONARY
-                users_log[message.author.name][self.report_reason] += 1
-
-
-            # Write to log file
-            with open('DiscordBot/users_log.json', 'w', encoding='utf-8') as f:
-                json.dump(users_log, f)
-
-            print(users_log)
-
-            self.state == State.REPORT_COMPLETE
-            return ["Thank you for the report. I've incremented", message.author.name + "'s report count to " + str(users_log[message.author.name]) + "."]
-            
+        if self.state == State.REPORT_COMPLETE:
+            return [""]
 
         return []
 
