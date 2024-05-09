@@ -69,6 +69,38 @@ class ModBot(discord.Client):
             await self.handle_channel_message(message)
         else:
             await self.handle_dm(message)
+            ### CURRENTLY TESTING - FEATURE FOR LOGGING REPORTS
+            try: 
+                mod_channel = self.mod_channels[message.guild.id]
+                author_id = message.author.id
+            # If the report is ready to be moderated, send log to moderator in mod-channel
+                if self.reports[author_id].report_moderate_ready():
+                    ## extract content for logs message
+                    report_type, reported_content = self.reports[author_id].get_report_info()
+                    reported_guild = reported_content[0]
+                    reported_channel = reported_content[1]
+                    reported_message = reported_content[2]
+
+                    ## send logs message
+                    reply = "MESSAGE_TO_MODERATOR_LOGS: \n\n"
+                    reply += "Report received of: " + report_type + "\n"
+                    reply += "The reported message sent was in this guild: " + reported_guild + "\n"
+                    reply += "And in this channel: " + reported_channel + "\n"
+                    reply += "This was the reported message:" + "```" + reported_message.author.name + ": " + reported_message.content + "```"
+                    await mod_channel.send(reply)
+
+                    ## take appropriate actions
+                    message_to_user = self.reports[author_id].get_moderation_message_to_user()
+                    await mod_channel.send(message_to_user)
+                    platform_action = self.reports[author_id].get_platform_action()
+                    await mod_channel.send(platform_action)
+                    
+                    ## can now end report
+                    self.reports.pop(author_id)
+                    self.report[author_id].end_report()
+
+            except Exception as e:
+                return ["Uhhhh, here's an error: ", str(e)]
 
     async def handle_dm(self, message):
         # Handle a help message
@@ -94,39 +126,6 @@ class ModBot(discord.Client):
         for r in responses:
             await message.channel.send(r)
 
-
-        ### CURRENTLY TESTING - FEATURE FOR LOGGING REPORTS
-        try: 
-            mod_channel = self.mod_channels[message.guild.id]
-
-        # If the report is ready to be moderated, send log to moderator in mod-channel
-            if self.reports[author_id].report_moderate_ready():
-                ## extract content for logs message
-                report_type, reported_content = self.reports[author_id].get_report_info()
-                reported_guild = reported_content[0]
-                reported_channel = reported_content[1]
-                reported_message = reported_content[2]
-
-                ## send logs message
-                reply = "MESSAGE_TO_MODERATOR_LOGS: \n\n"
-                reply += "Report received of: " + report_type + "\n"
-                reply += "The reported message sent was in this guild: " + reported_guild + "\n"
-                reply += "And in this channel: " + reported_channel + "\n"
-                reply += "This was the reported message:" + "```" + reported_message.author.name + ": " + reported_message.content + "```"
-                await mod_channel.send(reply)
-
-                ## take appropriate actions
-                message_to_user = self.reports[author_id].get_moderation_message_to_user()
-                await mod_channel.send(message_to_user)
-                platform_action = self.reports[author_id].get_platform_action()
-                await mod_channel.send(platform_action)
-                
-                ## can now end report
-                self.reports.pop(author_id)
-                self.report[author_id].end_report()
-
-        except Exception as e:
-            return ["Uhhhh, here's an error: ", str(e)]
 
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():
