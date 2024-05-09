@@ -147,8 +147,8 @@ class Report:
                 reply = "\nMESSAGE_TO_REPORTED_USER \n"
                 reply += reported_message.author.name + ", you have been reported for the following message: \n"
                 reply += "```" + reported_message.author.name + ": " + reported_message.content + "```"
-                reply += "This message was reported as " + report_type + ", which is a violation of our community guidelines \n"
-                reply += "Your message has been deleted and your account has been indefinitely suspended \n"
+                reply += "This post was reported as " + report_type + ", which is a violation of our community guidelines \n"
+                reply += "Your post has been deleted and your account has been indefinitely suspended \n"
                 reply += "You may appeal by writing to fake_email@fake_platform.com\n"
                 return reply
             else: ## report_type is a segment of terrorist activity
@@ -156,8 +156,12 @@ class Report:
                 reply = "\nMESSAGE_TO_REPORTED_USER \n"
                 reply += reported_message.author.name + ", you have been reported for the following message: \n"
                 reply += "```" + reported_message.author.name + ": " + reported_message.content + "```"
-                reply += "This message was reported as " + report_type + ", which is a violation of our community guidelines \n"
-                reply += "Your message has been deleted and your account has been indefinitely suspended \n"
+                reply += "This post was reported as " + report_type + ", which is a violation of our community guidelines \n"
+                if report_type == "account belongs to terrorist entity":
+                    reply += "We do not allow accounts that support or are otherwise affiliated with terrorist entities on our platform \n"
+                else:
+                    reply += "We do not allow content that promotes, supports, glorifies, or incites terrorist activity\n"
+                reply += "Your post has been deleted and your account has been indefinitely suspended \n"
                 reply += "You may appeal by writing to fake_email@fake_platform.com\n"
                 return reply
             
@@ -167,12 +171,18 @@ class Report:
     def get_platform_action(self):
         try:
             report_type, reported_content = self.get_report_info()
-            #reported_guild = reported_content[0]
-            #reported_channel = reported_content[1]
+
             reported_message = reported_content[2]
             reply = "\n\nSERVER_ACTION \n"
-            reply += "The following message has been deleted from the platform after a report: \n"
+            reply += "The following post has been deleted from the platform after a report: \n"
             reply += "```" + reported_message.author.name + ": " + reported_message.content + "```" + "\n"
+
+            if report_type == "glorification or promotion":
+                reply += "The content has been also been uploaded to the GIFCT hash bank. \n"
+
+            elif report_type in self.level_two_categories:
+                reply += "A report of this incident has been sent to local authorities and/or the FBI, including the nature of the violation, user information, and activity. \n"
+
             return reply
         
         except Exception as e:
