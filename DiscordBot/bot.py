@@ -57,7 +57,7 @@ class ReportDatabase:
             "Sexual Harassment",
             "Child Sexual Exploitation or Abuse",
             "I am a child and someone I don’t know is sending me strange messages",
-            "other"
+            "Other"
         ]
         for i in range(5):
             data = {}
@@ -198,21 +198,21 @@ async def proccess_pending_reports(self, mod_channel, message):
     
     # User has already started processing report, asking if report is related to sexual content or child exploitation
     elif self.processing_report_state == 0:
-        if message.content == "yes":
+        if message.content.lower() == "yes":
             self.processing_report_state = 2
             await mod_channel.send(f'Please classify the report as sextortion, sexual harassment, or child exploitation. \n 1) sextortion 2) sexual harassment 3) child exploitation')
-        elif message.content == "no":
+        elif message.content.lower() == "no":
             self.processing_report_state = 1
             await mod_channel.send(f'Is the user in immediate danger? (yes/no)')
 
     # User has already started processing report, asking if user is in immediate danger
     elif self.processing_report_state == 1:
-        if message.content == "yes":
+        if message.content.lower() == "yes":
             self.processing_report_state = 2
             report.assign_immediateDanger(True)
             await mod_channel.send(f'System: Immediate danger set to True')
             await mod_channel.send(f'Please classify the report as sextortion, sexual harassment, or child exploitation. \n 1) sextortion 2) sexual harassment 3) child exploitation')
-        elif message.content == "no":
+        elif message.content.lower() == "no":
             self.processing_report_state = 2
             report.assign_immediateDanger(False)
             await mod_channel.send(f'System: Immediate danger set to False')
@@ -300,7 +300,7 @@ async def address_issues(self, mod_channel, message):
 
     # User has already started processing report, asking for false report
     elif self.addressing_issues_state == 1:
-        if message.content == "yes":
+        if message.content.lower() == "yes":
             report.assign_status("resolved")
             report.fromUserFalseReport = True
             if self.report_database.check_if_user_has_false_report(report.againstUserID):
@@ -316,7 +316,7 @@ async def address_issues(self, mod_channel, message):
             self.addressing_issues_state = -1
             await status_message(self, mod_channel)
 
-        elif message.content == "no":
+        elif message.content.lower() == "no":
             report.assign_status("resolved")
             await warn_user(self, report, mod_channel)
             await mod_channel.send(f'System: Report {report.id} marked as resolved')
