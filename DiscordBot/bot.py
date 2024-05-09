@@ -147,6 +147,8 @@ class ModBot(discord.Client):
             # If the report is complete or cancelled, remove it from our map
             if self.reports[author_id].report_complete():
                 self.reports.pop(author_id)
+
+                
         except Exception as e:
                 # Get the stack trace as a string
                 stack_trace = traceback.format_exc()
