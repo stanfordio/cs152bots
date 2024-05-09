@@ -110,7 +110,7 @@ class ModBot(discord.Client):
                     reported_message = reported_content[2]
 
                     ## send logs message
-                    reply = "\nMESSAGE_TO_MODERATOR_LOGS: \n"
+                    reply = "\n\nMESSAGE_TO_MODERATOR_LOGS: \n"
                     reply += "Report received of: " + report_type + "\n"
                     reply += "The reported message sent was in this guild: " + str(reported_guild) + "\n"
                     reply += "And in this channel: " + str(reported_channel) + "\n"
