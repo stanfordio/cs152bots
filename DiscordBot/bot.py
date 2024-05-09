@@ -85,6 +85,7 @@ class ModBot(discord.Client):
                 reply = "Ok cancelling"
                 self.reports.pop(message.author_id)
             await message.channel.send(reply)
+            return
 
         author_id = message.author.id
         responses = []
