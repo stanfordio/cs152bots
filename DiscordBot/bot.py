@@ -120,15 +120,15 @@ class ModBot(discord.Client):
                     reply += "The reported message sent was in this guild: " + str(reported_guild) + "\n"
                     reply += "And in this channel: " + str(reported_channel) + "\n"
                     reply += "This was the reported message:" + "```" + reported_message.author.name + ": " + reported_message.content + "```" + "\n-\n-\n"
-                    await asyncio.sleep(10)
+                    await asyncio.sleep(5)
                     await mod_channel.send(reply)
 
                     ## take appropriate actions
                     message_to_user = self.reports[author_id].get_moderation_message_to_user()
-                    await asyncio.sleep(10)
+                    await asyncio.sleep(5)
                     await mod_channel.send(message_to_user)
                     platform_action = self.reports[author_id].get_platform_action()
-                    await asyncio.sleep(10)
+                    await asyncio.sleep(5)
                     await mod_channel.send(platform_action)
                     
                     ## can now end report
