@@ -119,7 +119,10 @@ class Report:
                 else:
                     self.report_type = message.content.lower()
                     self.state = State.MODERATE_READY
-                    reply = "Thank you for reporting a message as being " + message.content.lower() + ". We will respond appropriately!"
+                    if self.report_type == "account belongs to terrorist entity":
+                        reply = "Thank you for reporting a post because the " + message.content.lower() + ". We will respond appropriately!"
+                    else:
+                        reply = "Thank you for reporting a post incudling" + message.content.lower() + " of terrorism. We will respond appropriately!"
                     return [reply]
 
             except Exception as e:
