@@ -26,6 +26,20 @@ with open(token_path) as f:
     tokens = json.load(f)
     discord_token = tokens['discord']
     
+class ModeratorActionDropdown(Select):
+    def __init__(self, mod_channel):
+        super().__init__(placeholder="What actions do you want to take?", min_values=1, max_values=1)
+        self.mod_channel = mod_channel
+        self.add_option(label="Ban User", description="Ban the actor from the server", value="Actor has been banned")
+        self.add_option(label="Remove Post", description="Remove the post from the channel", value="Post has been removed")
+        self.add_option(label="Report User to Discord", description="Report the User to Discord", value="Actor has been reported to Discord")
+        self.add_option(label="Place User on Probation", description="Place the actor on temporary probation", value="Actor has been placed on temporary probation")
+
+    async def callback(self, interaction):
+        action_status = f'Action taken: {self.values[0]}. Thank you for moderating this report!'
+        await self.mod_channel.send(action_status)
+        await interaction.response.defer()
+    
 class LegitimacyDropdown(Select):
     def __init__(self, mod_channel):
         super().__init__(placeholder="Is this report legitimate?", min_values=1, max_values=1)
@@ -58,12 +72,16 @@ class ReportReasonDropdown(Select):
     async def callback(self, interaction):
         report_status = f'Report reason verified as: {self.values[0]}'
         await self.mod_channel.send(report_status)
-        await interaction.response.defer()
         if self.values[0] in ["Imminent Danger", "Investment Scam", "Blackmail"]:
+            await interaction.response.defer()
             prompt_message = "Please type a message that can be sent to the authorities regarding this case."
             await self.mod_channel.send(prompt_message)
             await interaction.client.wait_for_user_reply(self.mod_channel, interaction.user)
-            more_stuff = 'more stuff'
+        
+        action_view = View()
+        action_view.add_item(ModeratorActionDropdown(self.mod_channel))
+        await self.mod_channel.send("Select the action you want to take:", view=action_view)
+        await interaction.response.defer()
 
 def create_legitimacy_view(mod_channel):
     view = View()
@@ -97,7 +115,6 @@ class ModBot(discord.Client):
         else:
             raise Exception("Group number not found in bot's name. Name format should be \"Group # Bot\".")
 
-        # Find the mod channel in each guild that this bot should report to
         for guild in self.guilds:
             for channel in guild.text_channels:
                 if channel.name == f'group-{self.group_num}-mod':
@@ -108,7 +125,7 @@ class ModBot(discord.Client):
             return m.author == user and m.channel == channel
 
         try:
-            message = await self.wait_for('message', check=check, timeout=300)  # 5 minutes timeout
+            message = await self.wait_for('message', check=check, timeout=300)
             await channel.send(f"Thank you for your response, {user.name}. A report has been filed with the authorities. Please wait for further instructions.")
         except asyncio.TimeoutError:
             await channel.send("You did not respond in time.")
