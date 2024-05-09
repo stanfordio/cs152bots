@@ -28,13 +28,14 @@ To get the role for your group, click on the TA Bot user to bring up this window
 Type in: `.join #` where # is replaced by your group number. 
 
 
-![Screenshot 2024-04-20 at 3 20 44 PM](https://github.com/stanfordio/cs152bots/assets/35933488/50ea58fd-158c-4552-9bd9-e2d7772beea2)
+<img width="349" alt="Untitled design (12)" src="https://github.com/stanfordio/cs152bots/assets/96695971/301bf430-0fea-460d-880c-bc14f6ccb055">
 
 
 If all goes according to plan, you should receive a message back saying that you have been given a role corresponding to your group number and you should see a new role on your user in the server:
 
 
-![Screenshot 2024-04-20 at 3 21 11 PM](https://github.com/stanfordio/cs152bots/assets/35933488/93af3f0b-4589-40ff-a4e0-bac25f66d0b7)
+<img width="349" alt="Screenshot 2024-04-22 at 4 52 53 PM" src="https://github.com/stanfordio/cs152bots/assets/96695971/93d9fb02-b014-4505-80ce-78894555ba5e">
+
 
 
 Additionally, you should be able to see two new channels under one of the “Group Channels” categories:
@@ -64,13 +65,11 @@ Fork and clone this GitHub repository. For instructions on how to fork a GitHub 
 
 The first thing you’ll want to do is make the bot. To do that, log in to https://discord.com/developers and click “New Application” in the top right corner. 
 
-![Screenshot 2024-04-20 at 3 33 56 PM](https://github.com/stanfordio/cs152bots/assets/35933488/6e4e166e-b1c3-44f0-86d1-1c1019b8ad7a)
-
+<img width="1341" alt="Screenshot 2024-04-22 at 4 51 31 PM" src="https://github.com/stanfordio/cs152bots/assets/96695971/9903dc8f-0d7b-4fe0-8e9a-d5b85242bcb6">
 
 Name your application <mark> Group # Bot </mark>, where # is replaced with your group number. So, for instance, Group 0 would name their bot like so: 
 
-
-![Screenshot 2024-04-20 at 3 35 38 PM](https://github.com/stanfordio/cs152bots/assets/35933488/59ab135e-a3e0-4e58-a7dc-046cf722fdf4)
+<img width="449" alt="Screenshot 2024-04-22 at 4 51 52 PM" src="https://github.com/stanfordio/cs152bots/assets/96695971/ea1cf32a-ee07-42ce-bd11-f4ca3274d1d5">
 
 ##### It is very important that you name your bot exactly following this scheme; some parts of the bot’s code rely on this format.
 
@@ -81,8 +80,7 @@ Name your application <mark> Group # Bot </mark>, where # is replaced with your 
 4. Scroll down to a region called “Privileged Gateway Intents”
 5. Tick the options for “Presence Intent”, “Server Members Intent”, and “Message Content Intent”, and save your changes. See the image for what it should look like.
 
-
-![Screenshot 2024-04-20 at 3 37 35 PM](https://github.com/stanfordio/cs152bots/assets/35933488/1d327d46-c325-4404-830e-0ae0be288e8d)
+<img width="700" alt="Screenshot 2024-04-22 at 4 49 32 PM" src="https://github.com/stanfordio/cs152bots/assets/96695971/a69c919f-ff40-4627-896e-a4007af56978">
 
 
 An aside: It’s unsafe to embed API keys in your code directly. If you put that code on GitHub, then anyone could find and use that key! (GitHub actually tries to detect code like this and forbids programmers from uploading it.) That’s why we’re storing them in a separate file which can be ignored by version control software.
@@ -96,8 +94,7 @@ Next, we’ll add the bot to the 152 Discord server! You’ll need to generate a
 3. Check the box labeled “bot”. Once you do that, another area with a bunch of options should appear lower down on the page.
 4. Check these permissions, then copy the link that’s generated.
 
-
-![Screenshot 2024-04-20 at 3 39 25 PM](https://github.com/stanfordio/cs152bots/assets/35933488/af2db3fe-16a9-4715-a591-9fb26e62d7b5)
+<img width="700" alt="Screenshot 2024-04-22 at 4 31 31 PM" src="https://github.com/stanfordio/cs152bots/assets/96695971/520c040e-f494-4b7e-bb45-01dd59772462">
 
 5. Send that link to any of the TAs via Discord (or by email) - they will use it to add your bot to the server. Once they do, your bot will appear in the `#general` channel and will be a part of the server!
 
