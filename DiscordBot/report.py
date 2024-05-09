@@ -3,6 +3,7 @@ import discord
 import re
 import pandas as pd
 import json
+import logging
 
 class State(Enum):
     REPORT_START = auto()
@@ -23,6 +24,23 @@ class Report:
         self.message = None # To store the discord.Message object
         self.report_reason = ""  # To store the reason for the report
     
+    async def fetch_message_from_link(self, link):
+        # Example: link format "https://discord.com/channels/123456789012345678/987654321098765432/567890123456789012"
+        match = re.search(r'/channels/(\d+)/(\d+)/(\d+)', link)
+        if match:
+            guild_id, channel_id, message_id = map(int, match.groups())
+            guild = self.client.get_guild(guild_id)
+            channel = guild.get_channel(channel_id)
+            if channel:
+                try:
+                    self.message = await channel.fetch_message(message_id)
+                except discord.NotFound:
+                    print("Message not found during fetch.")
+                except discord.Forbidden:
+                    print("No permission to fetch the message.")
+                except discord.HTTPException as e:
+                    print(f"Failed to fetch message: {e}")
+
     async def handle_message(self, message):
         '''
         This function makes up the meat of the user-side reporting flow. It defines how we transition between states and what 
@@ -67,33 +85,12 @@ class Report:
         if self.state == State.AWAITING_REASON:
             self.report_reason = message.content  # Store the reason for the report
             self.state = State.REPORT_COMPLETE
-            # Optionally, log the report or perform other actions here
             return [f"Thank you for the report. Reason: {self.report_reason}. Your report has been filed."]
-            #return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
-            #        "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
         
-
-        # USED LATER
-        if self.state == State.MESSAGE_IDENTIFIED:
-            f = open('DiscordBot/users_log.json')
-            users_log = json.load(f)
-
-            # If user exists, update
-            if message.author.name in users_log:
-                users_log[message.author.name] += 1
-            # Otherwise, add in the new user
-            else:
-                users_log[message.author.name] = 1
-
-            # Write to log file
-            with open('DiscordBot/users_log.json', 'w', encoding='utf-8') as f:
-                json.dump(users_log, f)
-
-            print(users_log)
-
-            self.state == State.REPORT_COMPLETE
-            return ["Thank you for the report. I've incremented", message.author.name + "'s report count to " + str(users_log[message.author.name]) + "."]
-            
+        if self.state == State.REPORT_COMPLETE:
+            # if self.message:
+            #     await self.client.delete_reported_message(self.message)
+            return ["The message has been deleted successfully."]
 
         return []
 

@@ -53,7 +53,18 @@ class ModBot(discord.Client):
             for channel in guild.text_channels:
                 if channel.name == f'group-{self.group_num}-mod':
                     self.mod_channels[guild.id] = channel
-        
+    
+    async def delete_reported_message(self, message_obj):
+        try:
+            await message_obj.delete()
+            print(f"Deleted message from {message_obj.author.display_name}.")
+        except discord.Forbidden:
+            print("Do not have permission to delete the message.")
+        except discord.NotFound:
+            print("Message was not found, possibly already deleted.")
+        except discord.HTTPException as e:
+            print(f"Failed to delete message: {e}")
+
 
     async def on_message(self, message):
         '''
