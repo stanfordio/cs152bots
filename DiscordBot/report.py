@@ -149,7 +149,7 @@ class Report:
                 reply += "```" + reported_message.author.name + ": " + reported_message.content + "```"
                 reply += "This message was reported as " + report_type + ", which is a violation of our community guidelines \n"
                 reply += "Your message has been deleted and your account has been indefinitely suspended \n"
-                reply += "You may appeal by writing to fake_email@fake_platform.com"
+                reply += "You may appeal by writing to fake_email@fake_platform.com\n"
                 return reply
             else: ## report_type is a segment of terrorist activity
                 ## will expand this to match to flow later
@@ -158,7 +158,7 @@ class Report:
                 reply += "```" + reported_message.author.name + ": " + reported_message.content + "```"
                 reply += "This message was reported as " + report_type + ", which is a violation of our community guidelines \n"
                 reply += "Your message has been deleted and your account has been indefinitely suspended \n"
-                reply += "You may appeal by writing to fake_email@fake_platform.com"
+                reply += "You may appeal by writing to fake_email@fake_platform.com\n"
                 return reply
             
         except Exception as e:
@@ -172,8 +172,8 @@ class Report:
             reported_message = reported_content[2]
             reply = "SERVER_ACTION \n"
             reply += "The following message has been deleted from the platform after a report: \n"
-            reply += "```" + reported_message.author.name + ": " + reported_message.content + "```"
-            return [reply]
+            reply += "```" + reported_message.author.name + ": " + reported_message.content + "```" + "\n"
+            return reply
         
         except Exception as e:
                 return ["Uhhhh, here's an error: ", str(e)]
