@@ -125,6 +125,13 @@ class Report:
             except Exception as e:
                 return ["Uhhhh, here's an error: ", str(e)]
         
+        if self.state == State.REPORT_COMPLETE:
+            try:
+                return ["Stop"]
+            
+            except Exception as e:
+                return ["Uhhhh, here's an error: ", str(e)]
+
         return []
     
     def get_report_info(self):
@@ -179,7 +186,13 @@ class Report:
                 return ["Uhhhh, here's an error: ", str(e)]
 
     def report_complete(self):
-        return self.state == State.REPORT_COMPLETE
+        try:
+            return self.state == State.REPORT_COMPLETE
+        except Exception as e:
+                return ["Uhhhh, here's an error: ", str(e)]
     
     def end_report(self):
-        self.state = State.REPORT_COMPLETE
+        try:
+            self.state = State.REPORT_COMPLETE
+        except Exception as e:
+                return ["Uhhhh, here's an error: ", str(e)]
