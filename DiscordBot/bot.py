@@ -124,8 +124,8 @@ class ModBot(discord.Client):
                     await mod_channel.send(platform_action)
                     
                     ## can now end report
-                    self.reports.pop(author_id)
-                    #self.report[author_id].end_report()
+                    #self.reports.pop(author_id)
+                    self.report[author_id].end_report()
 
             except Exception as e:
                 # Get the stack trace as a string
