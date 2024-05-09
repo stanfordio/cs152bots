@@ -72,8 +72,8 @@ class ReportReasonDropdown(Select):
     async def callback(self, interaction):
         report_status = f'Report reason verified as: {self.values[0]}'
         await self.mod_channel.send(report_status)
+        await interaction.response.defer()
         if self.values[0] in ["Imminent Danger", "Investment Scam", "Blackmail"]:
-            await interaction.response.defer()
             prompt_message = "Please type a message that can be sent to the authorities regarding this case."
             await self.mod_channel.send(prompt_message)
             await interaction.client.wait_for_user_reply(self.mod_channel, interaction.user)
@@ -81,7 +81,6 @@ class ReportReasonDropdown(Select):
         action_view = View()
         action_view.add_item(ModeratorActionDropdown(self.mod_channel))
         await self.mod_channel.send("Select the action you want to take:", view=action_view)
-        await interaction.response.defer()
 
 def create_legitimacy_view(mod_channel):
     view = View()
