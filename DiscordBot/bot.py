@@ -148,8 +148,21 @@ class ModBot(discord.Client):
             if self.reports[author_id].report_complete():
                 self.reports.pop(author_id)
         except Exception as e:
-            await message.channel.send("Uhhhh, here's an error: " + str(e))
-            return
+                # Get the stack trace as a string
+                stack_trace = traceback.format_exc()
+                
+                # Construct the error message with detailed information
+                error_message = (
+                    "Oops! Something went wrong. Here's the error message and additional details:\n\n"
+                    f"Error Type: {type(e).__name__}\n"
+                    f"Error Details: {str(e)}\n\n"
+                    "Stack Trace:\n"
+                    f"{stack_trace}"
+                )
+                
+                # Send the detailed error message to the Discord channel
+                await message.channel.send(error_message)
+                return
 
     async def handle_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel
