@@ -89,7 +89,7 @@ class Report:
                 
                 elif (message.content.lower() in self.level_one_categories and message.content.lower() != "terrorist activity"): ## category isn't terorrism but is valid
                     self.report_type = message.content
-                    self.state = State.MODERATE_READY
+                    self.state = State.REPORT_COMPLETE
                     reply = "Thank you for reporting a message as being " + message.content.lower() + ". We will respond appropriately!"
                     return [reply]
                 
@@ -118,7 +118,7 @@ class Report:
                     return [reply]
                 else:
                     self.report_type = message.content
-                    self.state = State.MODERATE_READY
+                    self.state = State.REPORT_COMPLETE
                     reply = "Thank you for reporting a message as being " + message.content.lower() + ". We will respond appropriately!"
                     return [reply]
 
