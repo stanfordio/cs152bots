@@ -90,8 +90,12 @@ class Report:
                 elif (message.content.lower() in self.level_one_categories and message.content.lower() != "terrorist activity"): ## category isn't terorrism but is valid
                     self.report_type = message.content.lower()
                     self.state = State.MODERATE_READY
-                    reply = "Thank you for reporting a message as being " + message.content.lower() + ". We will respond appropriately!"
+                    reply = "Thank you for reporting a message as being " + message.content.lower() + ". The content moderation team will review the post and determine the appropriate action, which may include removal of the post or suspension of the account."
                     return [reply]
+                
+
+                elif (message.content.lower() in )
+
                 
                 else: ## category is terrorism
                     self.state = State.TERROR_IDENTIFIED
@@ -120,9 +124,9 @@ class Report:
                     self.report_type = message.content.lower()
                     self.state = State.MODERATE_READY
                     if self.report_type == "account belongs to terrorist entity":
-                        reply = "Thank you for reporting a post because the " + message.content.lower() + ". We will respond appropriately!"
+                        reply = "Thank you for reporting a post because the " + message.content.lower() + ". We take the safety of our users and communities seriously. The content moderation team will review the activity and determine the appropriate action, which may involve contacting local authorities. "
                     else:
-                        reply = "Thank you for reporting a post incudling " + message.content.lower() + " of terrorism. We will respond appropriately!"
+                        reply = "Thank you for reporting a post incudling " + message.content.lower() + " of terrorism. We take the safety of our users and communities seriously. The content moderation team will review the activity and determine the appropriate action, which may involve contacting local authorities. "
                     return [reply]
 
             except Exception as e:
