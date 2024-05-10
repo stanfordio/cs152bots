@@ -18,8 +18,6 @@ handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w'
 handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
 logger.addHandler(handler)
 
-# violations = {}
-
 # There should be a file called 'tokens.json' inside the same folder as this file
 token_path = 'tokens.json'
 if not os.path.isfile(token_path):
@@ -95,15 +93,7 @@ class ModBot(discord.Client):
 
         # If we don't currently have an active report for this user, add one
         if author_id not in self.reports:
-            self.reports[author_id] = Report(self)
-            
-             # adding the offender to the global violations dictionary    
-            # offender_id = self.reports[author_id].reported_message['content'].author.id
-            # if offender_id in self.violations:
-            #     self.violations[offender_id] += 1
-            # else:
-            #     self.violations[offender_id] = 1
-                
+            self.reports[author_id] = Report(self)         
 
         # Let the report class handle this message; forward all the messages it returns to uss
         responses = await self.reports[author_id].handle_message(message)

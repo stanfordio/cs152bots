@@ -73,12 +73,6 @@ class Report:
                 reply += "Is this hateful conduct? Please say `yes` or `no`."
                 self.state = State.AWAITING_MESSAGE
                 self.current_step = 1
-
-                # adding the offender to the global violations dictionary
-                # if message.author.id in violations:
-                #     violations[message.author.id] += 1
-                # else:
-                #     violations[message.author.id] = 1
                 
                 return [reply]
             
