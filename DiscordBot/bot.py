@@ -71,21 +71,131 @@ class ModBot(discord.Client):
 
         mod_channel = self.mod_channels[reported_message.guild.id]
 
-        mod_message = f'The message ```\n{reported_message.author.name}: "{reported_message.content}"``` is awaiting moderation for', report_reason + f": {sub_reason}"+ ". React with a 👍 in the next two minutes if you believe this is a correct report, and any other emote for a false report."
+        mod_message = f'The message ```\n{reported_message.author.name}: "{reported_message.content}"``` is awaiting moderation for', report_reason + f": {sub_reason}"+ ". \nReact with a 👍 in the next two minutes if you believe this is a correct report, and 👎 for a false report."
 
         await mod_channel.send(mod_message)
         
         # check for correct reaction
         def check(reaction, user):
-            return user == reported_message.author and str(reaction.emoji) == '👍'
+            return str(reaction.emoji) == '👍' or str(reaction.emoji) == '👎'
 
         try:
             # wait for the reaction within the two minutes
             reaction, user = await client.wait_for('reaction_add', timeout=120.0, check=check)
         except asyncio.TimeoutError:
-            await mod_channel.send("This message has not been reacted to correctly in the timeframe -- no action was taken.")
+            await mod_channel.send("The reported message has not been reacted to correctly in the timeframe -- no action was taken.")
         else:
-            await mod_channel.send("This message has been sent for moderation.")
+            if str(reaction.emoji) == '👍':
+                await client.delete_reported_message(reported_message)
+                await mod_channel.send("The reported message has been deleted.")
+            else:
+                await mod_channel.send("This report is marked as a false report -- no action was taken.")
+        
+        return 
+    
+    # This is a crypto-specific moderation pathway
+    async def notify_moderation_crypto(self, reported_message, report_reason, sub_reason):
+        print("Waiting for crypto-specific moderation in mod channel...")
+
+        mod_channel = self.mod_channels[reported_message.guild.id]
+
+        #mod_message = f'The message ```\n{reported_message.author.name}: "{reported_message.content}"``` is awaiting moderation for', report_reason + f": {sub_reason}"+ "."
+        await mod_channel.send(f'The message ```\n{reported_message.author.name}: "{reported_message.content}"``` is awaiting moderation for '+ report_reason + f": {sub_reason}"+ ".")
+        
+        scam_evidence = {"1": "Mobile App or Website Redirection", 
+                         "2": "Unverified User Identity", 
+                         "3": "Coercive language", 
+                         "4": "Request for Moneys", 
+                         "5": "Wrong DM / Unassociated with User",
+                         "6": "User Misrepresentation", 
+                         "7": "Other"}
+
+        sub_reason_prompt = "Is there evidence of one or more of the following in the contents of the message? React with 👍 if yes and 👎 for no.\n"
+        for number, reason in scam_evidence.items():
+            sub_reason_prompt += f"{number}: {reason}\n"
+
+        await mod_channel.send(sub_reason_prompt)
+        
+        # check for correct reaction
+        def check(reaction, user):
+            return str(reaction.emoji) == '👍' or str(reaction.emoji) == '👎'
+
+        try:
+            # wait for the reaction within the two minutes
+            reaction, user = await client.wait_for('reaction_add', timeout=120.0, check=check)
+        except asyncio.TimeoutError:
+            await mod_channel.send("The reported message has not been reacted to correctly in the timeframe -- no action was taken.")
+        else:
+            print(reaction)
+            if str(reaction.emoji) == '👍':
+                print("Checking for crypto-specific dangerous activities...")
+                # Try to learn if this is a dangerous situation
+                scam_evidence = {"1": "Shared a banned website", 
+                            "2": "Shared an app or link that leads to a known scam", 
+                            "3": "User claims to have insider crypto or other financial information", 
+                            "4": "Alleges large profits", 
+                            "5": 'Offers to "trade with the user"',
+                            "6": "Encourages user to download unknown investing apps (specific app may be run by scammers)", 
+                            "7": "Claims to know someone who has insider investing information"}
+
+                sub_reason_prompt = "Is there evidence of one or more of the following dangerous activity? If so, react with a 👍 and 👎 otherwise. \n"
+                for number, reason in scam_evidence.items():
+                    sub_reason_prompt += f"{number}: {reason}\n"
+
+                await mod_channel.send(sub_reason_prompt)
+
+                def check(reaction, user):
+                    return str(reaction.emoji) == '👍' or str(reaction.emoji) == '👎'
+
+                try:
+                    # wait for the reaction within the two minutes
+                    reaction, user = await client.wait_for('reaction_add', timeout=120.0, check=check)
+                except asyncio.TimeoutError:
+                    reported_users = open("DiscordBot/reported_users.txt", "a")  # append mode
+                    reported_users.write(f"{reported_message.author}\n")
+                    reported_users.close()
+                    await client.delete_reported_message(reported_message)
+                    await mod_channel.send("The reported message has not been reacted to correctly in the timeframe -- the reported account has been restricted and the message deleted.")
+                else:
+                    if str(reaction.emoji) == '👍':
+                        # Dangerous activity warrants a ban
+                        await mod_channel.send("Simulated Banning of Account -- Name added to ban list")
+                        ban_file = open("banned_users.txt", "a")  # append mode
+                        ban_file.write(f"{reported_message.author}\n")
+                        ban_file.close()
+                        await client.delete_reported_message(reported_message)
+                        await mod_channel.send("The reported account has been deactivated for dangerous activity and the reported message deleted.")
+                    else:
+                        # Check for history of reports
+                        reported_users = open('DiscordBot/reported_users.txt', 'r')
+
+                        while True:
+                            line = reported_users.readline()
+                            
+                            if not line:
+                                break
+
+                            print(line)
+                            # If a past report exists
+                            if line == str(reported_message.author) or line == str(reported_message.author) + "\n":
+                                ban_file = open("DiscordBot/banned_users.txt", "a")  # append mode
+                                ban_file.write(f"{reported_message.author}\n")
+                                ban_file.close()
+                                await client.delete_reported_message(reported_message)
+                                await mod_channel.send("The reported account has been deactivated due to a history of similar reports and the reported message deleted.")
+                                reported_users.close()
+                                return 
+                        
+                        reported_users.close()
+                        reported_users = open("DiscordBot/reported_users.txt", "a")  # append mode
+                        reported_users.write(f"{reported_message.author}\n")
+                        reported_users.close()
+                        await client.delete_reported_message(reported_message)
+                        await mod_channel.send("The reported account has been restricted and the reported message deleted.")
+
+            else:
+                await mod_channel.send("This report is marked as a false report -- no action was taken. ")
+            
 
     async def on_message(self, message):
         '''
@@ -148,9 +258,9 @@ class ModBot(discord.Client):
 
         # Forward the message to the mod channel
         mod_channel = self.mod_channels[message.guild.id]
-        await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
+        #await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
         scores = self.eval_text(message.content)
-        await mod_channel.send(self.code_format(scores))
+        #await mod_channel.send(self.code_format(scores))
 
     
     def eval_text(self, message):

@@ -30,14 +30,16 @@ class Report:
         "2": "Harmful Content",
         "3": "Harassment",
         "4": "Danger",
-        "5": "Other"
+        "5": "Fraud", 
+        "6": "Other"
     }
     SUB_REASONS = {
-        "Spam": {"1": "S1", "2": "S2", "3": "S3"},
-        "Harmful Content": {"1": "Violent content", "2": "Hateful content", "3": "Dangerous information"},
-        "Harassment": {"1": "Bullying", "2": "Stalking", "3": "Threats"},
-        "Danger": {"1": "Immediate physical harm", "2": "Public endangerment", "3": "Illegal activities"},
-        "Other": {"1": "Privacy invasion", "2": "Intellectual property violation", "3": "Fraud"}
+        "Spam": {"1": "Solicitation/Phishing", "2":"Advertisement", "3": "Malware", "4": "Impersonation"},
+        "Harmful Content": {"1": "Misinformation", "2": "Intellectual Property Violation", "3": "Sexually Explicit Content", "4": "Graphic Violence", "5": "Other"},
+        "Harassment": {"1": "Bullying", "2": "Sexual Harassment", "3": "Racial Harassment", "4": "Gender Harassment", "5": "Personal Information", "5": "Other"},
+        "Danger": {"1": "Stalking", "2": "Threats of Violence", "3": "Illegal activities", "4": "Exploitative Content", "5": "Other"},
+        "Fraud" : {"1": "Crypto Scam", "2": "Online Job Scam", "3": "Fake Investment Scam", "4": "Other"}, 
+        "Other": {"1": "I am uncomfortable with this content.", "2": "Other"}
     }
 
 
@@ -126,16 +128,24 @@ class Report:
         if self.state == State.AWAITING_SUB_REASON:
             if message.content.strip() in self.SUB_REASONS[self.report_reason]:
                 self.sub_reason = self.SUB_REASONS[self.report_reason][message.content.strip()]
-                #if self.message:
-                #    await self.client.delete_reported_message(self.message)
 
-                await message.channel.send(f"Thank you for the report. Reason: {self.report_reason}. Specific issue: {self.sub_reason}.")
-                await message.channel.send("A member of the moderation team will evaluate it soon.")
+                # For Crypto Scams -- our specific abuse -- follow a certain mod pathway
+                if self.sub_reason == "Crypto Scam":
+                    await message.channel.send(f"Thank you for the report. Reason: {self.report_reason}. Specific issue: {self.sub_reason}.")
+                    await message.channel.send("A member of the moderation team will evaluate it soon.")
+
+                    print("Sending to Moderation -- Cryto-Scam Specific")
+                    send_moderation = asyncio.create_task(self.client.notify_moderation_crypto(self.message, self.report_reason, self.sub_reason))
+                    await send_moderation
+                # For all other scams, follow a generic pathway
+                else:
+                    await message.channel.send(f"Thank you for the report. Reason: {self.report_reason}. Specific issue: {self.sub_reason}.")
+                    await message.channel.send("A member of the moderation team will evaluate it soon.")
 
 
-                print("Sending to Moderation")
-                send_moderation = asyncio.create_task(self.client.notify_moderation(self.message, self.report_reason, self.sub_reason))
-                await send_moderation
+                    print("Sending to Moderation")
+                    send_moderation = asyncio.create_task(self.client.notify_moderation(self.message, self.report_reason, self.sub_reason))
+                    await send_moderation
 
                 self.state = State.ASK_BLOCK_USER
                 return ["In the meantime, would you like to block the user? Reply with 'y' for yes or 'n' for no."]
