@@ -36,6 +36,8 @@ class ModBot(discord.Client):
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
+        self.verify = 0
+        self.waiting_mod = 0
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -122,17 +124,16 @@ class ModBot(discord.Client):
                     reply += "This was the reported message:" + "```" + reported_message.author.name + ": " + reported_message.content + "```" + "\n-\n-\n"
                     await asyncio.sleep(3)
                     await mod_channel.send(reply)
-
-                    ## take appropriate actions
+                    
                     message_to_user = self.reports[author_id].get_moderation_message_to_user()
                     await asyncio.sleep(3)
                     await mod_channel.send(message_to_user)
                     platform_action = self.reports[author_id].get_platform_action()
                     await asyncio.sleep(3)
                     await mod_channel.send(platform_action)
-                    
-                    ## can now end report
-                    #self.reports.pop(author_id)
+
+                    await self.seek_verification()        
+
                     self.reports[author_id].end_report()
 
             except Exception as e:
@@ -175,12 +176,28 @@ class ModBot(discord.Client):
                 return
 
     async def handle_channel_message(self, message):
-        # Only handle messages sent in the "group-#" channel
+        mod_channel = self.mod_channels[message.guild.id]
+ 
+        if message.channel.name == f'group-{self.group_num}-mod':
+            if self.waiting_mod == 1:
+                if message.content == 'yes':
+                    reply = "MESSAGE_TO_MODERATOR_LOGS\n"
+                    reply += "Moderator has determined the previous report is indeed in violation of community guidelines. The previous actions will be taken." + "\n-\n-\n"
+                    await mod_channel.send(reply)
+                elif message.content == 'no':
+                    reply = "MESSAGE_TO_MODERATOR_LOGS\n"
+                    reply += "Moderator has determined the previous report was not in violation of community guidelines. No further action is needed." + "\n-\n-\n"
+                else:
+                    reply = "MESSAGE_TO_MODERATOR_LOGS\n"
+                    reply += "That is not a valid choice; please select 'yes' or 'no'" + "\n-\n-\n"
+                self.waiting_mod = 0
+
+
         if not message.channel.name == f'group-{self.group_num}':
             return
 
         # Forward the message to the mod channel
-        mod_channel = self.mod_channels[message.guild.id]
+        
         await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
         scores = self.eval_text(message.content)
         await mod_channel.send(self.code_format(scores))
@@ -201,6 +218,36 @@ class ModBot(discord.Client):
         shown in the mod channel. 
         '''
         return "Evaluated: '" + text+ "'"
+    
+    async def seek_verification(self):
+        try: 
+            mod_channel = None
+            for guild in self.guilds:
+                for channel in guild.text_channels:
+                    if channel.name == f'group-{self.group_num}-mod':
+                        mod_channel = channel
+            reply = "The previous message must undergo moderator review. Reply 'yes' if the post is in violation of community guidelines, otherwise 'no'"
+            await mod_channel.send(reply)
+            self.waiting_mod = 1
+
+        except Exception as e:
+                # Get the stack trace as a string
+                stack_trace = traceback.format_exc()
+                
+                # Construct the error message with detailed information
+                error_message = (
+                    "Oops! Something went wrong. Here's the error message and additional details:\n\n"
+                    f"Error Type: {type(e).__name__}\n"
+                    f"Error Details: {str(e)}\n\n"
+                    "Stack Trace:\n"
+                    f"{stack_trace}"
+                )
+                
+                # Send the detailed error message to the Discord channel
+                await mod_channel.send(error_message)
+                return
+
+        
 
 
 client = ModBot()
