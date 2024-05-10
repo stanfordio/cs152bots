@@ -98,16 +98,22 @@ class ModBot(discord.Client):
             self.reports[author_id] = Report(self)
             
              # adding the offender to the global violations dictionary    
-            offender_id = self.reports[author_id].reported_message['content'].author.id
-            if offender_id in self.violations:
-                self.violations[offender_id] += 1
-            else:
-                self.violations[offender_id] = 1
+            # offender_id = self.reports[author_id].reported_message['content'].author.id
+            # if offender_id in self.violations:
+            #     self.violations[offender_id] += 1
+            # else:
+            #     self.violations[offender_id] = 1
                 
 
         # Let the report class handle this message; forward all the messages it returns to uss
         responses = await self.reports[author_id].handle_message(message)
         for r in responses:
+            if r.startswith("I found this message"):
+                offender_id = self.reports[author_id].reported_message['content'].author.id
+                if offender_id in self.violations:
+                    self.violations[offender_id] += 1
+                else:
+                    self.violations[offender_id] = 1
             await message.channel.send(r)
 
         # If the report is complete or cancelled, remove it from our map
