@@ -123,14 +123,14 @@ class ModBot(discord.Client):
                     reply += "The reported message sent was in this guild: " + str(reported_guild) + "\n"
                     reply += "And in this channel: " + str(reported_channel) + "\n"
                     reply += "This was the reported message:" + "```" + reported_message.author.name + ": " + reported_message.content + "```" + "\n-\n-\n"
-                    await asyncio.sleep(3)
+                    await asyncio.sleep(1)
                     await mod_channel.send(reply)
                     
                     message_to_user = self.reports[author_id].get_moderation_message_to_user()
-                    await asyncio.sleep(3)
+                    await asyncio.sleep(1)
                     await mod_channel.send(message_to_user)
                     platform_action = self.reports[author_id].get_platform_action()
-                    await asyncio.sleep(3)
+                    await asyncio.sleep(1)
                     await mod_channel.send(platform_action)
 
                     await self.seek_verification()        
@@ -186,12 +186,14 @@ class ModBot(discord.Client):
                     self.waiting_mod = 0
                     reply = "MESSAGE_TO_MODERATOR_LOGS\n"
                     reply += "Moderator manual review now required." + "\n-\n-\n"
+                    await asyncio.sleep(1)
                     await mod_channel.send(reply)
                     
                 if message.content == "don't require mod review":
                     self.require_approval = 0
                     reply = "MESSAGE_TO_MODERATOR_LOGS\n"
                     reply += "Moderator manual review now not required." + "\n-\n-\n"
+                    await asyncio.sleep(1)
                     await mod_channel.send(reply)
 
                 if self.waiting_mod == 1:
@@ -204,6 +206,7 @@ class ModBot(discord.Client):
                     else:
                         reply = "MESSAGE_TO_MODERATOR_LOGS\n"
                         reply += "That is not a valid choice; please select 'yes' or 'no'" + "\n-\n-\n"
+                    await asyncio.sleep(1)
                     await mod_channel.send(reply)
                     self.waiting_mod = 0
 

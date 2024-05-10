@@ -181,11 +181,12 @@ class Report:
             reply += "```" + reported_message.author.name + ": " + reported_message.content + "```"
 
             if report_type == "glorification or promotion":
-                reply += "The content has been also been uploaded to the GIFCT hash bank." + "\n-\n-\n"
+                reply += "The content has been also been uploaded to the GIFCT hash bank."
 
             elif report_type in self.level_two_categories:
-                reply += "A report of this incident has been sent to local authorities and/or the FBI, including the nature of the violation, user information, and activity." + "\n-\n-\n"
-
+                reply += "A report of this incident has been sent to local authorities and/or the FBI, including the nature of the violation, user information, and activity."
+                
+            reply += "\n-\n-\n"
             return reply
         
         except Exception as e:
