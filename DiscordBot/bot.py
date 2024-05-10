@@ -8,6 +8,7 @@ import re
 import requests
 from report import Report
 import pdb
+import asyncio
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -65,6 +66,24 @@ class ModBot(discord.Client):
         except discord.HTTPException as e:
             print(f"Failed to delete message: {e}")
 
+    async def notify_moderation(self, reported_message, report_reason):
+        print("Waiting for moderation in mod channel...")
+
+        mod_channel = self.mod_channels[reported_message.guild.id]
+
+        mod_message = f'The message ```\n{reported_message.author.name}: "{reported_message.content}"``` is awaiting moderation for', report_reason + "."
+
+        await mod_channel.send(mod_message)
+        
+        def check(reaction, user):
+            return user == reported_message.author and str(reaction.emoji) == '👍'
+
+        try:
+            reaction, user = await mod_channel.wait_for('reaction_add', timeout=60.0, check=check)
+        except asyncio.TimeoutError:
+            await mod_channel.send('👎')
+        else:
+            await mod_channel.send('👍')
 
     async def on_message(self, message):
         '''
@@ -73,10 +92,12 @@ class ModBot(discord.Client):
         '''
         # Ignore messages from the bot 
         if message.author.id == self.user.id:
-            print("From bot:", message.content)
+            #print("From bot:", message.content)
             return
 
-        print("From user:", message.content)
+        print(message)
+
+        print("From", message.author.id, ":", message.content)
 
         # Check if this message was sent in a server ("guild") or if it's a DM
         if message.guild:
@@ -120,6 +141,8 @@ class ModBot(discord.Client):
         # Only handle messages sent in the "group-#" channel
         if not message.channel.name == f'group-{self.group_num}':
             return
+        
+        print(message.content)
 
         # Forward the message to the mod channel
         mod_channel = self.mod_channels[message.guild.id]

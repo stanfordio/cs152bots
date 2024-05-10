@@ -16,6 +16,7 @@ class State(Enum):
     REASON_SELECTED = auto()
     AWAITING_SUB_REASON = auto()
     AWAITING_CUSTOM_REASON = auto()
+    AWAITING_MODERATION = auto()
     ASK_BLOCK_USER = auto()
 
 class Report:
@@ -79,7 +80,7 @@ class Report:
         
         if self.state == State.REPORT_START:
             reply =  "Thank you for starting the reporting process. "
-            reply += "Say `help` at any time for more information.\n\n"
+            reply += "Say `help` at any time for more information, and `cancel` to abort this report.\n\n"
             reply += "Please copy paste the link to the message you want to report.\n"
             reply += "You can obtain this link by right-clicking the message and clicking `Copy Message Link`."
             self.state = State.AWAITING_MESSAGE
@@ -126,10 +127,17 @@ class Report:
         if self.state == State.AWAITING_SUB_REASON:
             if message.content.strip() in self.SUB_REASONS[self.report_reason]:
                 self.sub_reason = self.SUB_REASONS[self.report_reason][message.content.strip()]
-                self.state = State.ASK_BLOCK_USER
-                if self.message:
-                    await self.client.delete_reported_message(self.message)
-                return [f"Thank you for the report. Reason: {self.report_reason}. Specific issue: {self.sub_reason}. Your report has been filed and the message has been deleted. Would you like to block the user? Reply with 'y' for yes or 'n' for no."]
+                
+                #if self.message:
+                #    await self.client.delete_reported_message(self.message)
+
+                #self.state = State.AWAITING_MODERATION
+                print("Sending to Moderation")
+                await self.client.notify_moderation(self.message, self.report_reason)
+
+                return [f"Thank you for the report. Reason: {self.report_reason}. Specific issue: {self.sub_reason}.", "A member of the moderation team will evaluate it soon."]
+                #self.state = State.ASK_BLOCK_USER
+                #return [f"Thank you for the report. Reason: {self.report_reason}. Specific issue: {self.sub_reason}. Your report has been filed and the message has been deleted. Would you like to block the user? Reply with 'y' for yes or 'n' for no."]
             else:
                 return ["Invalid selection. Please enter a valid number for the specific issue."]
         
@@ -140,7 +148,13 @@ class Report:
                 await self.client.delete_reported_message(self.message)
             return [f"Thank you for the report. Custom reason: {self.sub_reason}. Your report has been filed and the message has been deleted. Would you like to block the user? Reply with 'y' for yes or 'n' for no."]
         
+        if self.state == State.AWAITING_MODERATION:
+            await self.client.notify_moderation(self.message)
+
+            return [f"A member of the moderation team has evaluated the issue. "]
+
         # TODO: IMPLEMENT FUNCTION TO BLOCK USER
+        # This is currently temporary
         if self.state == State.ASK_BLOCK_USER:
             if message.content.lower() == 'y':
                 # TODO: CREATE FUNCTION HERE
@@ -158,22 +172,6 @@ class Report:
             return [""]
 
         return []
-
-    async def send_for_moderation(self):
-        print("Waiting for moderation in mod channel...")
-
-        mod_channel = self.mod_channels[self.reported_message.guild.id]
-        await mod_channel.send(f'The message ```\n{self.reported_message.author.name}: "{self.reported_message.content}"``` is awaiting moderation for', self.report_reason + ".")
-        
-        def check(reaction, user):
-            return user == self.message.author and str(reaction.emoji) == '👍'
-
-        try:
-            reaction, user = await mod_channel.wait_for('reaction_add', timeout=60.0, check=check)
-        except asyncio.TimeoutError:
-            await mod_channel.send('👎')
-        else:
-            await mod_channel.send('👍')
 
 
     def report_complete(self):
