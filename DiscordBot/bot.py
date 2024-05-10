@@ -194,9 +194,6 @@ class ModBot(discord.Client):
                     reply += "Moderator manual review now not required." + "\n-\n-\n"
                     await mod_channel.send(reply)
 
-                
-
-
                 if self.waiting_mod == 1:
                     if message.content == 'yes':
                         reply = "MESSAGE_TO_MODERATOR_LOGS\n"
