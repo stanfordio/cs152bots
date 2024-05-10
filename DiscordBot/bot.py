@@ -7,6 +7,7 @@ import logging
 import re
 import requests
 from report import Report
+from review import Review
 import pdb
 
 # Set up logging to the console
@@ -41,6 +42,7 @@ class ModBot(discord.Client):
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
+        self.reviews = {} # Map from thread IDs to review
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -102,15 +104,24 @@ class ModBot(discord.Client):
 
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():
+            current_report = self.reports[author_id]
             self.reports.pop(author_id)
 
+            review = Review(self, current_report)
+            await review.initiate_review()
+            self.reviews[review.thread.id] = review
+
     async def handle_channel_message(self, message):
+        if message.channel.id in self.reviews:
+            await self.reviews[message.channel.id].handle_message(message)
+
         # Disable until automatic flagging in place
-        pass
+
         # # Only handle messages sent in the "group-#" channel
         # if not message.channel.name == f'group-{self.group_num}':
         #     return
 
+        # self.reports[message.author_id].review.handle_message(message)
         # # Forward the message to the mod channel
         # mod_channel = self.mod_channels[message.guild.id]
         # await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
