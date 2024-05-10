@@ -1,28 +1,73 @@
+import asyncio
 from enum import Enum, auto
 import discord
 import re
 import pandas as pd
 import json
+import logging
 
 class State(Enum):
     REPORT_START = auto()
     AWAITING_MESSAGE = auto()
-    MESSAGE_IDENTIFIED = auto()
     REPORT_COMPLETE = auto()
-    # New State Added to handle awaiting the reason for the report
+
+    # New States added to handle report reasons
     AWAITING_REASON = auto()
+    REASON_SELECTED = auto()
+    AWAITING_SUB_REASON = auto()
+    AWAITING_CUSTOM_REASON = auto()
+    ASK_BLOCK_USER = auto()
 
 class Report:
+    '''
+    Constants
+    '''
     START_KEYWORD = "report"
     CANCEL_KEYWORD = "cancel"
     HELP_KEYWORD = "help"
+    REPORT_REASONS = {
+        "1": "Spam",
+        "2": "Harmful Content",
+        "3": "Harassment",
+        "4": "Danger",
+        "5": "Fraud", 
+        "6": "Other"
+    }
+    SUB_REASONS = {
+        "Spam": {"1": "Solicitation/Phishing", "2":"Advertisement", "3": "Malware", "4": "Impersonation"},
+        "Harmful Content": {"1": "Misinformation", "2": "Intellectual Property Violation", "3": "Sexually Explicit Content", "4": "Graphic Violence", "5": "Other"},
+        "Harassment": {"1": "Bullying", "2": "Sexual Harassment", "3": "Racial Harassment", "4": "Gender Harassment", "5": "Personal Information", "5": "Other"},
+        "Danger": {"1": "Stalking", "2": "Threats of Violence", "3": "Illegal activities", "4": "Exploitative Content", "5": "Other"},
+        "Fraud" : {"1": "Crypto Scam", "2": "Online Job Scam", "3": "Fake Investment Scam", "4": "Other"}, 
+        "Other": {"1": "I am uncomfortable with this content.", "2": "Other"}
+    }
+
+
 
     def __init__(self, client):
         self.state = State.REPORT_START
         self.client = client
         self.message = None # To store the discord.Message object
+        self.reported_message = None
         self.report_reason = ""  # To store the reason for the report
     
+    async def fetch_message_from_link(self, link):
+        # Example: link format "https://discord.com/channels/123456789012345678/987654321098765432/567890123456789012"
+        match = re.search(r'/channels/(\d+)/(\d+)/(\d+)', link)
+        if match:
+            guild_id, channel_id, message_id = map(int, match.groups())
+            guild = self.client.get_guild(guild_id)
+            channel = guild.get_channel(channel_id)
+            if channel:
+                try:
+                    self.message = await channel.fetch_message(message_id)
+                except discord.NotFound:
+                    print("Message not found during fetch.")
+                except discord.Forbidden:
+                    print("No permission to fetch the message.")
+                except discord.HTTPException as e:
+                    print(f"Failed to fetch message: {e}")
+
     async def handle_message(self, message):
         '''
         This function makes up the meat of the user-side reporting flow. It defines how we transition between states and what 
@@ -36,7 +81,7 @@ class Report:
         
         if self.state == State.REPORT_START:
             reply =  "Thank you for starting the reporting process. "
-            reply += "Say `help` at any time for more information.\n\n"
+            reply += "Say `help` at any time for more information, and `cancel` to abort this report.\n\n"
             reply += "Please copy paste the link to the message you want to report.\n"
             reply += "You can obtain this link by right-clicking the message and clicking `Copy Message Link`."
             self.state = State.AWAITING_MESSAGE
@@ -60,42 +105,89 @@ class Report:
 
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.AWAITING_REASON
-            return ["I found this message:", f"```{self.message.author.name}: {self.message.content}```",
-                    "What is the reason you reported this message?",
-                    "- Spam", "- Harmful Content", "- Harassment", "- Danger", "- Other"]
-
+            reason_prompt = "Why are you reporting this message? Type the number:\n"
+            for number, reason in self.REPORT_REASONS.items():
+                reason_prompt += f"{number}: {reason}\n"
+            return [reason_prompt]
+        
         if self.state == State.AWAITING_REASON:
-            self.report_reason = message.content  # Store the reason for the report
-            self.state = State.REPORT_COMPLETE
-            # Optionally, log the report or perform other actions here
-            return [f"Thank you for the report. Reason: {self.report_reason}. Your report has been filed."]
-            #return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
-            #        "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
+            if message.content.strip() in self.REPORT_REASONS:
+                self.report_reason = self.REPORT_REASONS[message.content.strip()]
+                if self.report_reason == "Other":
+                    self.state = State.AWAITING_CUSTOM_REASON
+                    return ["Please type your specific reason for reporting:"]
+                else:
+                    sub_reason_prompt = "Please select the specific issue:\n"
+                    for number, reason in self.SUB_REASONS[self.report_reason].items():
+                        sub_reason_prompt += f"{number}: {reason}\n"
+                    self.state = State.AWAITING_SUB_REASON
+                    return [sub_reason_prompt]
+            else:
+                return ["Invalid selection. Please enter a valid number for the reason."]
+        
+        if self.state == State.AWAITING_SUB_REASON:
+            if message.content.strip() in self.SUB_REASONS[self.report_reason]:
+                self.sub_reason = self.SUB_REASONS[self.report_reason][message.content.strip()]
+
+                # For Crypto Scams -- our specific abuse -- follow a certain mod pathway
+                if self.sub_reason == "Crypto Scam":
+                    await message.channel.send(f"Thank you for the report. Reason: {self.report_reason}. Specific issue: {self.sub_reason}.")
+                    await message.channel.send("A member of the moderation team will evaluate it soon.")
+
+                    print("Sending to Moderation -- Cryto-Scam Specific")
+                    send_moderation = asyncio.create_task(self.client.notify_moderation_crypto(self.message, self.report_reason, self.sub_reason))
+                    await send_moderation
+                # For all other scams, follow a generic pathway
+                else:
+                    await message.channel.send(f"Thank you for the report. Reason: {self.report_reason}. Specific issue: {self.sub_reason}.")
+                    await message.channel.send("A member of the moderation team will evaluate it soon.")
+
+
+                    print("Sending to Moderation")
+                    send_moderation = asyncio.create_task(self.client.notify_moderation(self.message, self.report_reason, self.sub_reason))
+                    await send_moderation
+
+                self.state = State.ASK_BLOCK_USER
+                return ["In the meantime, would you like to block the user? Reply with 'y' for yes or 'n' for no."]
+                #return [f"Thank you for the report. Reason: {self.report_reason}. Specific issue: {self.sub_reason}. Your report has been filed and the message has been deleted. Would you like to block the user? Reply with 'y' for yes or 'n' for no."]
+            else:
+                return ["Invalid selection. Please enter a valid number for the specific issue."]
+        
+        if self.state == State.AWAITING_CUSTOM_REASON:
+            self.sub_reason = message.content 
+            self.state = State.ASK_BLOCK_USER
+            if self.message:
+                await self.client.delete_reported_message(self.message)
+            
+            await message.channel.send(f"Thank you for the report. Reason: {self.report_reason}. Custom issue: {self.sub_reason}.")
+            await message.channel.send("A member of the moderation team will evaluate it soon.")
+            await self.client.notify_moderation(self.message, self.report_reason, self.sub_reason)
+
+            self.state = State.ASK_BLOCK_USER
+            return ["In the meantime, would you like to block the user? Reply with 'y' for yes or 'n' for no."]
+                
         
 
-        # USED LATER
-        if self.state == State.MESSAGE_IDENTIFIED:
-            f = open('DiscordBot/users_log.json')
-            users_log = json.load(f)
-
-            # If user exists, update
-            if message.author.name in users_log:
-                users_log[message.author.name] += 1
-            # Otherwise, add in the new user
+        # TODO: IMPLEMENT FUNCTION TO BLOCK USER
+        # This is currently temporary
+        if self.state == State.ASK_BLOCK_USER:
+            if message.content.lower() == 'y':
+                # TODO: CREATE FUNCTION HERE
+                # await self.client.block_user(self.message.author)
+                self.state = State.REPORT_COMPLETE
+                return ["The user has been blocked. Thank you for your report."]
+            elif message.content.lower() == 'n':
+                self.state = State.REPORT_COMPLETE
+                return ["You have chosen not the block the user. Thank you for your report."]
             else:
-                users_log[message.author.name] = 1
+                return ["Invalid response. Please reply with 'y' for yes or 'n' for no."]
 
-            # Write to log file
-            with open('DiscordBot/users_log.json', 'w', encoding='utf-8') as f:
-                json.dump(users_log, f)
-
-            print(users_log)
-
-            self.state == State.REPORT_COMPLETE
-            return ["Thank you for the report. I've incremented", message.author.name + "'s report count to " + str(users_log[message.author.name]) + "."]
-            
+        
+        if self.state == State.REPORT_COMPLETE:
+            return [""]
 
         return []
+
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
