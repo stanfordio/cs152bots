@@ -190,6 +190,7 @@ class ModBot(discord.Client):
                 else:
                     reply = "MESSAGE_TO_MODERATOR_LOGS\n"
                     reply += "That is not a valid choice; please select 'yes' or 'no'" + "\n-\n-\n"
+                mod_channel.send(reply)
                 self.waiting_mod = 0
 
 

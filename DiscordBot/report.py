@@ -176,7 +176,7 @@ class Report:
             report_type, reported_content = self.get_report_info()
 
             reported_message = reported_content[2]
-            reply = "\nSERVER_ACTION \n"
+            reply = "\nSERVER_ACTION (pending moderator approval)\n"
             reply += "The following post has been deleted from the platform after a report: \n"
             reply += "```" + reported_message.author.name + ": " + reported_message.content + "```" + "\n"
 
