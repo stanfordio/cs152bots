@@ -96,9 +96,9 @@ class ModBot(discord.Client):
 
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():            
-            reported_message = self.reports[author_id].message
             # send to mod
-            await self.handle_channel_message(reported_message)
+            # TODO: 
+            await self.handle_channel_message(self.reports[author_id].message)
 
             self.reports.pop(author_id)        
 
