@@ -177,7 +177,7 @@ class Report:
 
             reported_message = reported_content[2]
             reply = "\nSERVER_ACTION (pending moderator approval)\n"
-            reply += "The following post has been deleted from the platform after a report: \n"
+            reply += "The following post has been deleted from the platform after a report, and the user has been temporarily/indefinitely suspended: \n"
             reply += "```" + reported_message.author.name + ": " + reported_message.content + "```"
 
             if report_type == "glorification or promotion":
