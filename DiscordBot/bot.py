@@ -181,10 +181,19 @@ class ModBot(discord.Client):
             mod_channel = self.mod_channels[message.guild.id]
     
             if message.channel.name == f'group-{self.group_num}-mod':
-                if message.content == 'require mod approval':
+                if message.content == 'require mod review':
                     self.require_approval = 1
-                if message.content == "don't require mod approval":
+                    reply = "MESSAGE_TO_MODERATOR_LOGS\n"
+                    reply += "Moderator manual review now required." + "\n-\n-\n"
+                    await mod_channel.send(reply)
+                    
+                if message.content == "don't require mod review":
                     self.require_approval = 0
+                    reply = "MESSAGE_TO_MODERATOR_LOGS\n"
+                    reply += "Moderator manual review now not required." + "\n-\n-\n"
+                    await mod_channel.send(reply)
+
+                
 
 
                 if self.waiting_mod == 1:
@@ -254,7 +263,7 @@ class ModBot(discord.Client):
 
             if self.require_approval == 1:
                 reply = "MESSAGE_TO_MODERATOR_LOGS\n"
-                reply = "The previous message must undergo moderator review. Reply 'yes' if the post is in violation of community guidelines, otherwise 'no'" + "\n-\n-\n"
+                reply += "The previous message must undergo moderator review. Reply 'yes' if the post is in violation of community guidelines, otherwise 'no'" + "\n-\n-\n"
                 await mod_channel.send(reply)
                 self.waiting_mod = 1
             else:
