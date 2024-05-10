@@ -36,7 +36,8 @@ class ModBot(discord.Client):
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
-        self.reports_test = {"1": "i am doing the hate speeches"}
+        self.HANDLING_REPORT = False
+        self.current_moderation = None
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -112,18 +113,28 @@ class ModBot(discord.Client):
               
     async def handle_mod_channel_message(self, message):
         mod_channel = self.mod_channels[message.guild.id]
-        if message.content.lower() == 'see all reports':
-            await mod_channel.send(f'Here are all reports:')
-            for id, report in self.reports.items():
-                await mod_channel.send(f'ID {id}, Message: {report.message.content}')
+        
+        if self.HANDLING_REPORT:
+            reply = await self.current_moderation.moderate_content(message.content)
+            await mod_channel.send(reply)
+
+        elif message.content.lower() == 'handle report':
+            if not self.reports:
+                await mod_channel.send(f'There are currently 0 reports.')     
+                return
+
+            id, report = next(iter(self.reports.items()))
+            await mod_channel.send(f"Now handling user's {id} report:")
+            self.reports.pop(id)
+            await mod_channel.send(f'ID {id}, Message: {report.reported_message["content"]}')
+            self.current_moderation = Moderate(mod_channel, id, report)
+            self.HANDLING_REPORT = True
+            await mod_channel.send(f'Is this hateful conduct? Please say `yes` or `no`.')
+
         else:
-            await mod_channel.send("Please type 'see all reports' to see reports.")
+            await mod_channel.send("Please type 'handle report' to see oldest report.")
+            await mod_channel.send(f'There are {len(self.reports)} reports pending.')
 
-
-    async def mod_flow(self, mod_channel, message):
-        moderate = Moderate(mod_channel, message)
-        await moderate.start_mod_flow()
-        await moderate.handle_message(message)
 
 
 

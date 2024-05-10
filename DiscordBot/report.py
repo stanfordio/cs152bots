@@ -15,17 +15,15 @@ class Report:
     HELP_KEYWORD = "help"
     YES_KEYWORD = "yes"
     NO_KEYWORD = "no"
-    HATE_SPEECH_TYPES = ["slurs or symbols", "encouraging hateful behavior", "mocking trauma", "harmful stereotypes", "threatening violence"]
+    HATE_SPEECH_TYPES = ["slurs or symbols", "encouraging hateful behavior", "mocking trauma", "harmful stereotypes", "threatening violence", "other"]
     SUBMIT_KEYWORD = "submit"
     CONTINUE_KEYWORD = "continue"
-
-    HATE_SPEECH_KEYWORDS = []  # add keywords we want to use to detect hate speech here
 
     def __init__(self, client):
         self.state = State.REPORT_START
         self.client = client
         self.message = None
-        self.reported_message = None
+        self.reported_message = {'content': None, 'hate_speech_type': None, 'more_info': None}
         self.current_step = 0
     
     async def handle_message(self, message):
@@ -34,7 +32,6 @@ class Report:
         prompts to offer at each of those states. You're welcome to change anything you want; this skeleton is just here to
         get you started and give you a model for working with Discord. 
         '''
-        print(message)
 
         if message.content == self.CANCEL_KEYWORD:
             self.state = State.REPORT_COMPLETE
@@ -54,9 +51,6 @@ class Report:
                         
             # step 0: user reports something as hateful conduct
             if self.current_step == 0:
-                # add parsing for reporting a user and a Twitch channel — maybe not necessary?
-                # should we only be focusing on reporting messages in the group-7 chat?
-
                 # parse out the three ID strings from the message link
                 m = re.search('/(\d+)/(\d+)/(\d+)', message.content)
                 if not m:
@@ -74,7 +68,7 @@ class Report:
 
                 # we've found the message
                 self.state = State.MESSAGE_IDENTIFIED
-                self.reported_message = message
+                self.reported_message['content'] = message
                 reply = "I found this message: " + message.author.name + ": " + message.content + "\n"
                 reply += "Is this hateful conduct? Please say `yes` or `no`."
                 self.state = State.AWAITING_MESSAGE
@@ -101,42 +95,73 @@ class Report:
                     return [reply]
                 if message.content == self.NO_KEYWORD:
                     reply = "This bot only accepts reports of hateful conduct. Please say `yes` if you would like to report hateful conduct, or `cancel` to cancel."
+                    self.state = State.AWAITING_MESSAGE
+                    return [reply]
+                else:
+                    reply = "Please say `yes` or `no`. If you would like to cancel your report, say `cancel`."
+                    self.state = State.AWAITING_MESSAGE
                     return [reply]
                 
             # step 2: user picked the relevant hate speech type, now decides whether to submit or continue
             if self.current_step == 2:
                 if message.content in self.HATE_SPEECH_TYPES:
-                    # we need to add this message content to the final message that is submitted
+                    self.reported_message['hate_speech_type'] = message.content
                     reply = "You have classified this message as " + message.content + ". "
-                    reply += "Would you like to submit your report now, or would you like to add more information? Please say `submit` if you would like to submit, or `continue` if you would like to add more information."
+                    if message.content == "threatening violence":
+                        reply = "Since `threatening violence` could pose a real-world danger, we will mute the account of the user who sent this message for 1-3 days as we review your report."
+                    reply += " Would you like to submit your report now, or would you like to add more information? Please say `submit` if you would like to submit, or `continue` if you would like to add more information."
                     self.state = State.AWAITING_MESSAGE
                     self.current_step = 3
+                    return [reply]
+                else:
+                    reply = "That is not a valid hateful conduct subtype. Please choose one of the following:\n"
+                    reply += "\n".join(f"  • `{type}`" for type in self.HATE_SPEECH_TYPES)
+                    self.state = State.AWAITING_MESSAGE
                     return [reply]
                 
             # step 3: user wants to add more information, now needs to add it
             if self.current_step == 3:
                 if message.content == self.CONTINUE_KEYWORD:
                     # we need to add this message content to the final message that is submitted
-                    reply = "Tell us more about what you are reporting. Helpful information for us includes the date, time, and timezone of the message, as well as a detailed description of what the hateful conduct was and why it qualifies as the hateful conduct subtype that you classified it as. If applicable, we would also like to know the name of the channel in which the violation occurred, the username of the target of the conduct, and the name of the game."
-                    reply += "Please begin your response with `More information:`"
+                    reply = "Tell us more about what you are reporting. Helpful information for us includes the date, time, and timezone of the message, as well as a detailed description of what the hateful conduct was and why it qualifies as the hateful conduct subtype that you classified it as. If applicable, we would also like to know the username of the target of the conduct."
+                    reply += " Please begin your response with the phrase, `More information:`"
                     self.state = State.AWAITING_MESSAGE
                     self.current_step = 4
+                    return [reply]
+                elif message.content != self.SUBMIT_KEYWORD:
+                    reply = "Please say `submit` to submit, `continue` to add more information, or `cancel` to cancel your report."
+                    self.state = State.AWAITING_MESSAGE
                     return [reply]
             
             # step 4: user has added more information, now wants to submit
             if self.current_step == 4:
                 if message.content.startswith("More information:"):
+                    self.reported_message['more_info'] = message.content.split("More information:")[1].strip()
                     reply = "Thank you for adding more information. Are you ready to submit? Please say `submit` to submit your report."
+                    self.state = State.AWAITING_MESSAGE
+                    self.current_step = 5
+                    return [reply]
+                else:
+                    reply = "Please begin your response with `More information:`"
                     self.state = State.AWAITING_MESSAGE
                     return [reply]
             
             # user submits the report
             if message.content == self.SUBMIT_KEYWORD:
                 self.report_complete()
-                return ["Thank you for submitting your report. A moderator will review it shortly."]
-        
-        if self.state == State.MESSAGE_IDENTIFIED:
-            return ["<insert rest of reporting flow here>"]
+                reply = "Thank you for submitting your report. We will follow up with you in 1-3 business days. In a live chat-based context, this may include muting or banning the user account, or removing the comment."
+                reply += "If you would like to block the user who sent that message, please paste their username here. Otherwise, say `no`."
+                self.state = State.AWAITING_MESSAGE
+                self.current_step = 5
+                return [reply]
+
+            # step 5: user has opportunity to block the user
+            if self.current_step == 5:
+                if message.content == self.NO_KEYWORD:
+                    return ["Okay. Thank you for your report."]
+                else:
+                    # block the user
+                    return ["You have blocked user `" + message.content + "`. Thank you for your report."]
 
         return []
 
