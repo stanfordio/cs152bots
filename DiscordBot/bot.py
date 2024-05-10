@@ -131,7 +131,7 @@ class ModBot(discord.Client):
                     platform_action = self.reports[author_id].get_platform_action()
                     await asyncio.sleep(3)
                     await mod_channel.send(platform_action)
-
+                    self.waiting_mod = 1
                     await self.seek_verification()        
 
                     self.reports[author_id].end_report()

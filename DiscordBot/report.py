@@ -178,7 +178,7 @@ class Report:
             reported_message = reported_content[2]
             reply = "\nSERVER_ACTION (pending moderator approval)\n"
             reply += "The following post has been deleted from the platform after a report: \n"
-            reply += "```" + reported_message.author.name + ": " + reported_message.content + "```" + "\n"
+            reply += "```" + reported_message.author.name + ": " + reported_message.content + "```" + "\n-\n-\n"
 
             if report_type == "glorification or promotion":
                 reply += "The content has been also been uploaded to the GIFCT hash bank." + "\n-\n-\n"
