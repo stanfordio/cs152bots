@@ -18,6 +18,8 @@ handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w'
 handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
 logger.addHandler(handler)
 
+violations = {}
+
 # There should be a file called 'tokens.json' inside the same folder as this file
 token_path = 'tokens.json'
 if not os.path.isfile(token_path):
@@ -38,6 +40,7 @@ class ModBot(discord.Client):
         self.reports = {} # Map from user IDs to the state of their report
         self.HANDLING_REPORT = False
         self.current_moderation = None
+        #self.violations = {} # Map from offender user IDs to the number of offenses 
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')

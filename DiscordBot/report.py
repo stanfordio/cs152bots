@@ -1,6 +1,7 @@
 from enum import Enum, auto
 import discord
 import re
+from bot import violations
 
 class State(Enum):
     REPORT_START = auto()
@@ -73,6 +74,13 @@ class Report:
                 reply += "Is this hateful conduct? Please say `yes` or `no`."
                 self.state = State.AWAITING_MESSAGE
                 self.current_step = 1
+
+                # adding the offender to the global violations dictionary
+                if message.author.id in violations:
+                    violations[message.author.id] += 1
+                else:
+                    violations[message.author.id] = 1
+                
                 return [reply]
             
             # step 1: user confirmed that the message is hateful conduct, now needs to classify it

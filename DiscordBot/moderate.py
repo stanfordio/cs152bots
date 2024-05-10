@@ -1,6 +1,7 @@
 from enum import Enum, auto
 import discord
 import re
+from bot import violations 
 
 class State(Enum):
     AWAITING_MESSAGE = auto()
@@ -15,7 +16,7 @@ class Moderate:
         self.reported_id = id
         self.report = report
         self.offender_id = report.reported_message['content'].author.id
-        self.violations = {}
+        # self.violations = {}
         self.current_step = 0
         self.serious_threat = 0
         self.not_serious_threat = 0
@@ -71,12 +72,24 @@ class Moderate:
                 self.current_step += 1
             
             elif self.not_serious_threat and self.current_step == 2:
-                    reply += "Choose an action:\n"
-                    reply += "1: Remove comment.\n"
-                    reply += "2: Remove comment and mute account for 24 hours.\n"
-                    reply += "3: Remove comment, mute account for 24 hours, and ban account.\n"
-                    reply += "Enter the number of the action you wish to take: \n"
+                    # reply += "Choose an action:\n"
+                    # reply += "1: Remove comment.\n"
+                    # reply += "2: Remove comment and mute account for 24 hours.\n"
+                    # reply += "3: Remove comment, mute account for 24 hours, and ban account.\n"
+                    # reply += "Enter the number of the action you wish to take: \n"
+                
+                    # Check how many times the user has violated the community guidelines
+                    count = violations.get(self.offender_id, 0)
+                    if count == 1:
+                        reply = "We will remove the comment."
+                    elif count == 2:
+                        reply = f"We will remove the comment and mute {self.offender_id}'s account for 24 hours."
+                    elif count >= 3:
+                        reply = f"We will remove the comment and ban {self.offender_id}'s account."
+
                     self.current_step += 1
+
+
         
             elif self.not_serious_threat and self.current_step == 3:
                 if message == "1":
