@@ -133,9 +133,12 @@ class ModBot(discord.Client):
         
         if self.HANDLING_REPORT:
             reply = await self.current_moderation.moderate_content(message.content)
+
             await mod_channel.send(reply)
             if self.current_moderation.current_step == 3:
+                print("Made it into the curerent moderation step is step 3")
                 self.HANDLING_REPORT == False
+                print("Handling report is now set to false")
 
 
         elif message.content.lower() == 'handle report':
