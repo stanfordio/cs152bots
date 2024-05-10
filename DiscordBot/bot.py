@@ -183,6 +183,7 @@ class ModBot(discord.Client):
             if message.channel.name == f'group-{self.group_num}-mod':
                 if message.content == 'require mod review':
                     self.require_approval = 1
+                    self.waiting_mod = 0
                     reply = "MESSAGE_TO_MODERATOR_LOGS\n"
                     reply += "Moderator manual review now required." + "\n-\n-\n"
                     await mod_channel.send(reply)
