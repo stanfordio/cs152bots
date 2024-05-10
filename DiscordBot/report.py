@@ -92,11 +92,7 @@ class Report:
                     self.state = State.MODERATE_READY
                     reply = "Thank you for reporting a message as being " + message.content.lower() + ". The content moderation team will review the post and determine the appropriate action, which may include removal of the post or suspension of the account."
                     return [reply]
-                
 
-                elif (message.content.lower() in )
-
-                
                 else: ## category is terrorism
                     self.state = State.TERROR_IDENTIFIED
                     reply = "Please specify what kind of terrorist activity: \n"
