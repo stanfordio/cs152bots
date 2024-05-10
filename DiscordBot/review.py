@@ -47,13 +47,13 @@ class Review:
 
         if self.modState == ModState.MOD_REPORT_AWAITING_REVIEW:
             if message.content.lower() == "yes":
-                print("first yes")
                 self.modState = ModState.MOD_REPORT_ROMANCE_INVESTMENT
                 await self.thread.send("2. Are there clear indicators of a potential scam? Is there evidence of "
                                        "coercion or manipulation that pose risks to user safety or privacy?")
                 return
             if message.content.lower() == "no":
                 self.modState = ModState.MOD_REPORT_COMPLETE
+                await self.thread.send("Evaluate under standard community guidelines")
                 await self.thread.send("No further actions required. Case closed.")
                 return
 
@@ -67,7 +67,7 @@ class Review:
             if message.content.lower() == "no":
                 self.modState = ModState.MOD_REPORT_OTHER
                 await self.thread.send(
-                    "Flag for Further Review or Investigation?"
+                    "4. Flag for Further Review or Investigation?"
                 )
                 return
 
@@ -75,13 +75,13 @@ class Review:
             if message.content.lower() == "yes":
                 self.modState = ModState.MOD_REPORT_SCAM_REPEATED
                 await self.thread.send(
-                    "User is permanently banned from the platform."
+                    "System Action: User is permanently banned from the platform."
                 )
                 return
             if message.content.lower() == "no":
                 self.modState = ModState.MOD_REPORT_SCAM_FIRST_TIME
                 await self.thread.send(
-                    "User is warned via email and next login. User will be temporarily restricted from chat for 7 days."
+                    "System Action: User is warned via email and next login. User will be temporarily restricted from chat for 7 days."
                 )
                 return
 
@@ -89,7 +89,7 @@ class Review:
             if message.content.lower() == "yes":
                 self.modState = ModState.MOD_REPORT_ESCALATE
                 await self.thread.send(
-                    "This case has been escalated to senior members and management team"
+                    "System Action: This case has been escalated to senior members and management team"
                 )
                 return
             if message.content.lower() == "no":
