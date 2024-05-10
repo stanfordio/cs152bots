@@ -16,7 +16,6 @@ class State(Enum):
     REASON_SELECTED = auto()
     AWAITING_SUB_REASON = auto()
     AWAITING_CUSTOM_REASON = auto()
-    AWAITING_MODERATION = auto()
     ASK_BLOCK_USER = auto()
 
 class Report:
@@ -127,16 +126,19 @@ class Report:
         if self.state == State.AWAITING_SUB_REASON:
             if message.content.strip() in self.SUB_REASONS[self.report_reason]:
                 self.sub_reason = self.SUB_REASONS[self.report_reason][message.content.strip()]
-                
                 #if self.message:
                 #    await self.client.delete_reported_message(self.message)
 
-                #self.state = State.AWAITING_MODERATION
-                print("Sending to Moderation")
-                await self.client.notify_moderation(self.message, self.report_reason)
+                await message.channel.send(f"Thank you for the report. Reason: {self.report_reason}. Specific issue: {self.sub_reason}.")
+                await message.channel.send("A member of the moderation team will evaluate it soon.")
 
-                return [f"Thank you for the report. Reason: {self.report_reason}. Specific issue: {self.sub_reason}.", "A member of the moderation team will evaluate it soon."]
-                #self.state = State.ASK_BLOCK_USER
+
+                print("Sending to Moderation")
+                send_moderation = asyncio.create_task(self.client.notify_moderation(self.message, self.report_reason, self.sub_reason))
+                await send_moderation
+
+                self.state = State.ASK_BLOCK_USER
+                return ["In the meantime, would you like to block the user? Reply with 'y' for yes or 'n' for no."]
                 #return [f"Thank you for the report. Reason: {self.report_reason}. Specific issue: {self.sub_reason}. Your report has been filed and the message has been deleted. Would you like to block the user? Reply with 'y' for yes or 'n' for no."]
             else:
                 return ["Invalid selection. Please enter a valid number for the specific issue."]
@@ -146,12 +148,15 @@ class Report:
             self.state = State.ASK_BLOCK_USER
             if self.message:
                 await self.client.delete_reported_message(self.message)
-            return [f"Thank you for the report. Custom reason: {self.sub_reason}. Your report has been filed and the message has been deleted. Would you like to block the user? Reply with 'y' for yes or 'n' for no."]
-        
-        if self.state == State.AWAITING_MODERATION:
-            await self.client.notify_moderation(self.message)
+            
+            await message.channel.send(f"Thank you for the report. Reason: {self.report_reason}. Custom issue: {self.sub_reason}.")
+            await message.channel.send("A member of the moderation team will evaluate it soon.")
+            await self.client.notify_moderation(self.message, self.report_reason, self.sub_reason)
 
-            return [f"A member of the moderation team has evaluated the issue. "]
+            self.state = State.ASK_BLOCK_USER
+            return ["In the meantime, would you like to block the user? Reply with 'y' for yes or 'n' for no."]
+                
+        
 
         # TODO: IMPLEMENT FUNCTION TO BLOCK USER
         # This is currently temporary
@@ -163,7 +168,7 @@ class Report:
                 return ["The user has been blocked. Thank you for your report."]
             elif message.content.lower() == 'n':
                 self.state = State.REPORT_COMPLETE
-                return ["The user has not been blocked. Thank you for your report."]
+                return ["You have chosen not the block the user. Thank you for your report."]
             else:
                 return ["Invalid response. Please reply with 'y' for yes or 'n' for no."]
 

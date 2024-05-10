@@ -66,24 +66,26 @@ class ModBot(discord.Client):
         except discord.HTTPException as e:
             print(f"Failed to delete message: {e}")
 
-    async def notify_moderation(self, reported_message, report_reason):
+    async def notify_moderation(self, reported_message, report_reason, sub_reason):
         print("Waiting for moderation in mod channel...")
 
         mod_channel = self.mod_channels[reported_message.guild.id]
 
-        mod_message = f'The message ```\n{reported_message.author.name}: "{reported_message.content}"``` is awaiting moderation for', report_reason + "."
+        mod_message = f'The message ```\n{reported_message.author.name}: "{reported_message.content}"``` is awaiting moderation for', report_reason + f": {sub_reason}"+ ". React with a 👍 in the next two minutes if you believe this is a correct report, and any other emote for a false report."
 
         await mod_channel.send(mod_message)
         
+        # check for correct reaction
         def check(reaction, user):
             return user == reported_message.author and str(reaction.emoji) == '👍'
 
         try:
-            reaction, user = await mod_channel.wait_for('reaction_add', timeout=60.0, check=check)
+            # wait for the reaction within the two minutes
+            reaction, user = await client.wait_for('reaction_add', timeout=120.0, check=check)
         except asyncio.TimeoutError:
-            await mod_channel.send('👎')
+            await mod_channel.send("This message has not been reacted to correctly in the timeframe -- no action was taken.")
         else:
-            await mod_channel.send('👍')
+            await mod_channel.send("This message has been sent for moderation.")
 
     async def on_message(self, message):
         '''
