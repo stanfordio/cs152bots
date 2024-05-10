@@ -117,6 +117,12 @@ class ModBot(discord.Client):
                     reported_channel = reported_content[1]
                     reported_message = reported_content[2]
 
+                    old_approval_mode = self.require_approval
+
+                    if report_type == "glorification or promotion":
+                        self.require_approval = 0
+                    
+
                     ## send logs message
                     reply = "MESSAGE_TO_MODERATOR_LOGS:\n"
                     reply += "Report received of: " + report_type + "\n"
@@ -134,6 +140,8 @@ class ModBot(discord.Client):
                     await mod_channel.send(platform_action)
 
                     await self.seek_verification()        
+
+                    self.require_approval = old_approval_mode
 
                     self.reports[author_id].end_report()
 
@@ -200,15 +208,17 @@ class ModBot(discord.Client):
                     if message.content == 'yes':
                         reply = "MESSAGE_TO_MODERATOR_LOGS\n"
                         reply += "Moderator has determined the previous report is indeed in violation of community guidelines. The previous pending actions will be taken." + "\n-\n-\n"
+                        self.waiting_mod = 0
                     elif message.content == 'no':
                         reply = "MESSAGE_TO_MODERATOR_LOGS\n"
                         reply += "Moderator has determined the previous report was not in violation of community guidelines. No further action is needed." + "\n-\n-\n"
+                        self.waiting_mod = 0
                     else:
                         reply = "MESSAGE_TO_MODERATOR_LOGS\n"
                         reply += "That is not a valid choice; please select 'yes' or 'no'" + "\n-\n-\n"
                     await asyncio.sleep(1)
                     await mod_channel.send(reply)
-                    self.waiting_mod = 0
+                    
 
         except Exception as e:
                 # Get the stack trace as a string
