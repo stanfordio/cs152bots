@@ -75,15 +75,15 @@ class Moderate:
                         reply = f"We will remove the comment and ban {self.offender_id}'s account."
                     self.current_step += 1
         
-            elif self.not_serious_threat and self.current_step == 3:
-                if message == "1":
-                    reply = "We will remove the comment."
-                elif message == "2":
-                    reply = f"We will remove the comment and mute {self.offender_id}'s account for 24 hours."
-                elif message == "3":
-                    reply = f"We will remove the comment and ban {self.offender_id}'s account."
-                else:
-                    reply = "Invalid action."
+            # elif self.not_serious_threat and self.current_step == 3:
+            #     if message == "1":
+            #         reply = "We will remove the comment."
+            #     elif message == "2":
+            #         reply = f"We will remove the comment and mute {self.offender_id}'s account for 24 hours."
+            #     elif message == "3":
+            #         reply = f"We will remove the comment and ban {self.offender_id}'s account."
+            #     else:
+                    #reply = "Invalid action."
 
             elif self.serious_threat and self.current_step == 2:
                     reply = "Provided your choices, this content may pose a serious and/or violent threat.\n"
@@ -99,5 +99,4 @@ class Moderate:
                 else:
                     reply = "This respons is invalid. Please respond 'yes' or 'no'."
 
-    
             return reply

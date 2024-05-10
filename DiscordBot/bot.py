@@ -134,6 +134,9 @@ class ModBot(discord.Client):
         if self.HANDLING_REPORT:
             reply = await self.current_moderation.moderate_content(message.content)
             await mod_channel.send(reply)
+            if self.current_moderation.current_step == 3:
+                self.HANDLING_REPORT == False
+
 
         elif message.content.lower() == 'handle report':
             if not self.reports:
