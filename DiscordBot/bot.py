@@ -38,6 +38,7 @@ class ModBot(discord.Client):
         self.reports = {} # Map from user IDs to the state of their report
         self.HANDLING_REPORT = False
         self.current_moderation = None
+        self.violations = {} # Map from offender user IDs to the number of offenses 
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -92,11 +93,17 @@ class ModBot(discord.Client):
 
         # If we don't currently have an active report for this user, add one
         if author_id not in self.reports:
-            self.reports[author_id] = Report(self)
+            self.reports[author_id] = Report(self)         
 
         # Let the report class handle this message; forward all the messages it returns to uss
         responses = await self.reports[author_id].handle_message(message)
         for r in responses:
+            if r.startswith("I found this message"):
+                offender_id = self.reports[author_id].reported_message['content'].author.id
+                if offender_id in self.violations:
+                    self.violations[offender_id] += 1
+                else:
+                    self.violations[offender_id] = 1
             await message.channel.send(r)
 
         # If the report is complete or cancelled, remove it from our map
@@ -116,7 +123,13 @@ class ModBot(discord.Client):
         
         if self.HANDLING_REPORT:
             reply = await self.current_moderation.moderate_content(message.content)
+
             await mod_channel.send(reply)
+            if self.current_moderation.current_step == 3:
+                print("Made it into the curerent moderation step is step 3")
+                self.HANDLING_REPORT = False
+                print("Handling report is now set to false")
+
 
         elif message.content.lower() == 'handle report':
             if not self.reports:
@@ -127,7 +140,7 @@ class ModBot(discord.Client):
             await mod_channel.send(f"Now handling user's {id} report:")
             self.reports.pop(id)
             await mod_channel.send(f'ID {id}, Message: {report.reported_message["content"]}')
-            self.current_moderation = Moderate(mod_channel, id, report)
+            self.current_moderation = Moderate(mod_channel, id, report, self.violations)
             self.HANDLING_REPORT = True
             await mod_channel.send(f'Is this hateful conduct? Please say `yes` or `no`.')
 

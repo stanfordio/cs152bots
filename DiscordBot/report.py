@@ -73,6 +73,7 @@ class Report:
                 reply += "Is this hateful conduct? Please say `yes` or `no`."
                 self.state = State.AWAITING_MESSAGE
                 self.current_step = 1
+                
                 return [reply]
             
             # step 1: user confirmed that the message is hateful conduct, now needs to classify it

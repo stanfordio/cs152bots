@@ -9,22 +9,16 @@ class State(Enum):
     DONE = auto()
 
 class Moderate:
-    def __init__(self, mod_channel, id, report):
+    def __init__(self, mod_channel, id, report, violations):
         self.state = State.AWAITING_MESSAGE
         self.mod_channel = mod_channel
         self.reported_id = id
         self.report = report
         self.offender_id = report.reported_message['content'].author.id
-        self.violations = {}
+        self.violations = violations
         self.current_step = 0
         self.serious_threat = 0
         self.not_serious_threat = 0
-
-    async def add_violation(self, userId):
-        if userId in self.violations:
-            self.violations[userId] += 1
-        else:
-            self.violations[userId] = 1
 
     async def moderate_content(self, message, hateSpeech=True):
         if self.state == State.AWAITING_MESSAGE:                  
@@ -71,22 +65,15 @@ class Moderate:
                 self.current_step += 1
             
             elif self.not_serious_threat and self.current_step == 2:
-                    reply += "Choose an action:\n"
-                    reply += "1: Remove comment.\n"
-                    reply += "2: Remove comment and mute account for 24 hours.\n"
-                    reply += "3: Remove comment, mute account for 24 hours, and ban account.\n"
-                    reply += "Enter the number of the action you wish to take: \n"
+                    # Check how many times the user has violated the community guidelines
+                    count = self.violations.get(self.offender_id, 0)
+                    if count == 1:
+                        reply = "We will remove the comment."
+                    elif count == 2:
+                        reply = f"We will remove the comment and mute {self.offender_id}'s account for 24 hours."
+                    elif count >= 3:
+                        reply = f"We will remove the comment and ban {self.offender_id}'s account."
                     self.current_step += 1
-        
-            elif self.not_serious_threat and self.current_step == 3:
-                if message == "1":
-                    reply = "We will remove the comment."
-                elif message == "2":
-                    reply = f"We will remove the comment and mute {self.offender_id}'s account for 24 hours."
-                elif message == "3":
-                    reply = f"We will remove the comment and ban {self.offender_id}'s account."
-                else:
-                    reply = "Invalid action."
 
             elif self.serious_threat and self.current_step == 2:
                     reply = "Provided your choices, this content may pose a serious and/or violent threat.\n"
@@ -102,5 +89,4 @@ class Moderate:
                 else:
                     reply = "This respons is invalid. Please respond 'yes' or 'no'."
 
-    
             return reply
