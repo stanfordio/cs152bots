@@ -13,6 +13,7 @@ class ModState(Enum):
     MOD_REPORT_ESCALATE = auto()
     MOD_REPORT_COMPLETE = auto()
     MOD_REPORT_OTHER = auto()
+    MOD_REPORT_MALICIOUS = auto()
 
 class Review:
     def __init__(self, client, report):
@@ -38,8 +39,8 @@ class Review:
         self.modState = ModState.MOD_REPORT_AWAITING_REVIEW
 
         # Start the review process and send first option in thread
-        await self.thread.send("Start moderation flow by answering the following questions (yes/no)")
-        await self.thread.send("1. Is the reported conversation related to investment or romance?")
+        await self.thread.send("Start moderation flow by answering the following questions")
+        await self.thread.send(">> Is this a malicious user report? (yes/no)")
 
     async def handle_message(self, message: discord.Message):
         print("enter handle message", message)
@@ -47,9 +48,21 @@ class Review:
 
         if self.modState == ModState.MOD_REPORT_AWAITING_REVIEW:
             if message.content.lower() == "yes":
+                self.modState = ModState.MOD_REPORT_MALICIOUS
+                await self.thread.send("System Action: Reporter is warned for malicious reports.")
+                await self.thread.send("Reporting feature is suspended for the reporter account for 24 hours.")
+                return
+            if message.content.lower() == "no":
+                self.modState = ModState.MOD_REPORT_START
+                await self.thread.send(">> Is the reported conversation related to investment or romance? (yes/no)" )
+                return
+
+        if self.modState == ModState.MOD_REPORT_START:
+            if message.content.lower() == "yes":
                 self.modState = ModState.MOD_REPORT_ROMANCE_INVESTMENT
-                await self.thread.send("2. Are there clear indicators of a potential scam? Is there evidence of "
-                                       "coercion or manipulation that pose risks to user safety or privacy?")
+                await self.thread.send(">> Are there clear indicators of a potential scam? Is there evidence of "
+                                       "coercion or manipulation that pose risks to user safety or privacy? ("
+                                       "yes/no/unsure)")
                 return
             if message.content.lower() == "no":
                 self.modState = ModState.MOD_REPORT_COMPLETE
@@ -61,13 +74,17 @@ class Review:
             if message.content.lower() == "yes":
                 self.modState = ModState.MOD_REPORT_SCAM
                 await self.thread.send(
-                    "3. Does this user have a history of scam violation?"
+                    ">> Does this user have a history of scam violation? (yes/no)"
                 )
                 return
             if message.content.lower() == "no":
                 self.modState = ModState.MOD_REPORT_OTHER
+                await self.thread.send("No further actions required. Case closed.")
+                return
+            if message.content.lower() == "unsure":
+                self.modState = ModState.MOD_REPORT_OTHER
                 await self.thread.send(
-                    "4. Flag for Further Review or Investigation?"
+                    ">> Flag for further review or investigation? (yes/no)"
                 )
                 return
 
@@ -81,7 +98,8 @@ class Review:
             if message.content.lower() == "no":
                 self.modState = ModState.MOD_REPORT_SCAM_FIRST_TIME
                 await self.thread.send(
-                    "System Action: User is warned via email and next login. User will be temporarily restricted from chat for 7 days."
+                    "System Action: User is warned via email and next login. User will be temporarily restricted from "
+                    "chat for 7 days."
                 )
                 return
 
