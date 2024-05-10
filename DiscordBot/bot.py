@@ -36,6 +36,7 @@ class ModBot(discord.Client):
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
+        self.require_approval = 1
         self.verify = 0
         self.waiting_mod = 0
 
@@ -131,6 +132,7 @@ class ModBot(discord.Client):
                     platform_action = self.reports[author_id].get_platform_action()
                     await asyncio.sleep(3)
                     await mod_channel.send(platform_action)
+
                     await self.seek_verification()        
 
                     self.reports[author_id].end_report()
@@ -179,6 +181,12 @@ class ModBot(discord.Client):
             mod_channel = self.mod_channels[message.guild.id]
     
             if message.channel.name == f'group-{self.group_num}-mod':
+                if message.content == 'require mod approval':
+                    self.require_approval = 1
+                if message.content == "don't require mod approval":
+                    self.require_approval = 0
+
+
                 if self.waiting_mod == 1:
                     if message.content == 'yes':
                         reply = "MESSAGE_TO_MODERATOR_LOGS\n"
@@ -243,9 +251,17 @@ class ModBot(discord.Client):
                 for channel in guild.text_channels:
                     if channel.name == f'group-{self.group_num}-mod':
                         mod_channel = channel
-            reply = "The previous message must undergo moderator review. Reply 'yes' if the post is in violation of community guidelines, otherwise 'no'"
-            await mod_channel.send(reply)
-            self.waiting_mod = 1
+
+            if self.require_approval == 1:
+                reply = "MESSAGE_TO_MODERATOR_LOGS\n"
+                reply = "The previous message must undergo moderator review. Reply 'yes' if the post is in violation of community guidelines, otherwise 'no'" + "\n-\n-\n"
+                await mod_channel.send(reply)
+                self.waiting_mod = 1
+            else:
+                reply = "MESSAGE_TO_MODERATOR_LOGS\n"
+                reply += "The previous message does not need moderator review, and the previous pending actions will be taken." + "\n-\n-\n"
+                await mod_channel.send(reply)
+
 
         except Exception as e:
                 # Get the stack trace as a string
