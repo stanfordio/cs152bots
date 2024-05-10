@@ -1,8 +1,6 @@
 from enum import Enum, auto
 import discord
 import re
-import json
-from uuid import uuid4
 
 start_dialogue = "Please select a report reason"
 start_options = [start_dialogue, "Spam", "Fake Account", "Harassment or Bullying", "Posting inappropriate things", "Scam", "Something else"]
@@ -86,23 +84,9 @@ class Report:
     def options_to_string(self, options):
         return options[0]+'\n\n' + '\n'.join(f"{i + 1}. {option}" for i, option in enumerate(options[1:]))
     
-    async def submit_report(self):
-        # Get the mod channel from the initial message
-        channel = self.client.mod_channels[self.message.guild.id]
-        # Create the report message from this Report object
-        report_message = self.report_to_string()
-        # Send report thread to mod
-        # Listen in the mod channel for threads to start a Review
-        thread = await channel.create_thread(
-            name=f"Report {uuid4()}",
-            type=discord.ChannelType.public_thread
-        )
-        await thread.send(report_message) 
-    
-    def report_to_string(self):
-        message = f"Message Report\n"
-        message += "```" + json.dumps(self.case, indent=2) + "```"
-        return message
+    #async def submit_report(self):
+       # self.review = Review(self.client, self)
+       # await self.review.initiate_review()
     
     async def handle_message(self, message: discord.Message):
         '''
@@ -178,9 +162,9 @@ class Report:
                     next_options = final_options
                     self.last_step_question = next_options[0]
                     self.last_step_options = next_options[1:]
-                    
+
                     # Submit report to mod channel
-                    await self.submit_report()
+                    # await self.submit_report()
 
                     # SEND Message to Mod Channel
                     if user_choice == 'Yes':
