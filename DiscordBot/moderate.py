@@ -21,11 +21,11 @@ class Moderate:
         self.serious_threat = 0
         self.not_serious_threat = 0
 
-    async def add_violation(self, userId):
-        if userId in self.violations:
-            self.violations[userId] += 1
-        else:
-            self.violations[userId] = 1
+    # async def add_violation(self, userId):
+    #     if userId in self.violations:
+    #         self.violations[userId] += 1
+    #     else:
+    #         self.violations[userId] = 1
 
     async def moderate_content(self, message, hateSpeech=True):
         if self.state == State.AWAITING_MESSAGE:                  
