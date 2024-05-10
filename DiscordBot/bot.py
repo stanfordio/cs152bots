@@ -182,8 +182,7 @@ class ModBot(discord.Client):
                 if self.waiting_mod == 1:
                     if message.content == 'yes':
                         reply = "MESSAGE_TO_MODERATOR_LOGS\n"
-                        reply += "Moderator has determined the previous report is indeed in violation of community guidelines. The previous actions will be taken." + "\n-\n-\n"
-                        await mod_channel.send(reply)
+                        reply += "Moderator has determined the previous report is indeed in violation of community guidelines. The previous pending actions will be taken." + "\n-\n-\n"
                     elif message.content == 'no':
                         reply = "MESSAGE_TO_MODERATOR_LOGS\n"
                         reply += "Moderator has determined the previous report was not in violation of community guidelines. No further action is needed." + "\n-\n-\n"
