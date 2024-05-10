@@ -144,7 +144,6 @@ class Report:
                     "Gore and Mutilation",
                     "Self-harm or Suicide",
                     "Intent to cause real-life harm to person or property",
-                    "other"
                     ]
                 if self.abuse_type == 2:
                     reply = "Please select from the following options (Enter corresponding number only):\n"
@@ -155,14 +154,11 @@ class Report:
                     self.result["Abuse Type"] = "Violence and Disturbing Content"
                     return [confirm, reply]
                 if self.abuse_type == 3:
-                    if message.content not in ['1', '2', '3', '4', '5']:
-                        return ["please enter a valid number ONLY (1, 2, 3, 4, 5)"]
+                    if message.content not in ['1', '2', '3', '4']:
+                        return ["please enter a valid number ONLY (1, 2, 3, 4)"]
                     else:
                         self.result["Abuse Subsection"] = options[int(message.content)-1]
-                        more_info = "Would you like to provide any additional context for our content moderation team to review? (Please share below if yes, else reply no) \n"
-                        self.abuse_type = 4
-                        return [more_info]
-                self.result["Additional Information"] = message.content
+                        self.result["Additional Information"] = "N/A"
     
             # if Harassment and Harmful Behavior
             if self.message.content == "3":
@@ -171,7 +167,6 @@ class Report:
                     "Cyberstalking, Doxxing, Threats",
                     "Hate Speech and Discrimination",
                     "Spam or Advertising",
-                    "other"
                 ]
                 if self.abuse_type == 2:
                     reply = "Please select from the following options (Enter corresponding number only):\n"
@@ -182,21 +177,17 @@ class Report:
                     self.result["Abuse Type"] = "Harassment and Harmful Behavior"
                     return [confirm, reply]
                 if self.abuse_type == 3:
-                    if message.content not in ['1', '2', '3', '4', '5']:
-                        return ["please enter a valid number ONLY (1, 2, 3, 4, 5)"]
+                    if message.content not in ['1', '2', '3', '4']:
+                        return ["please enter a valid number ONLY (1, 2, 3, 4)"]
                     else:
                         self.result["Abuse Subsection"] = options[int(message.content)-1]
-                        more_info = "Would you like to provide any additional context for our content moderation team to review? (Please share below if yes, else reply no) \n"
-                        self.abuse_type = 4
-                        return [more_info]
-                self.result["Additional Information"] = message.content
+                        self.result["Additional Information"] = "N/A"
 
             # if Illegal and Misleading Activities
             if self.message.content == "4":
                 options = [
                     "Fraud and Scams",
                     "Impersonation",
-                    "other"
                     ]
                 if self.abuse_type == 2:
                     reply = "Please select from the following options (Enter corresponding number only):\n"
@@ -207,14 +198,11 @@ class Report:
                     self.result["Abuse Type"] = "Illegal and Misleading Activities"
                     return [confirm, reply]
                 if self.abuse_type == 3:
-                    if message.content not in ['1', '2', '3']:
-                        return ["please enter a valid number ONLY (1, 2, 3)"]
+                    if message.content not in ['1', '2']:
+                        return ["please enter a valid number ONLY (1, 2)"]
                     else:
                         self.result["Abuse Subsection"] = options[int(message.content)-1]
-                        more_info = "Would you like to provide any additional context for our content moderation team to review? (Please share below if yes, else reply no) \n"
-                        self.abuse_type = 4
-                        return [more_info]
-                self.result["Additional Information"] = message.content
+                        self.result["Additional Information"] = "N/A"
 
             
             info = "This is what we gathered: \n"
@@ -238,3 +226,7 @@ class Report:
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
     
+
+
+    
+
