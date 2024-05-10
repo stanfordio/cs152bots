@@ -1,7 +1,6 @@
 from enum import Enum, auto
 import discord
 import re
-from bot import violations
 
 class State(Enum):
     REPORT_START = auto()
@@ -76,10 +75,10 @@ class Report:
                 self.current_step = 1
 
                 # adding the offender to the global violations dictionary
-                if message.author.id in violations:
-                    violations[message.author.id] += 1
-                else:
-                    violations[message.author.id] = 1
+                # if message.author.id in violations:
+                #     violations[message.author.id] += 1
+                # else:
+                #     violations[message.author.id] = 1
                 
                 return [reply]
             

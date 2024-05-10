@@ -18,7 +18,7 @@ handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w'
 handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
 logger.addHandler(handler)
 
-violations = {}
+# violations = {}
 
 # There should be a file called 'tokens.json' inside the same folder as this file
 token_path = 'tokens.json'
@@ -40,7 +40,7 @@ class ModBot(discord.Client):
         self.reports = {} # Map from user IDs to the state of their report
         self.HANDLING_REPORT = False
         self.current_moderation = None
-        #self.violations = {} # Map from offender user IDs to the number of offenses 
+        self.violations = {} # Map from offender user IDs to the number of offenses 
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -96,6 +96,14 @@ class ModBot(discord.Client):
         # If we don't currently have an active report for this user, add one
         if author_id not in self.reports:
             self.reports[author_id] = Report(self)
+            
+             # adding the offender to the global violations dictionary    
+            offender_id = self.reports[author_id].reported_message['content'].author.id
+            if offender_id in self.violations:
+                self.violations[offender_id] += 1
+            else:
+                self.violations[offender_id] = 1
+                
 
         # Let the report class handle this message; forward all the messages it returns to uss
         responses = await self.reports[author_id].handle_message(message)
@@ -130,7 +138,7 @@ class ModBot(discord.Client):
             await mod_channel.send(f"Now handling user's {id} report:")
             self.reports.pop(id)
             await mod_channel.send(f'ID {id}, Message: {report.reported_message["content"]}')
-            self.current_moderation = Moderate(mod_channel, id, report)
+            self.current_moderation = Moderate(mod_channel, id, report, self.violations)
             self.HANDLING_REPORT = True
             await mod_channel.send(f'Is this hateful conduct? Please say `yes` or `no`.')
 
