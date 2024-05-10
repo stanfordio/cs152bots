@@ -191,6 +191,9 @@ class Report:
             response += "Thank you for contributing to the safety and quality of our platform!"
             return [response]
 
+        #call compile message
+        self.compile_report_to_moderate()
+
         return []
 
     def report_complete(self):
@@ -438,5 +441,10 @@ class Report:
 
     # TODO: Implement this method
     def compile_report_to_moderate(self):
+        #add the info we want to self.state 
+        return [{"text": "I found this message:"},
+                    ]
+
+
         return
 
