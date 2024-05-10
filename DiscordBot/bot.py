@@ -176,22 +176,40 @@ class ModBot(discord.Client):
                 return
 
     async def handle_channel_message(self, message):
-        mod_channel = self.mod_channels[message.guild.id]
- 
-        if message.channel.name == f'group-{self.group_num}-mod':
-            if self.waiting_mod == 1:
-                if message.content == 'yes':
-                    reply = "MESSAGE_TO_MODERATOR_LOGS\n"
-                    reply += "Moderator has determined the previous report is indeed in violation of community guidelines. The previous actions will be taken." + "\n-\n-\n"
-                    await mod_channel.send(reply)
-                elif message.content == 'no':
-                    reply = "MESSAGE_TO_MODERATOR_LOGS\n"
-                    reply += "Moderator has determined the previous report was not in violation of community guidelines. No further action is needed." + "\n-\n-\n"
-                else:
-                    reply = "MESSAGE_TO_MODERATOR_LOGS\n"
-                    reply += "That is not a valid choice; please select 'yes' or 'no'" + "\n-\n-\n"
-                mod_channel.send(reply)
-                self.waiting_mod = 0
+        try:
+            mod_channel = self.mod_channels[message.guild.id]
+    
+            if message.channel.name == f'group-{self.group_num}-mod':
+                if self.waiting_mod == 1:
+                    if message.content == 'yes':
+                        reply = "MESSAGE_TO_MODERATOR_LOGS\n"
+                        reply += "Moderator has determined the previous report is indeed in violation of community guidelines. The previous actions will be taken." + "\n-\n-\n"
+                        await mod_channel.send(reply)
+                    elif message.content == 'no':
+                        reply = "MESSAGE_TO_MODERATOR_LOGS\n"
+                        reply += "Moderator has determined the previous report was not in violation of community guidelines. No further action is needed." + "\n-\n-\n"
+                    else:
+                        reply = "MESSAGE_TO_MODERATOR_LOGS\n"
+                        reply += "That is not a valid choice; please select 'yes' or 'no'" + "\n-\n-\n"
+                    mod_channel.send(reply)
+                    self.waiting_mod = 0
+                    
+        except Exception as e:
+                # Get the stack trace as a string
+                stack_trace = traceback.format_exc()
+                
+                # Construct the error message with detailed information
+                error_message = (
+                    "Oops! Something went wrong. Here's the error message and additional details:\n\n"
+                    f"Error Type: {type(e).__name__}\n"
+                    f"Error Details: {str(e)}\n\n"
+                    "Stack Trace:\n"
+                    f"{stack_trace}"
+                )
+                
+                # Send the detailed error message to the Discord channel
+                await message.channel.send(error_message)
+                return
 
 
         if not message.channel.name == f'group-{self.group_num}':
