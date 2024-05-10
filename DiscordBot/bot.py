@@ -112,8 +112,8 @@ class ModBot(discord.Client):
             self.reviews[review.thread.id] = review
 
     async def handle_channel_message(self, message):
-        await self.reviews[message.channel.id].handle_message(message)
-        return
+        if message.channel.id in self.reviews:
+            await self.reviews[message.channel.id].handle_message(message)
 
         # Disable until automatic flagging in place
 
