@@ -73,7 +73,7 @@ class ModReport:
             self.state = State.REPORT_COMPLETE
             return ["Report processing cancelled."]
         
-        if self.state == State.START_KEYWORD:
+        if self.state == State.REPORT_START:
             reply =  "Thank you for starting the moderator review process. "
             reply += "Say `help` at any time for more information.\n\n"
             if not caseno_to_info:

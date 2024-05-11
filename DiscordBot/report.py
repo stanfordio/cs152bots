@@ -158,7 +158,7 @@ class Report:
             except:
                 return [SPECIFIC_OPTIONS[self.abuse_type]]
             
-            if selection < 1 or (selection > 2 and self.abuse_type == 1) or (selection > 3 and self.abuse_type == 2 ) or (selection > 3 and self.abuse_type ==3) or (selection > 4 and self.abuse_type >=4):
+            if selection < 1 or (selection > 2 and self.abuse_type == 1) or (selection > 3 and self.abuse_type == 2 ) or (selection > 4 and self.abuse_type >=3):
                 return ["Please type a valid number of the content type you see."]
             
             if self.abuse_type == 4 or self.abuse_type == 5:
