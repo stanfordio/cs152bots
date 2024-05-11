@@ -27,7 +27,7 @@ CLOSING_MESSAGES = {
 ABUSE_STRINGS = {
     1: "Imminent Danger",
     2: "Spam",
-    3: "Graphic Media or Nudity",
+    3: "Nude or Graphic Media",
     4: "Disinformation",
     5: "Hate speech/harrassment",
     6: "Other"
@@ -68,7 +68,7 @@ class Report:
         self.report_no = '#' + str(Report.report_no)
         Report.report_no += 1
         
-        # 1 is Imminent Danger, 2 is Spam, 3 is Nudity or Graphic, 4 is Disinformation, 5 is Hate speech/harrassment, 6 is Other
+        # 1 is Imminent Danger, 2 is Spam, 3 is Nude or Graphic Media, 4 is Disinformation, 5 is Hate speech/harrassment, 6 is Other
         self.abuse_type = None
         self.requires_forwarding = False
         self.forward_abuse_string = '' #used to detail the first level abuse
@@ -120,7 +120,7 @@ class Report:
             #         "if you want to report, please specify the type of AI-generated content you see."] \
                 
             out = ['Does the image contain any people? Do you think it is a deepfake and harmful? If so, please continue reading!\n']
-            out +=    [' You can select from\n1. Imminent Danger\n2. Spam\n3. Nudity or Graphic\n4. Disinformation\n5. Hate speech/harrassment\n6. Other (including satire, memes, commentary, couterspeech, etc.)\n'] \
+            out +=    [' You can select from\n1. Imminent Danger\n2. Spam\n3. Nude or Graphic Media\n4. Disinformation\n5. Hate speech/harrassment\n6. Other (including satire, memes, commentary, couterspeech, etc.)\n'] \
                             + ['Please type the number of the content type you see.\nIf the image has no people in it or is not harmful, then please press 6']
             
             
