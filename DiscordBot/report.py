@@ -5,11 +5,11 @@ import re
 
 # options given to users to select from to make 
 SPECIFIC_OPTIONS = {
-    1: "Please select the type of imminent danger you see:\n1. Credible threat of violence\n 2. Suicidal content or self-harm.",
-    2: "Please select the type of spam you see:\n1. Fraud\n2. Solicitation\n3. Impersonation.",
-    3: "Please select the type of nudity or graphic content you see:\n1. Of you (revenge porn or sextortion)\n2. Of a minor\n3. Harassment\n4. Other.",
-    4: "Please select the type of disinformation you see:\n1. Targeted at political candidates/figures\n2. Imposter\n3. False context\n4. Fabricated content.",
-    5: "Please select the type of hate speech/harrassment you see:\n1. Bullying\n2. Hate speech directed at me/specific group of people\n3. Unwanted sexual content\n4. Revealing Private Information.",
+    1: "Please select the type of imminent danger you see:\n1. Credible threat of violence\n 2. Suicidal content or self-harm",
+    2: "Please select the type of spam you see:\n1. Fraud\n2. Solicitation\n3. Impersonation",
+    3: "Please select the type of nudity or graphic content you see:\n1. Directed at you (e.g., porn, violence, sextortion)\n2. Directed at a minor\n3. Harassment\n4. Other",
+    4: "Please select the type of disinformation you see:\n1. Targeted at political candidates/figures\n2. Imposter\n3. False context\n4. Fabricated content",
+    5: "Please select the type of hate speech/harrassment you see:\n1. Bullying\n2. Hate speech directed at me/specific group of people\n3. Unwanted sexual content\n4. Revealing Private Information",
 }
 
 # closing messages given to the user, before their report is processed
@@ -27,7 +27,7 @@ CLOSING_MESSAGES = {
 ABUSE_STRINGS = {
     1: "Imminent Danger",
     2: "Spam",
-    3: "Nudity or Graphic",
+    3: "Graphic Media or Nudity",
     4: "Disinformation",
     5: "Hate speech/harrassment",
     6: "Other"
