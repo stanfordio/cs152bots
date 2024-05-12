@@ -1,4 +1,4 @@
-rom enum import Enum, auto
+from enum import Enum, auto
 import discord
 import re
 
