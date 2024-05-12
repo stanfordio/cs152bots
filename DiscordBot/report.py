@@ -185,7 +185,7 @@ class Report:
             self.state = State.REPORT_COMPLETE
             if selection == 'yes':
                 self.keep_AI = False
-                return ['Done'!]
+                return ['Done!']
             if selection == 'no':
                 self.keep_AI = True
 		return ['Okay.']
