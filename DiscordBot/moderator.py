@@ -7,7 +7,7 @@ OPTIONS_MESSAGE_2 = 'Please select the category that best reflects the image and
 # OPTIONS_MESSAGE_2 += '1. Satire, memes, political commentary\n2. Disinformation\n3. Nudity/Graphic\n4. Imminent danger\n5. Financial Spam\n6. Other spam\n7. Hate speech/harassment\n8. Other'
 OPTIONS_MESSAGE_2 += 'You can select from\n1. Imminent Danger\n2. Spam (financial or other) \n3. Nude or Graphic Media\n4. Disinformation\n5. Hate speech/harrassment\n6. Other (including satire, memes, commentary, couterspeech, etc.)\nPlease type the number of the content type you see.\nIf the image has no people in it or is not harmful, then please press 6'
 
-NUDITY_OPTIONS_MESSAGE = 'Is this content\n1. Of you (revenge porn, sextortion, etc)\n2. Is it of a minor\n3. Used for harassment\n4. Other'
+NUDITY_OPTIONS_MESSAGE = 'Is this content\n1. Of you (revenge porn, sextortion, etc)\n2. Of a minor\n3. Used for harassment\n4. Other'
 SPAM_OPTIONS_MESSAGE = 'Is this content\n1. Financial spam\n2. Other spam'
 
 END_MESSAGE = 'This content is considered within the rules of the server. This report is considered processed and done!'
