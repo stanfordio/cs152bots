@@ -19,7 +19,7 @@ CLOSING_MESSAGES = {
     3: ['Thank you for reporting. Our content moderation team will review this report and will take appropriate steps to flag, censor,  or remove this content.'],
     4: ['Thank you for reporting. Our content moderation team will review the report and decide on the appropriate actions. This may include flagging of the content as AI-generated.\nWould you like us to remove all detected AI-generated content in from your feed the future?'],
     5: ['Thank you for reporting. Our content moderation team will review the report and decide on the appropriate actions. This may include flagging of the content as AI-generated.\nWould you like us to remove all detected AI-generated content in from your feed the future?'],
-    6: ["Thank you for reporting. This content does not violate our policy of AI-generated content, and likely will not be removed. If this content poses a threat or is harmful, please try reporting again in another category.."]
+    6: ["Thank you for reporting. This content does not violate our policy of AI-generated content, and likely will not be removed. If this content poses a threat or is harmful, please try reporting again in another category."]
 }
 
 
