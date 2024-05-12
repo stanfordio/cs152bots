@@ -1,15 +1,15 @@
-from enum import Enum, auto
+rom enum import Enum, auto
 import discord
 import re
 
 
 # options given to users to select from to make 
 SPECIFIC_OPTIONS = {
-    1: "Please select the type of imminent danger you see:\n1. Credible threat of violence\n 2. Suicidal content or self-harm\n3.Other",
-    2: "Please select the type of spam you see:\n1. Fraud\n2. Solicitation\n3. Impersonation\n4.Other",
+    1: "Please select the type of imminent danger you see:\n1. Credible threat of violence\n 2. Suicidal content or self-harm\n3. Other",
+    2: "Please select the type of spam you see:\n1. Fraud\n2. Solicitation\n3. Impersonation\n4. Other",
     3: "Please select the type of nudity or graphic content you see:\n1. Directed at you (e.g., porn, violence, sextortion)\n2. Directed at a minor\n3. Harassment\n4. Other",
     4: "Please select the type of disinformation you see:\n1. Directed at a political figure\n2. Directed at a private individual\n3. Directed at an organization \n4. Other",
-    5: "Please select the type of hate speech/harrassment you see:\n1. Bullying\n2. Hate speech directed at me/specific group of people\n3. Unwanted sexual content\n4. Revealing Private Information\n5.Other",
+    5: "Please select the type of hate speech/harrassment you see:\n1. Bullying\n2. Hate speech directed at me/specific group of people\n3. Unwanted sexual content\n4. Revealing Private Information\n5. Other",
 }
 
 # closing messages given to the user, before their report is processed
@@ -185,10 +185,11 @@ class Report:
             self.state = State.REPORT_COMPLETE
             if selection == 'yes':
                 self.keep_AI = False
+                return ['Done'!]
             if selection == 'no':
                 self.keep_AI = True
+		return ['Okay.']
             
-            return ['Done!']
 
 
         return []
