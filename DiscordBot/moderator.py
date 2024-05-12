@@ -2,7 +2,7 @@ from enum import Enum, auto
 import discord
 import re
 
-OPTIONS_MESSAGE_1 = 'Is this a deep fake with a person in it? Please respond with yes or no.'
+# OPTIONS_MESSAGE_1 = 'Is this a deep fake with a person in it? Please respond with yes or no.'
 OPTIONS_MESSAGE_2 = 'Please select the category that best reflects the image and message content:\n'
 # OPTIONS_MESSAGE_2 += '1. Satire, memes, political commentary\n2. Disinformation\n3. Nudity/Graphic\n4. Imminent danger\n5. Financial Spam\n6. Other spam\n7. Hate speech/harassment\n8. Other'
 OPTIONS_MESSAGE_2 += 'You can select from\n1. Imminent Danger\n2. Spam (financial or other) \n3. Nude or Graphic Media\n4. Disinformation\n5. Hate speech/harrassment\n6. Other (including satire, memes, commentary, couterspeech, etc.)\nPlease type the number of the content type you see.\nIf the image has no people in it or is not harmful, then please press 6'
@@ -39,7 +39,7 @@ SPAM_MESSAGE = {
 class State(Enum):
     REPORT_START = auto()
     AWAITING_COMMAND = auto()
-    AWAITING_PEOPLE_STATE = auto()
+    # AWAITING_PEOPLE_STATE = auto()
     AWAITING_ABUSE_TYPE = auto()
     NUDITY_FLOW = auto()
     
@@ -91,9 +91,15 @@ class ModReport:
                 reply += "Please type `RETRIEVE` followed by a case number, `MOST RECENT`, or `HIGH PRIORITY` to retrieve a case."
                 self.state = State.AWAITING_COMMAND
             return [reply]
+
+        message_content = message.content.split()
+            
+        if message_content[0].lower() == ModReport.HELP_KEYWORD:
+            return ['Please type `RETRIEVE` followed by a case number, `MOST RECENT`, or `HIGH PRIORITY` to retrieve a case.']
         
         if self.state == State.AWAITING_COMMAND:
-            message_content = message.content.split()
+            
+            
             if message_content[0].upper() != 'RETRIEVE':
                 return_message = 'Invalid command. Please type RETRIEVE followed by a case number, \'MOST RECENT\' or \'HIGH PRIORITY\' to retrieve a case or EXECUTE followed by a case number, target, and action to close a case.'
                 # await message.channel.send(return_message)
@@ -115,7 +121,7 @@ class ModReport:
                         if package[1]:
                             out.append(await package[1].to_file())
                         out.append(package[2])
-                        out.append(OPTIONS_MESSAGE_1)
+                        # out.append(OPTIONS_MESSAGE_1)
                         return out
                     else:
                         return ['Case not found.']
@@ -123,7 +129,7 @@ class ModReport:
                     return ['Invalid case number.']
             elif message_content[0].upper() == 'RETRIEVE' and 'MOST RECENT' in message.content.upper():
                 if most_recent:
-                    self.state = State.AWAITING_PEOPLE_STATE
+                    self.state = State.AWAITING_ABUSE_TYPE
                     out = []
                     package = most_recent
                     self.report_no = package[-1]
@@ -131,7 +137,7 @@ class ModReport:
                     if package[1]:
                         out.append(await package[1].to_file())
                     out.append(package[2])
-                    out.append(OPTIONS_MESSAGE_1)
+                    # out.append(OPTIONS_MESSAGE_1)
                     return out
                 else:
                     return ['No cases found.']
@@ -142,29 +148,15 @@ class ModReport:
                         out = []
                         package = awaiting_mod_dict[key][min(awaiting_mod_dict[key].keys())]
                         self.report_no = package[-1]
-                        self.state = State.AWAITING_PEOPLE_STATE
+                        self.state = State.AWAITING_ABUSE_TYPE
                         out.append(package[0])
                         if package[1]:
                             out.append(await package[1].to_file())
                         out.append(package[2])
-                        out.append(OPTIONS_MESSAGE_1)
+                        # out.append(OPTIONS_MESSAGE_1)
                         return out
                 else:
                     return ['No high priority cases found.']
-        
-        if self.state == State.AWAITING_PEOPLE_STATE:
-            try:
-                selection = message.content.lower()
-                if selection.lower() == 'yes':
-                    self.state = State.AWAITING_ABUSE_TYPE
-                    return [OPTIONS_MESSAGE_2]
-                elif selection.lower() == 'no':
-                    self.state = State.REPORT_COMPLETE
-                    return [END_MESSAGE]
-                else:
-                    return ['Please type yes or no.']
-            except:
-                return ['Please type yes or no.']
         
         if self.state == State.AWAITING_ABUSE_TYPE:
             try:
