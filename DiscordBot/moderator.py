@@ -6,7 +6,7 @@ OPTIONS_MESSAGE_1 = 'Is this a deep fake with a person in it? Please respond wit
 OPTIONS_MESSAGE_2 = 'Please select the category that best reflects the image and message content:\n'
 OPTIONS_MESSAGE_2 += '1. Satire, memes, political commentary\n2. Disinformation\n3. Nudity/Graphic\n4. Imminent danger\n5. Financial Spam\n6. Other spam\n7. Hate speech/harassment\n8. Other'
 
-NUDITY_OPTIONS_MESSAGE = 'Is this content\n1. Of you (revenge porn, sextortion, etc)\n2. Is it of a minor\n3. Used for harassment\n4. Other'
+NUDITY_OPTIONS_MESSAGE = 'Is this content\n1. Of you (revenge porn, sextortion, etc)\n2. Of a minor\n3. Used for harassment\n4. Other'
 
 END_MESSAGE = 'This content is considered within the rules of the server. This report is considered processed and done!'
 

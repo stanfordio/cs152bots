@@ -174,6 +174,7 @@ class ModBot(discord.Client):
         # If we don't currently have an active report for this user, add one
         if author_id not in self.mod_reports:
             self.mod_reports[author_id] = ModReport(self)
+        print(f"HERE, caseno_to_info: {self.caseno_to_info}")
         
         response = await self.mod_reports[author_id].handle_message(message, self.awaiting_mod_decisions, self.caseno_to_info, self.most_recent)
         
