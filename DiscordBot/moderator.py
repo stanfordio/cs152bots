@@ -4,21 +4,23 @@ import re
 
 OPTIONS_MESSAGE_1 = 'Is this a deep fake with a person in it? Please respond with yes or no.'
 OPTIONS_MESSAGE_2 = 'Please select the category that best reflects the image and message content:\n'
-OPTIONS_MESSAGE_2 += '1. Satire, memes, political commentary\n2. Disinformation\n3. Nudity/Graphic\n4. Imminent danger\n5. Financial Spam\n6. Other spam\n7. Hate speech/harassment\n8. Other'
+# OPTIONS_MESSAGE_2 += '1. Satire, memes, political commentary\n2. Disinformation\n3. Nudity/Graphic\n4. Imminent danger\n5. Financial Spam\n6. Other spam\n7. Hate speech/harassment\n8. Other'
+OPTIONS_MESSAGE_2 += 'You can select from\n1. Imminent Danger\n2. Spam (financial or other) \n3. Nude or Graphic Media\n4. Disinformation\n5. Hate speech/harrassment\n6. Other (including satire, memes, commentary, couterspeech, etc.)\nPlease type the number of the content type you see.\nIf the image has no people in it or is not harmful, then please press 6'
 
 NUDITY_OPTIONS_MESSAGE = 'Is this content\n1. Of you (revenge porn, sextortion, etc)\n2. Is it of a minor\n3. Used for harassment\n4. Other'
+SPAM_OPTIONS_MESSAGE = 'Is this content\n1. Financial spam\n2. Other spam'
 
 END_MESSAGE = 'This content is considered within the rules of the server. This report is considered processed and done!'
 
 # these are displayed at the end of moderator reports for everything except for nudity report
 BOT_ACTIONS = {
-    1: ['Flagged content as AI generated. This report is considered processed and done!'],
-    2: ['Flagged content as AI generated. This report is considered processed and done!'],
-    7: ['Flagged content as AI generated, and the author of the content has been assigned a strike. This report is considered processed and done!'],
-    4: ['The content has been removed and the authorities have been notified. This report is considered processed and done!'],
-    6: ['The content has been removed and the author has been assigned a strike. This report is considered processed and done!'],
-    5: ['The content has been removed, the user has been banned, and the authorities have been notified. This report is considered processed and done!'],
-    8: ['This content is considered within the rules of the server. This report is considered processed and done!'],
+    # 1: ['Flagged content as AI generated. This report is considered processed and done!'],
+    4: ['Flagged content as AI generated. This report is considered processed and done!'],
+    5: ['Flagged content as AI generated, and the author of the content has been assigned a strike. This report is considered processed and done!'],
+    1: ['The content has been removed and the authorities have been notified. This report is considered processed and done!'],
+    # 6: ['The content has been removed and the author has been assigned a strike. This report is considered processed and done!'],
+    # 5: ['The content has been removed, the user has been banned, and the authorities have been notified. This report is considered processed and done!'],
+    6: ['This content is considered within the rules of the server. This report is considered processed and done!'],
 }
 
 # these are displayed at the end of moderator reports for nudity reports
@@ -27,6 +29,11 @@ NUDITY_MESSAGE = {
     2: ['This content has been removed, the author has been banned, and the authorities have been notified. This report is considered processed and done!'],
     3: ['This content has been removed, and the author of the content has been assigned a strike. This report is considered processed and done!'],
     4: ['This content is considered within the rules of the serve, and has been blurred. This report is considered processed and done!'],
+}
+
+SPAM_MESSAGE = {
+    1: ['This content has been removed, the author has been banned, and the authorities have been notified. This report is considered processed and done!'],
+    2: ['The content has been removed and the author has been assigned a strike. This report is considered processed and done!'],
 }
 
 class State(Enum):
@@ -61,6 +68,8 @@ class ModReport:
         self.forward_abuse_string = '' #used to detail the first level abuse
         self.specific_abuse_string = ''#used to detail the second level abuse
         self.keep_AI = True
+        
+        self.report_no = None
     
     async def handle_message(self, message, awaiting_mod_dict, caseno_to_info, most_recent):
         '''
@@ -100,6 +109,7 @@ class ModReport:
                     case_number = '#' + str(case_number)
                     if case_number in caseno_to_info:
                         package = caseno_to_info[case_number]
+                        self.report_no = package[-1]
                         out = []
                         out.append(package[0])
                         if package[1]:
@@ -116,6 +126,7 @@ class ModReport:
                     self.state = State.AWAITING_PEOPLE_STATE
                     out = []
                     package = most_recent
+                    self.report_no = package[-1]
                     out.append(package[0])
                     if package[1]:
                         out.append(await package[1].to_file())
@@ -130,6 +141,7 @@ class ModReport:
                     if awaiting_mod_dict[key]:
                         out = []
                         package = awaiting_mod_dict[key][min(awaiting_mod_dict[key].keys())]
+                        self.report_no = package[-1]
                         self.state = State.AWAITING_PEOPLE_STATE
                         out.append(package[0])
                         if package[1]:
@@ -167,6 +179,9 @@ class ModReport:
                 if curr_abuse == 3:
                     self.state = State.NUDITY_FLOW
                     return [NUDITY_OPTIONS_MESSAGE]
+                elif curr_abuse == 2:
+                    self.state = State.NUDITY_FLOW
+                    return [SPAM_OPTIONS_MESSAGE]
                 return BOT_ACTIONS[curr_abuse]
             else:
                 self.state = State.REPORT_COMPLETE
@@ -179,11 +194,21 @@ class ModReport:
             except:
                 return [NUDITY_OPTIONS_MESSAGE]
             
-            if selection < 1 or selection > 4:
+            if self.abuse_type == 3 and selection < 1 or selection > 4:
                 return ["Please type a valid number of the content type you see."]
+            elif self.abuse_type == 3:
+                self.state = State.REPORT_COMPLETE
+                return NUDITY_MESSAGE[selection]
+            if self.abuse_type == 2 and selection < 1 or selection > 2:
+                return ["Please type a valid number of the content type you see."]
+            elif self.abuse_type == 2:
+                self.state = State.REPORT_COMPLETE
+                return SPAM_MESSAGE[selection]
+            # self.state = State.REPORT_COMPLETE
+            # return SPAM_MESSAGE[selection]
             
-            self.state = State.REPORT_COMPLETE
-            return NUDITY_MESSAGE[selection]
+    def report_complete(self):
+        return self.state == State.REPORT_COMPLETE
         
 
     

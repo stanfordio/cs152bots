@@ -37,7 +37,7 @@ class ModBot(discord.Client):
         self.reports = {} # Map from user IDs to the state of their report
         self.mod_reports = {}
         
-        self.awaiting_mod_decisions = {1: {}, 2: {}, 3:{}, 4:{}, 5:{}} # Maps from abuse types to a list of tuples containing report id, the message object, and images
+        self.awaiting_mod_decisions = {1: {}, 2: {}, 3:{}, 4:{}, 5:{}, 6:{}, 7:{}, 8:{}} # Maps from abuse types to a list of tuples containing report id, the message object, and images
         self.caseno_to_info = {} # Maps from report id to a tuple defined below
         self.most_recent = None
 
@@ -177,17 +177,29 @@ class ModBot(discord.Client):
         
         response = await self.mod_reports[author_id].handle_message(message, self.awaiting_mod_decisions, self.caseno_to_info, self.most_recent)
         
-        for r in response:
-            if type(r) == str:
-                await message.channel.send(r)
-            else:
-                await message.channel.send(file = r)
+        if response:
+            for r in response:
+                if type(r) == str:
+                    await message.channel.send(r)
+                else:
+                    await message.channel.send(file = r)
+        else:
+            await message.channel.send("I'm sorry, I didn't understand that command. Please type `start` and then `help` for more information.")
         
         if self.mod_reports[author_id].report_complete():
+            # print(self.awaiting_mod_decisions)
+            # print(self.mod_reports[author_id].abuse_type, self.mod_reports[author_id].report_no)
+            
+            self.awaiting_mod_decisions[self.caseno_to_info[self.mod_reports[author_id].report_no][-2]].pop(self.mod_reports[author_id].report_no)
             self.caseno_to_info.pop(self.mod_reports[author_id].report_no)
-            self.awaiting_mod_decisions[self.mod_reports[author_id].abuse_type].pop(self.mod_reports[author_id].report_no)
             if self.most_recent[5] == self.mod_reports[author_id].report_no:
                 self.most_recent = None
+                # Find the most recent report
+                for key in self.caseno_to_info:
+                    if not self.most_recent or int(self.caseno_to_info[key][-1][1:]) > int(self.most_recent[-1][1:]):
+                        self.most_recent = self.caseno_to_info[key]
+            
+            self.mod_reports.pop(author_id)
 
     
     def eval_text(self, message):
