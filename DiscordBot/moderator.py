@@ -51,6 +51,7 @@ class State(Enum):
     # AWAIT_SPECIFIC_TYPE = auto()
     
     # AWAIT_AI_REMOVAL = auto()
+    REPORT_CANCELLED = auto()
     
 class ModReport:
     START_KEYWORD = 'start'
@@ -79,12 +80,13 @@ class ModReport:
         '''
 
         if message.content == self.CANCEL_KEYWORD:
-            self.state = State.REPORT_COMPLETE
+            self.state = State.REPORT_CANCELLED
             return ["Report processing cancelled."]
         
         if self.state == State.REPORT_START:
             reply =  "Thank you for starting the moderator review process. "
-            reply += "Say `help` at any time for more information.\n\n"
+            reply += "Say `help` at any time for more information.\n"
+            reply += 'Say `cancel` at any time to cancel the report.\n\n'
             if not caseno_to_info:
                 reply += "No cases have been reported yet."
             else:
@@ -98,8 +100,6 @@ class ModReport:
             return ['Please type `RETRIEVE` followed by a case number, `MOST RECENT`, or `HIGH PRIORITY` to retrieve a case.']
         
         if self.state == State.AWAITING_COMMAND:
-            
-            
             if message_content[0].upper() != 'RETRIEVE':
                 return_message = 'Invalid command. Please type RETRIEVE followed by a case number, \'MOST RECENT\' or \'HIGH PRIORITY\' to retrieve a case or EXECUTE followed by a case number, target, and action to close a case.'
                 # await message.channel.send(return_message)
@@ -156,7 +156,7 @@ class ModReport:
                         out.append(OPTIONS_MESSAGE_2)
                         return out
                 else:
-                    return ['No high priority cases found.']
+                    return ['No high priority cases found. Please type `RETRIEVE` followed by a case number, `MOST RECENT`, or `HIGH PRIORITY` to retrieve a case.']
         
         if self.state == State.AWAITING_ABUSE_TYPE:
             try:
@@ -201,6 +201,9 @@ class ModReport:
             
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
+    
+    def report_cancelled(self):
+        return self.state == State.REPORT_CANCELLED
         
 
     

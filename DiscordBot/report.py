@@ -139,10 +139,6 @@ class Report:
             if self.abuse_type not in SPECIFIC_OPTIONS:
                 self.state = State.REPORT_COMPLETE
                 curr_abuse = self.abuse_type
-                # if curr_abuse == 3:
-                #     self.requires_forwarding = True
-                #     self.forward_abuse_string = ABUSE_STRINGS[curr_abuse]
-                #     return CLOSING_MESSAGES[curr_abuse]
                 if curr_abuse == 6:
                     self.requires_forwarding = True
                     self.forward_abuse_string = ABUSE_STRINGS[curr_abuse]

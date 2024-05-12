@@ -208,6 +208,10 @@ class ModBot(discord.Client):
                         self.most_recent = self.caseno_to_info[key]
             
             self.mod_reports.pop(author_id)
+        
+        elif self.mod_reports[author_id].report_cancelled():
+            self.mod_reports.pop(author_id)
+            
 
     
     def eval_text(self, message):
