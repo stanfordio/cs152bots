@@ -188,7 +188,7 @@ class Report:
                 return ['Done!']
             if selection == 'no':
                 self.keep_AI = True
-		return ['Okay.']
+                return ['Okay.']
             
 
 
