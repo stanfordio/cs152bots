@@ -5,11 +5,11 @@ import re
 
 # options given to users to select from to make 
 SPECIFIC_OPTIONS = {
-    1: "Please select the type of imminent danger you see:\n1. Credible threat of violence\n 2. Suicidal content or self-harm",
-    2: "Please select the type of spam you see:\n1. Fraud\n2. Solicitation\n3. Impersonation",
+    1: "Please select the type of imminent danger you see:\n1. Credible threat of violence\n2. Suicidal content or self-harm\n3. Other",
+    2: "Please select the type of spam you see:\n1. Fraud\n2. Solicitation\n3. Impersonation\n4. Other",
     3: "Please select the type of nudity or graphic content you see:\n1. Directed at you (e.g., porn, violence, sextortion)\n2. Directed at a minor\n3. Harassment\n4. Other",
-    4: "Please select the type of disinformation you see:\n1. Targeted at political candidates/figures\n2. Imposter\n3. False context\n4. Fabricated content",
-    5: "Please select the type of hate speech/harrassment you see:\n1. Bullying\n2. Hate speech directed at me/specific group of people\n3. Unwanted sexual content\n4. Revealing Private Information",
+    4: "Please select the type of disinformation you see:\n1. Directed at a political figure\n2. Directed at a private individual\n3. Directed at an organization \n4. Other",
+    5: "Please select the type of hate speech/harrassment you see:\n1. Bullying\n2. Hate speech directed at me/specific group of people\n3. Unwanted sexual content\n4. Revealing Private Information\n5. Other",
 }
 
 # closing messages given to the user, before their report is processed
@@ -19,7 +19,7 @@ CLOSING_MESSAGES = {
     3: ['Thank you for reporting. Our content moderation team will review this report and will take appropriate steps to flag, censor,  or remove this content.'],
     4: ['Thank you for reporting. Our content moderation team will review the report and decide on the appropriate actions. This may include flagging of the content as AI-generated.\nWould you like us to remove all detected AI-generated content in from your feed the future?'],
     5: ['Thank you for reporting. Our content moderation team will review the report and decide on the appropriate actions. This may include flagging of the content as AI-generated.\nWould you like us to remove all detected AI-generated content in from your feed the future?'],
-    6: ["Thank you for reporting. This content does not violate our policy as it does not cause significant confusion about the authenticity of the media."]
+    6: ["Thank you for reporting. This content does not violate our policy of AI-generated content, and likely will not be removed. If this content poses a threat or is harmful, please try reporting again in another category."]
 }
 
 
@@ -35,11 +35,11 @@ ABUSE_STRINGS = {
 
 # for the second level response
 SPECIFIC_ABUSE_STRINGS = {
-    1: ["Credible threat of violence", "Suicidal content or self-harm"],
-    2: ["Fraud", "Solicitation", "Impersonation"],
+    1: ["Credible threat of violence", "Suicidal content or self-harm", "Other"],
+    2: ["Fraud", "Solicitation", "Impersonation", "Other"],
     3: ["Of you (revenge porn or sextortion)", "Of a minor", 'Harassment', "Other"],
-    4: ["Targeted at political candidates/figures", "Imposter", "False context", "Fabricated content"],
-    5: ["Bullying", "Hate speech directed at me/specific group of people", "Unwanted sexual content", "Revealing Private Information"]
+    4: ["Directed at a political figure", "Directed at a private indivdual", "Directed at an organization", "Other"],
+    5: ["Bullying", "Hate speech directed at me/specific group of people", "Unwanted sexual content", "Revealing private information", "Other"]
 }
 
 class State(Enum):
@@ -158,7 +158,7 @@ class Report:
             except:
                 return [SPECIFIC_OPTIONS[self.abuse_type]]
             
-            if selection < 1 or (selection > 2 and self.abuse_type == 1) or (selection > 3 and self.abuse_type == 2 ) or (selection > 4 and self.abuse_type >=3):
+            if selection < 1 or (selection > 3 and self.abuse_type == 1) or (selection > 5 and self.abuse_type == 5) or (selection > 4 and (self.abuse_type == 2 or self.abuse_type == 3 or self.abuse_type == 4)):
                 return ["Please type a valid number of the content type you see."]
             
             if self.abuse_type == 4 or self.abuse_type == 5:
@@ -185,10 +185,11 @@ class Report:
             self.state = State.REPORT_COMPLETE
             if selection == 'yes':
                 self.keep_AI = False
+                return ['Done!']
             if selection == 'no':
                 self.keep_AI = True
+                return ['Okay.']
             
-            return ['Done!']
 
 
         return []
