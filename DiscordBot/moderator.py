@@ -121,7 +121,7 @@ class ModReport:
                         if package[1]:
                             out.append(await package[1].to_file())
                         out.append(package[2])
-                        # out.append(OPTIONS_MESSAGE_1)
+                        out.append(OPTIONS_MESSAGE_2)
                         return out
                     else:
                         return ['Case not found.']
@@ -137,7 +137,7 @@ class ModReport:
                     if package[1]:
                         out.append(await package[1].to_file())
                     out.append(package[2])
-                    # out.append(OPTIONS_MESSAGE_1)
+                    out.append(OPTIONS_MESSAGE_2)
                     return out
                 else:
                     return ['No cases found.']
@@ -153,7 +153,7 @@ class ModReport:
                         if package[1]:
                             out.append(await package[1].to_file())
                         out.append(package[2])
-                        # out.append(OPTIONS_MESSAGE_1)
+                        out.append(OPTIONS_MESSAGE_2)
                         return out
                 else:
                     return ['No high priority cases found.']
