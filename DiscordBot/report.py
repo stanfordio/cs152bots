@@ -123,12 +123,17 @@ class Report:
     def request_source(self, message):
         # TODO: make sure the number is correct based on the previous category 
         # Only called if it is a report of political disinformation
-        if int(message.content) in [5]:
+        if int(message.content) in [SpecificIssue.POLITICAL] and self.user_responses[UserResponse.ABUSE_TYPE] in [SpecificIssue.DISINFORMATION]:
             self.user_responses[UserResponse.SPEC_ISSUE] = int(message.content)
             self.state = State.AWAITING_SOURCE
 
             return ["Please explain the issue with the ad, or provide any sources you might have that could help disprove. Type 'none' if you don't have any."]
+        elif self.user_responses[UserResponse.ABUSE_TYPE] in [SpecificIssue.OTHER]:
+            self.user_responses[UserResponse.SPEC_ISSUE] = int(message.content)
+            self.state = State.AWAITING_SOURCE
+            category = USER_REPORT_KEY[self.user_responses[UserResponse.ABUSE_TYPE]][int(message.content)].lower()
 
+            return [f"Please specify what you are reporting with respect to {category}."]
         elif int(message.content) in [1, 2, 3, 4]:
             self.user_responses[UserResponse.SPEC_ISSUE] = int(message.content)
             self.state = State.REPORT_COMPLETE

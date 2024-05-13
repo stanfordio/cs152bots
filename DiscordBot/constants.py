@@ -3,7 +3,6 @@ from enum import Enum, auto
 class UserResponse(Enum):
     ABUSE_TYPE = "abuse_type"
     SPEC_ISSUE = "specific_issue"
-    ADD_INFO = "additional_info"
     SOURCE = "source"
     FINAL_NOTE = "final_note"
 
@@ -40,15 +39,14 @@ USER_REPORT_KEY = {
     4: {
         "name": "Offensive Content",
         1: "Profanity",
-        2: "Hate Speech",
-        3: "Violent Imagery"
+        2: "Hate speech",
+        3: "Violent imagery"
     },
     5: {
-        "name": "Misleading or False Information",
-        1: "Deepfakes and deceptive AI-generated content",
-        2: "Deceptive offers",
-        3: "Impersonation",
-        4: "Manipulated Media",
-        5: "Political Disinformation"
+        "name": "Other",
+        1: "Technical issues",
+        2: "Privacy issues",
+        3: "Feedback on ad preferences",
+        4: "Other concerns"
     }
 }

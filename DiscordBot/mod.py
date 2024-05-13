@@ -41,10 +41,17 @@ class ModReview:
             reply += "Say `help` at any time for more information.\n\n"
             reply += "Below is the reported message: \n"
             reply += f'{self.reported_message.author.name}: "{self.reported_message.content}"\n\n'
-            reply += f'The post was categorized as {reported_abuse_desc}. Speficially, it is categorized as {reported_specifics_desc}. Is this accurate? (y/n) \n'
+            
+            if reported_abuse != SpecificIssue.OTHER:
+                reply += f'The post was categorized as {reported_abuse_desc}. Speficially, it is categorized as {reported_specifics_desc}. Is this accurate? (y/n) \n'
 
-            self.state = State.AWAITING_CONFIRMATION
-            return [reply]
+                self.state = State.AWAITING_CONFIRMATION
+                return [reply]
+            else:
+                self.state = State.REVIEW_COMPLETE
+                comments = self.report_info[UserResponse.SOURCE]
+                author = self.reported_message.author.name
+                return [f'{author} had the following comments about {reported_specifics_desc}: \n\n "{comments}" \n\n The review has been closed.']
         
         elif self.state == State.AWAITING_CONFIRMATION:
             if message.content == 'y':
@@ -213,14 +220,15 @@ class ModReview:
 
         return [f'We have banned {self.reported_message.author.name}. Thank you for completing the moderator review of this post.']
 
-    def process_adversarial():
+    def process_adversarial(self):
         return ["Would you like to ban the reporter of the message? (y/n)"]
 
     async def ban_reporter(self):
         # send a DM indicating reporter was banned
         await self.author_dm_channel.send("(Simulated ban) You have been banned from reporting messages in the server, due to coordinated harrassment via reporting.")
 
-        return [f"We have banned {self.report_info["reporter"]}. Thank you for completing the moderator review of this post."] 
+        reporter = self.report_info["reporter"]
+        return [f"We have banned {reporter}. Thank you for completing the moderator review of this post."] 
 
     def finish_review(self):
         return ["Thank you for completing the moderator review of this post."]
