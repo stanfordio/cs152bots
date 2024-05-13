@@ -7,6 +7,7 @@ import logging
 import re
 import requests
 from report import Report
+from mod import ModReview
 import pdb
 
 # Set up logging to the console
@@ -32,8 +33,12 @@ class ModBot(discord.Client):
         intents.message_content = True
         super().__init__(command_prefix='.', intents=intents)
         self.group_num = None
-        self.mod_channels = {} # Map from guild to the mod channel id for that guild
-        self.reports = {} # Map from user IDs to the state of their report
+        self.mod_channels = {}  # Map from guild to the mod channel id for that guild
+        self.reports = {}  # Map from user IDs to the state of their report
+        self.reviews = {}  # Map from user IDs to the state of their review
+        self.report_history = {}  # Map user IDs to number of successful reports
+        self.review_author = None  # Prevents accidental responses by bot in mod_channel
+        self.active_review = {}  
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -79,6 +84,7 @@ class ModBot(discord.Client):
             return
 
         author_id = message.author.id
+        author_dm_channel = message.channel
         responses = []
 
         # Only respond to messages if they're part of a reporting flow
@@ -96,15 +102,20 @@ class ModBot(discord.Client):
 
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():            
-            # send to mod
-            # TODO: 
-            await self.handle_channel_message(self.reports[author_id].message)
+            # From here, send it to mod 
+            report_info = self.reports[author_id].user_responses 
+            report_channel = self.reports[author_id].message.channel
+            await self.handle_message_review(self.reports[author_id].message, report_info, author_dm_channel, report_channel)
 
             self.reports.pop(author_id)        
 
     async def handle_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel
-        if not message.channel.name == f'group-{self.group_num}':
+        # If it's sent in the mod channel then we can handle it as review
+        if message.channel.name == f'group-{self.group_num}-mod' and self.review_author is not None:
+            await self.handle_message_review(message, *self.active_review[self.review_author])
+            return 
+        elif not message.channel.name == f'group-{self.group_num}':
             return
 
         # Forward the message to the mod channel
@@ -112,6 +123,28 @@ class ModBot(discord.Client):
         await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
         scores = self.eval_text(message.content)
         await mod_channel.send(self.code_format(scores))
+  
+    async def handle_message_review(self, message, report_info, author_dm_channel, group_channel):
+        author_id = message.author.id
+        responses = []
+        mod_channel = self.mod_channels[message.guild.id]
+
+        # If we don't currently have an active review for this user, add one
+        if author_id not in self.reviews:
+            self.reviews[author_id] = ModReview(self, report_info, message, self.report_history, author_dm_channel, group_channel)
+            self.active_review[author_id] = (report_info, author_dm_channel, group_channel)
+            self.review_author = author_id
+
+        # Let the report class handle this message; forward all the messages it returns to uss
+        responses = await self.reviews[author_id].handle_message(message)
+        for r in responses:
+            await mod_channel.send(r)
+
+        # If the report is complete or cancelled, remove it from our map
+        if self.reviews[author_id].review_complete():            
+            self.reviews.pop(author_id) 
+            self.active_review.pop(author_id)
+            self.review_author = None
 
     
     def eval_text(self, message):
