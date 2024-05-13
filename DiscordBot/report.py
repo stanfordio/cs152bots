@@ -2,6 +2,7 @@ from enum import Enum, auto
 import discord
 import re
 
+
 class State(Enum):
     REPORT_START = auto()
     AWAITING_MESSAGE = auto()
@@ -16,11 +17,12 @@ class State(Enum):
     AWAITING_BLOCK_ANSWER = auto()
     REPORT_COMPLETE = auto()
 
+
 class Report:
     START_KEYWORD = "report"
     CANCEL_KEYWORD = "cancel"
     HELP_KEYWORD = "help"
-    
+
     EXPLANATION_INPUT_LIMIT = 300
 
     YES_NO_OPTIONS = [
@@ -51,12 +53,11 @@ class Report:
     If you know or suspect intimate images of you or someone under 18 have been leaked, visit Take It Down (https://takeitdown.ncmec.org/) for help.
     Take care of yourself and loved ones. [link to platform's mental health resources]'''
 
-
     def __init__(self, client):
         self.state = State.REPORT_START
         self.client = client
         self.message = None
-    
+
     async def handle_message(self, message):
         '''
         This function makes up the meat of the user-side reporting flow. It defines how we transition between states and what 
@@ -67,15 +68,15 @@ class Report:
         if message.content == self.CANCEL_KEYWORD:
             self.state = State.REPORT_COMPLETE
             return ["Report cancelled."]
-        
+
         if self.state == State.REPORT_START:
-            reply =  "Thank you for starting the reporting process. "
+            reply = "Thank you for starting the reporting process. "
             reply += "Say `help` at any time for more information.\n\n"
             reply += "Please copy paste the link to the message you want to report.\n"
             reply += "You can obtain this link by right-clicking the message and clicking `Copy Message Link`."
             self.state = State.AWAITING_MESSAGE
             return [reply]
-        
+
         if self.state == State.AWAITING_MESSAGE:
             # Parse out the three ID strings from the message link
             m = re.search('/(\d+)/(\d+)/(\d+)', message.content)
@@ -98,8 +99,8 @@ class Report:
 
             return ["I found this message:", "```" + message.author.name + ": " + message.content + "```",
                     self.create_options_list("Select the reason for reporting this message. Don't worry, the person you are reporting against won't know it was you.",
-                                               self.INITIAL_OPTIONS)]
-        
+                                             self.INITIAL_OPTIONS)]
+
         if self.state == State.AWAITING_INITIAL_REASON:
             i = self.get_index(message, self.INITIAL_OPTIONS)
             if i == -1:
@@ -107,7 +108,7 @@ class Report:
             if i == 0:
                 self.state = State.AWAITING_NUDITY_REASON
                 reply = self.create_options_list("Please select which subtype of abuse happened:",
-                                                  self.NUDITY_OPTIONS)
+                                                 self.NUDITY_OPTIONS)
             elif i == 6:
                 self.state = State.AWAITING_EXPLANATION_INPUT
                 reply = f"Please tell us what happened ({self.EXPLANATION_INPUT_LIMIT} word limit)"
@@ -115,7 +116,7 @@ class Report:
                 self.state = State.AWAITING_FINAL_ADDITIONAL_INFORMATION
                 reply = f"Please add any additional information you think is relevant ({self.EXPLANATION_INPUT_LIMIT} word limit)."
             return [reply]
-        
+
         if self.state == State.AWAITING_NUDITY_REASON:
             i = self.get_index(message, self.NUDITY_OPTIONS)
             if i == -1:
@@ -127,7 +128,7 @@ class Report:
                 # TODO: give priority 3
                 pass
             elif i == 2:
-                # TODO: give priority 2 
+                # TODO: give priority 2
                 pass
             if i == 3:
                 self.state = State.AWAITING_NUDITY_EXPLANATION_INPUT
@@ -137,7 +138,7 @@ class Report:
                 reply = self.create_options_list("Does it involve someone under 18, either you or someone else?",
                                                  self.YES_NO_OPTIONS)
             return [reply]
-        
+
         if self.state == State.AWAITING_MINOR_INVOLVEMENT_ANSWER:
             i = self.get_index(message, self.YES_NO_OPTIONS)
             if i == -1:
@@ -150,9 +151,9 @@ class Report:
                 pass
             self.state = State.AWAITING_MET_IN_PERSON_ANSWER
             reply = self.create_options_list("Have you or the person you are reporting on behalf met them in person?",
-                                            self.YES_NO_OPTIONS)
+                                             self.YES_NO_OPTIONS)
             return [reply]
-        
+
         if self.state == State.AWAITING_MET_IN_PERSON_ANSWER:
             i = self.get_index(message, self.YES_NO_OPTIONS)
             if i == -1:
@@ -166,7 +167,7 @@ class Report:
             self.state = State.AWAITING_FINAL_ADDITIONAL_INFORMATION
             reply = f"Please add any additional information you think is relevant ({self.EXPLANATION_INPUT_LIMIT} word limit)."
             return [reply]
-        
+
         if self.state == State.AWAITING_EXPLANATION_INPUT:
             if len(message.content.split()) > self.EXPLANATION_INPUT_LIMIT:
                 reply = f"Please do not exceed the {self.EXPLANATION_INPUT_LIMIT} word limit."
@@ -175,7 +176,7 @@ class Report:
                 self.state = State.AWAITING_FINAL_ADDITIONAL_INFORMATION
                 reply = f"Please add any additional information you think is relevant ({self.EXPLANATION_INPUT_LIMIT} word limit)."
             return [reply]
-        
+
         if self.state == State.AWAITING_NUDITY_EXPLANATION_INPUT:
             if len(message.content.split()) > self.EXPLANATION_INPUT_LIMIT:
                 reply = f"Please do not exceed the {self.EXPLANATION_INPUT_LIMIT} word limit."
@@ -183,39 +184,40 @@ class Report:
                 # TODO: attach explanation to moderator report
                 self.state = State.AWAITING_MINOR_INVOLVEMENT_ANSWER
                 reply = self.create_options_list("Does the abuse involve someone under 18, either you or someone else?",
-                                            self.YES_NO_OPTIONS)
+                                                 self.YES_NO_OPTIONS)
             return [reply]
-        
+
         if self.state == State.AWAITING_FINAL_ADDITIONAL_INFORMATION:
             if len(message.content.split()) > self.EXPLANATION_INPUT_LIMIT:
                 reply = f"Please do not exceed the {self.EXPLANATION_INPUT_LIMIT} word limit."
             else:
                 self.state = State.AWAITING_BLOCK_ANSWER
                 reply = [self.REPORT_COMPLETE_SEXTORTION_MESSAGE,
-                        self.create_options_list("Would you like to block this account?",
-                                                 self.YES_NO_OPTIONS)]
+                         self.create_options_list("Would you like to block this account?",
+                                                  self.YES_NO_OPTIONS)]
             return reply
-        
+
         if self.state == State.AWAITING_BLOCK_ANSWER:
             i = self.get_index(message, self.YES_NO_OPTIONS)
             if i == -1:
                 return ["Please enter a number corresponding to the given options."]
             if i == 0:
                 # TODO: yes, block account
+                reply = "The account you've reported will be blocked. "
                 pass
             # TODO: forward final report to moderator
             self.state = State.REPORT_COMPLETE
-            reply = "Report complete."
+            reply += "Report complete."
             return [reply]
 
         return []
-    
+
     def create_options_list(self, prompt, options):
         res = prompt
         for i, option in enumerate(options):
             res += f"\n\t{i}\. {option}"
         return res
-    
+
     def get_index(self, message, options):
         try:
             i = int(message.content.strip())
@@ -227,8 +229,3 @@ class Report:
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
-    
-
-
-    
-
