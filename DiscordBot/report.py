@@ -83,7 +83,9 @@ class Report:
 
             if message.content.lower() == "yes":
                 self.state = State.MESSAGE_IDENTIFIED
-                self.result["Reported User"] = self.reported_message.author.name
+                #self.result["Reported User"] = self.reported_message.author.name
+                # Demo 
+                self.result["Reported User"] = 'rickzipper234'
                 self.result["Reported Message"] = self.reported_message.content
                 self.abuse_type = None
 

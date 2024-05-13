@@ -47,6 +47,8 @@ class ReportDatabase:
     def create_test_data(self):
         test_user_reports = self.create_test_user_report()
         for i in range(5):
+            #Test false reports
+            #report = ModeratorReport(0, i+1, "manual", test_user_reports[i])
             report = ModeratorReport(i, i+1, "manual", test_user_reports[i])
             self.add_report(report)
 
@@ -74,6 +76,7 @@ class ReportDatabase:
         return len(self.reports)
     
     def check_if_user_has_false_report(self, userID):
+        print(self.report_log)
         for report in self.report_log:
             if report.fromUserID == userID and report.fromUserFalseReport:
                 return True
@@ -135,19 +138,32 @@ class ModeratorReport:
 
 class IssueQueue:
     def __init__(self):
-        self.queue = []
+        self.high_priorty = []
+        self.low_priority = []
         
     def add_report(self, report):
-        self.queue.append(report)
+        if report.priorityType == "low":
+            self.low_priority.append(report)
+        else:
+            self.high_priorty.append(report)
 
     def peek_report(self):
-        return self.queue[0]
+        if len(self.high_priorty) == 0 and len(self.low_priority) == 0:
+            print("No reports in queue")
+            return None
+        if len(self.high_priorty) == 0:
+            return self.low_priority[0]
+        else:
+            return self.high_priorty[0]
 
     def remove_report(self, issue):
-        return self.queue.remove(issue)
+        if issue.priorityType == "low":
+            return self.low_priority.remove(issue)
+        else:
+            return self.high_priorty.remove(issue)
     
     def queue_count(self):  
-        return len(self.queue)
+        return len(self.high_priorty) + len(self.low_priority)
 
 
 
@@ -303,7 +319,7 @@ async def address_issues(self, mod_channel, message):
         if message.content.lower() == "yes":
             report.assign_status("resolved")
             report.fromUserFalseReport = True
-            if self.report_database.check_if_user_has_false_report(report.againstUserID):
+            if self.report_database.check_if_user_has_false_report(report.fromUserID):
                 await ban_user(self, report, mod_channel, report.fromUserFalseReport)
             else:
                 await warn_user(self, report, mod_channel, report.fromUserFalseReport)
@@ -451,6 +467,7 @@ class ModBot(discord.Client):
             await message.channel.send(r)
             if "Thank you for submitting a report" in r:
                 new_report = ModeratorReport(author_id, self.reports[author_id].result["Reported User"], "manual", self.reports[author_id].result)
+                #new_report = ModeratorReport("thecoolsaraa123", "rickzipper234", "manual", self.reports[author_id].result)
                 self.report_database.add_report(new_report)
 
         # If the report is complete or cancelled, remove it from our map
