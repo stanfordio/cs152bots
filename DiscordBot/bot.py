@@ -6,7 +6,7 @@ import json
 import logging
 import re
 import requests
-from report import Report
+from report import Report, ModeratorReport
 import pdb
 
 # Set up logging to the console
@@ -98,18 +98,40 @@ class ModBot(discord.Client):
         if self.reports[author_id].report_complete():
             self.reports.pop(author_id)
 
+
     async def handle_channel_message(self, message):
-        # Only handle messages sent in the "group-#" channel
-        if not message.channel.name == f'group-{self.group_num}':
+        print(f"Received message in channel {message.channel.name} from {message.author.name}: {message.content}")
+        # Check if the message is in the moderator channel
+        if message.channel.name == f'group-{self.group_num}-mod':
+            print("Received message in mod channel")
+            # Ignore messages from the bot
+            if message.author.id == self.user.id:
+                return
+    
+            # Create an instance of ModeratorReport only once
+            moderator_report = ModeratorReport(self, message)
+
+            if message.content.startswith('!ban'):
+                # Call the handle_ban function from the ModeratorReport instance
+                await moderator_report.handle_ban(message)
+            elif message.content.startswith('!hide'):
+                # Call the handle_hide_profile function from the ModeratorReport instance
+                await moderator_report.handle_hide_profile(message)
+            elif message.content.startswith('!escalate'):
+                # Call the handle_escalate function from the ModeratorReport instance
+                await moderator_report.handle_escalate(message)
+            else:
+                await message.channel.send("Please enter a valid command: `.ban`, `.hide`, or `.escalate`.")
             return
 
-        # Forward the message to the mod channel
-        mod_channel = self.mod_channels[message.guild.id]
-        await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-        scores = self.eval_text(message.content)
-        await mod_channel.send(self.code_format(scores))
+        # Handle group-specific messages
+        if message.channel.name == f'group-{self.group_num}':
+            mod_channel = self.mod_channels.get(message.guild.id)
+            if mod_channel:
+                await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
+                scores = self.eval_text(message.content)
+                await mod_channel.send(self.code_format(scores))
 
-    
     def eval_text(self, message):
         ''''
         TODO: Once you know how you want to evaluate messages in your channel, 
