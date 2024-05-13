@@ -62,6 +62,7 @@ class Report:
 
     REPORT_COMPLETE_OTHER_MESSAGE = "Thank you for helping us keep our community safe! We will investigate the matter and follow up as needed."
     REPORT_COMPLETE_SEXTORTION_MESSAGE = '''Thank you for helping us keep our community safe! We will investigate the matter and follow up as needed.
+    In the meantime, we recommend the following:
     Stop responding to their messages, but do not delete the chat.
     If someone is in danger, contact law enforcement immediately.
     You are not alone and it is not your fault this is happening.
@@ -200,7 +201,6 @@ class Report:
 
         if self.state == State.AWAITING_MINOR_INVOLVEMENT_ANSWER:
             i = self.get_index(message, self.YES_NO_OPTIONS)
-            self.reason.append('Asked for money: ' + self.YES_NO_OPTIONS[i])
             if i == -1:
                 return ["Please enter a number corresponding to the given options."]
             if i == 0:
@@ -252,6 +252,7 @@ class Report:
             if len(message.content.split()) > self.EXPLANATION_INPUT_LIMIT:
                 reply = f"Please do not exceed the {self.EXPLANATION_INPUT_LIMIT} word limit."
             else:
+                self.reason.append('Additional information: ' + message.content)
                 self.state = State.AWAITING_BLOCK_ANSWER
                 reply = [self.REPORT_COMPLETE_SEXTORTION_MESSAGE,
                          self.create_options_list("Would you like to block this account?",
@@ -272,7 +273,7 @@ class Report:
             await self.submit_report()
             return [reply]
 
-        return []
+        return reply
 
     async def handle_report(self, report):
         '''
