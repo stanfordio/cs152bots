@@ -374,5 +374,5 @@ class ModeratorReport:
     async def handle_escalate(self, message):
         await message.channel.send("Report has been escalated to higher authorities (simulated).")
 
-    def report_complete(self):
+    def report_complete(self): #
         return self.state == ModeratorState.ACTION_COMPLETE
