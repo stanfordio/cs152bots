@@ -9,22 +9,21 @@ class State(Enum):
     MESSAGE_IDENTIFIED = auto()
     AWAITING_INITIAL_REASON = auto()
     AWAITING_NUDITY_REASON = auto()
-    AWAITING_HARASSMENT_REASON = auto()
-    AWAITING_MINOR_REASON = auto()
-    AWAITING_ASKED_FOR_MONEY_ANSWER = auto()
+    AWAITING_MINOR_INVOLVEMENT_ANSWER = auto()
     AWAITING_MET_IN_PERSON_ANSWER = auto()
-    AWAITING_BLACKMAIL_REASON = auto()
     AWAITING_EXPLANATION_INPUT = auto()
-    AWAITING_MINOR_EXPLANATION_INPUT = auto()
+    AWAITING_NUDITY_EXPLANATION_INPUT = auto()
+    AWAITING_FINAL_ADDITIONAL_INFORMATION = auto()
+    AWAITING_BLOCK_ANSWER = auto()
     REPORT_COMPLETE = auto()
+
 
 
 class ModeratorState(Enum):
     AWAITING_DECISION = auto()
     AWAITING_ACTION = auto()
     ACTION_COMPLETE = auto()
-
-
+    
 class Report:
     START_KEYWORD = "report"
     CANCEL_KEYWORD = "cancel"
@@ -37,30 +36,19 @@ class Report:
         "No"
     ]
     INITIAL_OPTIONS = [
-        "Nudity or Sexual Activity",
-        "Bullying or Harassment",
-        "Other Abuse"
+        "Nudity or sexual activity",
+        "Terrorism",
+        "Harassment",
+        "Hate Speech",
+        "Spam",
+        "Selling of illegal goods",
+        "Something else"
     ]
     NUDITY_OPTIONS = [
-        "Involves someone under 18",
-        "Nudity or Pornography",
-        "Sexual Exploitation or Solicitation",
-        "Threat to share or has shared images",
-        "Something else"
-    ]
-    MINOR_OPTIONS = [
+        "They are threatening to share intimate pictures of me or someone else",
         "They sent me intimate images of themselves or of someone else",
-        "They are threatening to share intimate pictures of me",
-        "They asked for intimate images of me",
+        "They asked for intimate images of me or someone else",
         "Something else"
-    ]
-    HARASSMENT_OPTIONS = [
-        "Hate Speech or other",
-        "Blackmail"
-    ]
-    BLACKMAIL_OPTIONS = [
-        "Nudity or Sexual Activity",
-        "Other"
     ]
 
     REPORT_COMPLETE_OTHER_MESSAGE = "Thank you for helping us keep our community safe! We will investigate the matter and follow up as needed."
@@ -168,17 +156,14 @@ class Report:
                 return ["Please enter a number corresponding to the given options."]
             if i == 0:
                 self.state = State.AWAITING_NUDITY_REASON
-                reply = self.create_options_list("What best describes the issue?",
+                reply = self.create_options_list("Please select which subtype of abuse happened:",
                                                  self.NUDITY_OPTIONS)
-            elif i == 1:
-                self.state = State.AWAITING_HARASSMENT_REASON
-                reply = self.create_options_list("What best describes the issue?",
-                                                 self.HARASSMENT_OPTIONS)
+            elif i == 6:
+                self.state = State.AWAITING_EXPLANATION_INPUT
+                reply = f"Please tell us what happened ({self.EXPLANATION_INPUT_LIMIT} word limit)"
             else:
-                self.state = State.REPORT_COMPLETE
-                reply = self.REPORT_COMPLETE_OTHER_MESSAGE
-                await self.submit_report()
-
+                self.state = State.AWAITING_FINAL_ADDITIONAL_INFORMATION
+                reply = f"Please add any additional information you think is relevant ({self.EXPLANATION_INPUT_LIMIT} word limit)."
             return [reply]
 
         if self.state == State.AWAITING_NUDITY_REASON:
@@ -187,46 +172,33 @@ class Report:
             if i == -1:
                 return ["Please enter a number corresponding to the given options."]
             if i == 0:
-                self.state = State.AWAITING_MINOR_REASON
-                reply = self.create_options_list("What best describes the issue?",
-                                                 self.MINOR_OPTIONS)
-            elif i == 4:
-                self.state = State.AWAITING_EXPLANATION_INPUT
-                reply = f"Please tell us what happened in {self.EXPLANATION_INPUT_LIMIT} words or less."
+                # TODO: give priority 1
+                pass
+            elif i == 1:
+                # TODO: give priority 3
+                pass
+            elif i == 2:
+                # TODO: give priority 2
+                pass
+            if i == 3:
+                self.state = State.AWAITING_NUDITY_EXPLANATION_INPUT
+                reply = f"Please tell us what happened ({self.EXPLANATION_INPUT_LIMIT} word limit)"
             else:
-                self.state = State.REPORT_COMPLETE
-                reply = self.REPORT_COMPLETE_OTHER_MESSAGE
-                await self.submit_report()
-            return [reply]
-
-        if self.state == State.AWAITING_MINOR_REASON:
-            i = self.get_index(message, self.MINOR_OPTIONS)
-            self.reason.append(self.MINOR_OPTIONS[i])
-            if i == -1:
-                return ["Please enter a number corresponding to the given options."]
-            if i == 0:
-                self.state = State.AWAITING_ASKED_FOR_MONEY_ANSWER
-                reply = self.create_options_list("Did they ask for money?",
-                                                 self.YES_NO_OPTIONS)
-            elif i == 3:
-                self.state = State.AWAITING_MINOR_EXPLANATION_INPUT
-                reply = f"Please tell us what happened in {self.EXPLANATION_INPUT_LIMIT} words or less."
-            else:
-                self.state = State.AWAITING_MET_IN_PERSON_ANSWER
-                reply = self.create_options_list("Have you met them in person?",
+                self.state = State.AWAITING_MINOR_INVOLVEMENT_ANSWER
+                reply = self.create_options_list("Does it involve someone under 18, either you or someone else?",
                                                  self.YES_NO_OPTIONS)
             return [reply]
 
-        if self.state == State.AWAITING_ASKED_FOR_MONEY_ANSWER:
+        if self.state == State.AWAITING_MINOR_INVOLVEMENT_ANSWER:
             i = self.get_index(message, self.YES_NO_OPTIONS)
             self.reason.append('Asked for money: ' + self.YES_NO_OPTIONS[i])
             if i == -1:
                 return ["Please enter a number corresponding to the given options."]
             if i == 0:
-                # TODO: handle yes
+                # TODO: add yes to moderator report
                 pass
             if i == 1:
-                # TODO: handle no
+                # TODO: add no to moderator report
                 pass
             self.state = State.AWAITING_MET_IN_PERSON_ANSWER
             reply = self.create_options_list("Have you or the person you are reporting on behalf met them in person?",
@@ -239,65 +211,52 @@ class Report:
             if i == -1:
                 return ["Please enter a number corresponding to the given options."]
             if i == 0:
-                # TODO: handle yes, give highest priority
+                # TODO: add yes to moderator report, give highest priority 1 if minor?
                 pass
             if i == 1:
-                # TODO: handle no
+                # TODO: add no to moderator report
                 pass
-            self.state = State.REPORT_COMPLETE
-            reply = self.REPORT_COMPLETE_SEXTORTION_MESSAGE
-            await self.submit_report()
-            return [reply]
-
-        if self.state == State.AWAITING_HARASSMENT_REASON:
-            i = self.get_index(message, self.HARASSMENT_OPTIONS)
-            self.reason.append(self.HARASSMENT_OPTIONS[i])
-            if i == -1:
-                return ["Please enter a number corresponding to the given options."]
-            if i == 0:
-                # TODO: handle hate speech / other
-                self.state = State.REPORT_COMPLETE
-                reply = self.REPORT_COMPLETE_OTHER_MESSAGE
-                await self.submit_report()
-            if i == 1:  # blackmail, potentially sextortion
-                self.state = State.AWAITING_BLACKMAIL_REASON
-                reply = self.create_options_list("What best describes the issue?",
-                                                 self.BLACKMAIL_OPTIONS)
-            return [reply]
-
-        if self.state == State.AWAITING_BLACKMAIL_REASON:
-            i = self.get_index(message, self.BLACKMAIL_OPTIONS)
-            self.reason.append(self.BLACKMAIL_OPTIONS[i])
-            if i == -1:
-                return ["Please enter a number corresponding to the given options."]
-            if i == 0:
-                self.state = State.AWAITING_NUDITY_REASON
-                reply = self.create_options_list("What best describes the issue?",
-                                                 self.NUDITY_OPTIONS)
-            if i == 1:
-                self.state = State.REPORT_COMPLETE
-                reply = self.REPORT_COMPLETE_OTHER_MESSAGE
-                await self.submit_report()
-            return [reply]
-
+              
         if self.state == State.AWAITING_EXPLANATION_INPUT:
             if len(message.content.split()) > self.EXPLANATION_INPUT_LIMIT:
                 reply = f"Please do not exceed the {self.EXPLANATION_INPUT_LIMIT} word limit."
             else:
-                # TODO: forward explantation to moderator?
-                reply = self.REPORT_COMPLETE_OTHER_MESSAGE
-                self.state = State.REPORT_COMPLETE
-                await self.submit_report()
+                # TODO: attach explanation to moderator report
+                self.state = State.AWAITING_FINAL_ADDITIONAL_INFORMATION
+                reply = f"Please add any additional information you think is relevant ({self.EXPLANATION_INPUT_LIMIT} word limit)."
             return [reply]
 
-        if self.state == State.AWAITING_MINOR_EXPLANATION_INPUT:
+        if self.state == State.AWAITING_NUDITY_EXPLANATION_INPUT:
             if len(message.content.split()) > self.EXPLANATION_INPUT_LIMIT:
                 reply = f"Please do not exceed the {self.EXPLANATION_INPUT_LIMIT} word limit."
             else:
-                # TODO: forward explantation to moderator?
-                self.state = State.AWAITING_MET_IN_PERSON_ANSWER
-                reply = self.create_options_list("Have you or the person you are reporting on behalf met them in person?",
+                # TODO: attach explanation to moderator report
+                self.state = State.AWAITING_MINOR_INVOLVEMENT_ANSWER
+                reply = self.create_options_list("Does the abuse involve someone under 18, either you or someone else?",
                                                  self.YES_NO_OPTIONS)
+            return [reply]
+
+        if self.state == State.AWAITING_FINAL_ADDITIONAL_INFORMATION:
+            if len(message.content.split()) > self.EXPLANATION_INPUT_LIMIT:
+                reply = f"Please do not exceed the {self.EXPLANATION_INPUT_LIMIT} word limit."
+            else:
+                self.state = State.AWAITING_BLOCK_ANSWER
+                reply = [self.REPORT_COMPLETE_SEXTORTION_MESSAGE,
+                         self.create_options_list("Would you like to block this account?",
+                                                  self.YES_NO_OPTIONS)]
+            return reply
+
+        if self.state == State.AWAITING_BLOCK_ANSWER:
+            i = self.get_index(message, self.YES_NO_OPTIONS)
+            if i == -1:
+                return ["Please enter a number corresponding to the given options."]
+            if i == 0:
+                # TODO: yes, block account
+                reply = "The account you've reported will be blocked. "
+                pass
+            self.state = State.REPORT_COMPLETE
+            reply += "Report complete."
+            await self.submit_report()
             return [reply]
 
         return []
@@ -319,6 +278,7 @@ class Report:
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
+
 
 
 class ModeratorReport:
