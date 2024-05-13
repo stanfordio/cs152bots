@@ -11,6 +11,7 @@ class State(Enum):
     REPORT_SUBMITTED = auto()
     BLOCKING = auto()
     REPORT_COMPLETE = auto()
+    CHECK_DANGER = auto()
 
 class Report:
     START_KEYWORD = "report"
@@ -22,10 +23,11 @@ class Report:
     SUB_CAT = ""
     OTHER_INFO = ""
 
-    def __init__(self, client):
+    def __init__(self, client, add_to_queue_callback):
         self.state = State.REPORT_START
         self.client = client
         self.message = None
+        self.add_to_queue = add_to_queue_callback
     
     async def handle_message(self, message):
         '''
@@ -157,14 +159,29 @@ class Report:
                 return [reply]
             
             # when the reason for reporting was explicit content
-            if self.REASON == "Explicit Content":
+            # if self.REASON == "Explicit Content":
 
-                # ensure the user's reply is one of the options
+            #     # ensure the user's reply is one of the options
+            #     if message.content not in ["1", "2", "3", "4", "5"]:
+            #         # if it's not one of the options then tell them to try again basically
+            #         return ["Sorry I didn't understand that. Please answer with a digit 1-5."]
+            #     my_dict = {"1" : "Child Sexual Abuse Material", "2" : "Violent Acts", "3" : "Substance Abuse", "4" : "Nudity or Sexual Material", "5" : "Other"}
+            #     self.SUB_CAT = my_dict[message.content]
+            if self.REASON == "Explicit Content":
+                # Ensure user's reply is valid
                 if message.content not in ["1", "2", "3", "4", "5"]:
-                    # if it's not one of the options then tell them to try again basically
                     return ["Sorry I didn't understand that. Please answer with a digit 1-5."]
-                my_dict = {"1" : "Child Sexual Abuse Material", "2" : "Violent Acts", "3" : "Substance Abuse", "4" : "Nudity or Sexual Material", "5" : "Other"}
+                my_dict = {
+                    "1": "Child Sexual Abuse Material",
+                    "2": "Violent Acts",
+                    "3": "Substance Abuse",
+                    "4": "Nudity or Sexual Activity",
+                    "5": "Other"
+                }
                 self.SUB_CAT = my_dict[message.content]
+                self.state = State.CHECK_DANGER  # Move to check danger state
+                return ["Does this report involve imminent danger? Please reply 'yes' or 'no'."]
+            
             
             # when the reason was spam or harassment
             elif self.REASON == "Harassment" or self.REASON == "Spam":
@@ -195,8 +212,20 @@ class Report:
             
             self.state = State.REPORT_SUBMITTED
             return ["Please add any further information, context, or thoughts to be shared with our content moderation team or say ‘no’ to submit."]
+        if self.state == State.CHECK_DANGER:
+            if message.content.lower() == 'yes':
+                self.IMMINENT_DANGER = True
+                self.SUB_CAT += " Danger"  # Optionally append " Danger" to SUB_CAT
+            elif message.content.lower() == 'no':
+                self.IMMINENT_DANGER = False
+            else:
+                return ["Sorry, I didn't understand that. Does this report involve imminent danger? Please reply 'yes' or 'no'."]
+            self.state = State.REPORT_SUBMITTED
+            return ["Please add any further information, context, or thoughts to be shared with our content moderation team or say ‘no’ to submit."]
         
+    
         if self.state == State.REPORT_SUBMITTED:
+            self.add_to_queue(self)  # Add the report to the appropriate queue
             self.OTHER_INFO = message.content
             reply = "Would you like to block ```{}```Say 'yes' to block and 'no' not to block.".format(self.AUTHOR)
             self.state = State.BLOCKING
