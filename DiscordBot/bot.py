@@ -135,6 +135,7 @@ class ModBot(discord.Client):
                 # end_message = f'MODERATORS PLEASE SELECT 1. Ignore 2. Warn 3. Delete 4. Ban 5. Delete + Warn 6. Delete + Ban\n'
                 end_message = '****REPORT END****\n'
                 end_message += '=' * 20
+                """
                 end_message += 'Please type the number corresponding to the type of abuse you see in the message.\n'
                 end_message += '1. Imminent Danger\n'
                 end_message += '2. Spam\n'
@@ -142,7 +143,7 @@ class ModBot(discord.Client):
                 end_message += '4. Disinformation\n'
                 end_message += '5. Hate speech/harrassment\n'
                 end_message += '6. Other(including including satire, memes, commentary, couterspeech, etc.)'
-                
+                """
                 
                 # maps from abuse type ot report number to a tuple of the starting message we send to the mod server, images, the ending message for the mod server, and the actual message in question.
                 # the last two are for ease of cleaning up the report dicionary once it is handled.

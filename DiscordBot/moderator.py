@@ -121,7 +121,7 @@ class ModReport:
                         if package[1]:
                             out.append(await package[1].to_file())
                         out.append(package[2])
-                        out.append(OPTIONS_MESSAGE_2)
+                        #out.append(OPTIONS_MESSAGE_2) - Selena edit
                         return out
                     else:
                         return ['Case not found.']
@@ -163,7 +163,7 @@ class ModReport:
                 selection = int(message.content)
                 self.abuse_type = selection
             except:
-                return ["Please type the number of the content type you see."]
+                return ["\nPlease type the number of the content type you see."]
             
             if self.abuse_type not in BOT_ACTIONS:
                 self.state = State.REPORT_COMPLETE
