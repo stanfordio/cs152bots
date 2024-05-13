@@ -47,6 +47,7 @@ class Report:
 
     REPORT_COMPLETE_OTHER_MESSAGE = "Thank you for helping us keep our community safe! We will investigate the matter and follow up as needed."
     REPORT_COMPLETE_SEXTORTION_MESSAGE = '''Thank you for helping us keep our community safe! We will investigate the matter and follow up as needed.
+    In the meantime, we recommend the following:
     Stop responding to their messages, but do not delete the chat.
     If someone is in danger, contact law enforcement immediately.
     You are not alone and it is not your fault this is happening.
@@ -198,6 +199,7 @@ class Report:
             return reply
 
         if self.state == State.AWAITING_BLOCK_ANSWER:
+            reply = ""
             i = self.get_index(message, self.YES_NO_OPTIONS)
             if i == -1:
                 return ["Please enter a number corresponding to the given options."]
@@ -210,7 +212,7 @@ class Report:
             reply += "Report complete."
             return [reply]
 
-        return []
+        return reply
 
     def create_options_list(self, prompt, options):
         res = prompt
