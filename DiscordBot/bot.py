@@ -121,7 +121,7 @@ class ModBot(discord.Client):
                 # Call the handle_escalate function from the ModeratorReport instance
                 await moderator_report.handle_escalate(message)
             else:
-                await message.channel.send("Please enter a valid command: `.ban`, `.hide`, or `.escalate`.")
+                await message.channel.send("Please enter a valid command: `!ban`, `!hide`, or `!escalate`.")
             return
 
         # Handle group-specific messages

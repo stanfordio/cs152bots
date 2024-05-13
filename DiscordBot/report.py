@@ -339,17 +339,7 @@ class ModeratorReport:
                     self.reported_user_name = match.group(1)
                 break
 
-    async def handle_message(self, message):
-        if self.state == ModeratorState.AWAITING_ACTION:
-            print("Handling moderator message..")
-            if message.content.startswith("!ban"):
-                await self.handle_ban(message)
-            elif message.content.startswith("!hide"):
-                await self.handle_hide_profile(message)
-            elif message.content.startswith("!escalate"):
-                await self.handle_escalate(message)
-            else:
-                await message.channel.send("Please enter a valid command: `ban`, `hide`, or `escalate`.")
+    #TODO: Trigger the appropriate action based on the commands below.
 
     async def handle_ban(self, message):
         print("Handling ban command...")
