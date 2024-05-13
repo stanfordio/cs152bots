@@ -83,7 +83,8 @@ class ModReview:
         elif self.state == State.IS_DANGEROUS:
             if message.content == 'y':
                 self.state = State.REVIEW_COMPLETE
-                return self.process_danger()
+                reply = await self.process_danger()
+                return reply
             elif message.content == 'n':
                 self.state = State.REMOVE_POST
                 reply = await self.remove_post() 
@@ -170,11 +171,21 @@ class ModReview:
         # check if there's any sign of potential adversarial reporting
         return ["No action will be taken regarding this post. \nHowever, we would like to check if this report indicates any signs of adversarial reporting. Does this report demonstrate signs of coordinated harrasment via reporting? (y/n)"]
 
-    def process_danger(self):
+    async def process_danger(self):
         if self.reported_message.author.name not in self.report_history:
             self.report_history[self.reported_message.author.name] = 1
 
-        return ["We have contacted local authorities and sent them the reported post. Thank you for completing the moderator review of this post."]
+        await self.group_channel.send(f'(Simulated deletion) The following message has been removed: \n{self.reported_message.author.name}: "{self.reported_message.content}"') 
+
+        reported_abuse = self.report_info[UserResponse.ABUSE_TYPE]
+        reported_abuse_desc = USER_REPORT_KEY[reported_abuse]["name"].lower()
+        reported_specifics = self.report_info[UserResponse.SPEC_ISSUE]
+        reported_specifics_desc = USER_REPORT_KEY[reported_abuse][reported_specifics].lower()
+        
+        ban_message = f'(Simulated ban) {self.reported_message.author.name} has been banned from sending messages in the server, due to violating this policy: {reported_abuse_desc} -> {reported_specifics_desc} -> potential crime / imminent danger.'
+        await self.group_channel.send(ban_message)
+
+        return [f"We have contacted local authorities and sent them the reported post. The post has been removed, and {self.reported_message.author.name} has been banned as well. Thank you for completing the moderator review of this post."]
     
     def no_action(self):
         # just return a message saying that no action needs to be taken
