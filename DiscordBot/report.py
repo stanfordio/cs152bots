@@ -1,6 +1,16 @@
 from enum import Enum, auto
 import discord
+import json
 import re
+from supabase import create_client, Client
+
+with open("tokens.json", "r") as f:
+    tokens = json.load(f)
+
+supabase_url = tokens.get("SUPABASE_URL")
+supabase_key = tokens.get("SUPABASE_KEY")
+
+supabase: Client = create_client(supabase_url, supabase_key)
 
 class State(Enum):
     REPORT_START = auto()
@@ -91,7 +101,7 @@ class Report:
             else:
                 print("User object not set, cannot send feedback.")
             return
-        
+
         mod_channel = discord.utils.get(self.client.get_all_channels(), name="group-29-mod")
         if mod_channel:
             report_message = "**New Report Submitted**\n\n"
@@ -102,9 +112,35 @@ class Report:
             report_message += "**Reason(s):**\n"
             for reason in self.reason:
                 report_message += f"- {reason}\n"
-            
-            await mod_channel.send(report_message)
+            report_message += "\nHow would you like to proceed?\n\n"
+            report_message += "🚫 Ban user - React with 🚫\n\n"
+            report_message += "🚨 Escalate to Law Enforcement - React with 🚨\n\n"
+            report_message += "🙈 Hide Profile - React with 🙈\n\n"
+            report_message += "✅ Close Report - React with ✅\n\n"
+
+            report_msg = await mod_channel.send(report_message)
+            await report_msg.add_reaction('🚫')
+            await report_msg.add_reaction('🚨')
+            await report_msg.add_reaction('🙈')
+            await report_msg.add_reaction('✅')
+
             await self.user.send("Our moderators will review your report and take appropriate action.")
+
+            # Update the existing reports to set current_report to false
+            supabase.table('User').update({'current_report': False}).eq('current_report', True).execute()
+
+            # Insert the report data into the Supabase database
+            reasons_text = ', '.join(self.reason)
+            data = {
+                'reported_user': f'{self.message.author.name}#{self.message.author.discriminator}',
+                'current_report': True,
+                'reported_by': str(self.user),
+                'reported_message': self.message.content,
+                'message_link': self.message_link,
+                'reasons': reasons_text,
+                'message_channel': self.message.channel.name
+            }
+            supabase.table('User').insert(data).execute()
         else:
             await self.user.send("Sorry, an error occurred while submitting your report. Please try again later or contact a moderator directly.")
 
@@ -217,7 +253,7 @@ class Report:
         
         if self.state == State.AWAITING_ASKED_FOR_MONEY_ANSWER:
             i = self.get_index(message, self.YES_NO_OPTIONS)
-            self.reason.append('Asked for money:', self.YES_NO_OPTIONS[i])
+            self.reason.append(f'Asked for money: {self.YES_NO_OPTIONS[i]}')
             if i == -1:
                 return ["Please enter a number corresponding to the given options."]
             if i == 0:
@@ -233,7 +269,7 @@ class Report:
         
         if self.state == State.AWAITING_MET_IN_PERSON_ANSWER:
             i = self.get_index(message, self.YES_NO_OPTIONS)
-            self.reason.append('Met in person:', self.YES_NO_OPTIONS[i])
+            self.reason.append(f'Met in person: {self.YES_NO_OPTIONS[i]}')
             if i == -1:
                 return ["Please enter a number corresponding to the given options."]
             if i == 0:
@@ -299,7 +335,7 @@ class Report:
             return [reply]
 
         return []
-    
+                          
     def create_options_list(self, prompt, options):
         res = prompt
         for i, option in enumerate(options):
@@ -339,30 +375,75 @@ class ModeratorReport:
                     self.reported_user_name = match.group(1)
                 break
 
-    #TODO: Trigger the appropriate action based on the commands below.
-
     async def handle_ban(self, message):
-        print("Handling ban command...")
-        print("Reported User ID:", self.reported_user_id)
-        if self.reported_user_id:
+        current_report = supabase.table('User').select('*').eq('current_report', True).execute()
+        
+        if len(current_report.data) > 0:
+            report_data = current_report.data[0]
+            reported_user = report_data['reported_user']
+            reported_message = report_data['reported_message']
+            message_link = report_data['message_link']
+            message_channel = report_data['message_channel']
+            
             try:
-                user = await self.client.fetch_user(self.reported_user_id)
-                await message.channel.send(f"User {self.reported_user_name} has been banned.")
-            except discord.NotFound:
-                await message.channel.send("User not found.")
+                channel = discord.utils.get(self.client.get_all_channels(), name=message_channel)
+                if channel:
+                    await channel.send(f"User {reported_user} has been banned for the following message:\n```{reported_message}```\nMessage Link: {message_link}")
+                    
+                    await message.channel.send(f"User {reported_user} has been successfully banned. The reporting user has been notified.")
+                else:
+                    await message.channel.send("Channel not found.")
             except Exception as e:
                 await message.channel.send(f"An error occurred: {str(e)}")
         else:
-            await message.channel.send("Reported user information not found.")
+            await message.channel.send("No current report found.")
 
     async def handle_hide_profile(self, message):
-        if self.reported_user_id:
-            await message.channel.send(f"Profile for user {self.reported_user_name} has been hidden (simulated).")
+        current_report = supabase.table('User').select('*').eq('current_report', True).execute()
+        
+        if len(current_report.data) > 0:
+            report_data = current_report.data[0]
+            reported_user = report_data['reported_user']
+            message_channel = report_data['message_channel']
+            
+            try:
+                channel = discord.utils.get(self.client.get_all_channels(), name=message_channel)
+                if channel:
+                    await channel.send(f"Profile for user {reported_user} has been hidden.")
+                    
+                    await message.channel.send(f"Profile of user {reported_user} has been successfully hidden. The reporting user has been notified.")
+                else:
+                    await message.channel.send("Channel not found.")
+            except Exception as e:
+                await message.channel.send(f"An error occurred: {str(e)}")
         else:
-            await message.channel.send("Reported user information not found.")
+            await message.channel.send("No current report found.")
 
     async def handle_escalate(self, message):
-        await message.channel.send("Report has been escalated to higher authorities (simulated).")
+        current_report = supabase.table('User').select('*').eq('current_report', True).execute()
+        
+        if len(current_report.data) > 0:
+            report_data = current_report.data[0]
+            reported_user = report_data['reported_user']
+            reported_message = report_data['reported_message']
+            message_link = report_data['message_link']
+            message_channel = report_data['message_channel']
+            
+            try:
+                channel = discord.utils.get(self.client.get_all_channels(), name=message_channel)
+                if channel:
+                    await channel.send(f"Report for user {reported_user} has been escalated to higher authorities.\nReported Message: ```{reported_message}```\nMessage Link: {message_link}")
+                    
+                    await message.channel.send(f"Report for user {reported_user} has been successfully escalated. The reporting user has been notified.")
+                else:
+                    await message.channel.send("Channel not found.")
+            except Exception as e:
+                await message.channel.send(f"An error occurred: {str(e)}")
+        else:
+            await message.channel.send("No current report found.")
+
+    async def handle_resolved(self, message):
+        await message.channel.send("Report has been resolved.")
 
     def report_complete(self):
         return self.state == ModeratorState.ACTION_COMPLETE
