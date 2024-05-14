@@ -238,6 +238,7 @@ class Report:
             if i == 1:
                 # TODO: add no to moderator report
                 pass
+            self.reason.append('Minor involved: ' + self.YES_NO_OPTIONS[i])
             self.state = State.AWAITING_MET_IN_PERSON_ANSWER
             reply = self.create_options_list("Have you or the person you are reporting on behalf met them in person?",
                                              self.YES_NO_OPTIONS)
