@@ -82,15 +82,9 @@ class Report:
     async def submit_report(self):
         if not all([self.user_id, self.user, self.message_link, self.reason, self.message]):
             if self.user:
-                print("Sending feedback to user.")
-                print('User ID:', self.user_id)
-                print('User:', self.user)
-                print('Message Link:', self.message_link)
-                print('Message:', self.message)
-                print('Reason:', self.reason)
                 await self.user.send("Report cannot be submitted as some information is missing.")
             else:
-                print("User object not set, cannot send feedback.")
+                pass
             return
 
         mod_channel = discord.utils.get(self.client.get_all_channels(), name="group-29-mod")
