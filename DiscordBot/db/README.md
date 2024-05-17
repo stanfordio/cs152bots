@@ -1,13 +1,8 @@
 ## Database Setup with SQLite
 
-To initialize the SQLite database, follow these steps:
-
-1. Ensure Python is installed on your system.
-2. Run the following command from the root directory of the project:
+To initialize the SQLite database run:
 
 python db/init_db.py
-
-This will create a SQLite database named `myprojectdb.sqlite` in your project directory and populate it with initial data.
 
 To access the database, you can use the `sqlite3` command-line utility or a GUI tool like DB Browser for SQLite.
 

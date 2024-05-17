@@ -2,6 +2,7 @@ import sqlite3
 import sys
 
 
+# Function to execute SQL scripts from a file
 def execute_scripts_from_file(filename, connection):
     # Open and read the file as a single buffer
     with open(filename, 'r') as fd:
@@ -25,11 +26,11 @@ def execute_scripts_from_file(filename, connection):
 
 def main():
     try:
-        # Connect to the SQLite database
+        # Connect to the database and execute the SQL scripts
         conn = sqlite3.connect('mod_db.sqlite')
-
-        # Execute schema and seed scripts
+        # Create the database schema
         execute_scripts_from_file("db/schema.sql", conn)
+        # Seed the database with initial data
         execute_scripts_from_file("db/seeders.sql", conn)
 
     except Exception as error:

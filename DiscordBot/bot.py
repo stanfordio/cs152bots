@@ -241,7 +241,6 @@ class ModBot(discord.Client):
         else:
             logger.warning("No mod channel found for the guild.")
 
-        # You might want to store or further process the report here
         self.reports[message.author.id] = report
 
     async def handle_offensive_message(self, message, flag_type):
