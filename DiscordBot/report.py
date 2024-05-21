@@ -32,6 +32,7 @@ class Report:
         prompts to offer at each of those states. You're welcome to change anything you want; this skeleton is just here to
         get you started and give you a model for working with Discord. 
         '''
+        message = message.content.strip()
 
         if message.content == self.CANCEL_KEYWORD:
             self.state = State.REPORT_COMPLETE
@@ -107,9 +108,9 @@ class Report:
             if self.current_step == 2:
                 if message.content in self.HATE_SPEECH_TYPES:
                     self.reported_message['hate_speech_type'] = message.content
-                    reply = "You have classified this message as " + message.content + ". "
-                    if message.content == "threatening violence":
-                        reply = "Since `threatening violence` could pose a real-world danger, we will mute the account of the user who sent this message for 1-3 days as we review your report."
+                    reply = "You have classified this message as `" + message.content + "`."
+                    if message.content == "threatening violence" or message.content == "encouraging hateful behavior":
+                        reply = "Since `" + message.content + "` could pose a real-world danger, we will mute the account of the user who sent this message while we review your report."
                     reply += " Would you like to submit your report now, or would you like to add more information? Please say `submit` if you would like to submit, or `continue` if you would like to add more information."
                     self.state = State.AWAITING_MESSAGE
                     self.current_step = 3
@@ -123,7 +124,6 @@ class Report:
             # step 3: user wants to add more information, now needs to add it
             if self.current_step == 3:
                 if message.content == self.CONTINUE_KEYWORD:
-                    # we need to add this message content to the final message that is submitted
                     reply = "Tell us more about what you are reporting. Helpful information for us includes the date, time, and timezone of the message, as well as a detailed description of what the hateful conduct was and why it qualifies as the hateful conduct subtype that you classified it as. If applicable, we would also like to know the username of the target of the conduct."
                     reply += " Please begin your response with the phrase, `More information:`"
                     self.state = State.AWAITING_MESSAGE
@@ -172,7 +172,3 @@ class Report:
     def get_report(self): 
         return self.message
     
-
-
-    
-
