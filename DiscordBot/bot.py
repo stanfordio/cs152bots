@@ -193,20 +193,6 @@ class ModBot(discord.Client):
     
             if message.channel.name == f'group-{self.group_num}-mod':
 
-                ## gemini prompting
-
-                project_id = "moderation-424102 "  ## for parker's gcloud account, please use responsibly <3
-                vertexai.init(project=project_id, location="us-central1")
-                model = GenerativeModel(model_name="gemini-1.0-pro-002")
-                prompt = "Does the following message seem like it supports the glorification, financing, or promotion of terrorism (yes/no)?" + message
-                response = model.generate_content(
-                    prompt
-                )
-                reply = "GEMINI_REVIEW_FOR_MESSAGE: " + message + "\n"
-                reply += "Does this message violate our policy? " + response + "\n-\n-\n"
-                await asyncio.sleep(1)
-                await mod_channel.send(reply)
-
                 ### keywords
 
                 if message.content == 'require mod review':
@@ -262,10 +248,24 @@ class ModBot(discord.Client):
             return
 
         # Forward the message to the mod channel
+        ## gemini prompting
+
+        project_id = "moderation-424102 "  ## for parker's gcloud account, please use responsibly <3
+        vertexai.init(project=project_id, location="us-central1")
+        model = GenerativeModel(model_name="gemini-1.0-pro-002")
+        prompt = "Does the following message seem like it supports the glorification, financing, or promotion of terrorism (yes/no)?" + message
+        response = model.generate_content(
+            prompt
+        )
+        reply = "GEMINI_REVIEW_FOR_MESSAGE: " + message + "\n"
+        reply += "Does this message violate our policy? " + response + "\n-\n-\n"
+        await asyncio.sleep(1)
+        await mod_channel.send(reply)
         
-        await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-        scores = self.eval_text(message.content)
-        await mod_channel.send(self.code_format(scores))
+        
+        ##await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
+        ##scores = self.eval_text(message.content)
+        ##await mod_channel.send(self.code_format(scores))
 
     
     def eval_text(self, message):
