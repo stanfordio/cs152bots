@@ -250,6 +250,8 @@ class ModBot(discord.Client):
         # Forward the message to the mod channel
         ## gemini prompting
         try:
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "service-account.json"
+
             project_id = "moderation-424102 "  ## for parker's gcloud account, please use responsibly <3
             vertexai.init(project=project_id, location="us-central1")
             model = GenerativeModel(model_name="gemini-1.0-pro-002")
