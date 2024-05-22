@@ -8,6 +8,7 @@ class State(Enum):
     MESSAGE_IDENTIFIED = auto()
     AWAITING_CATEGORY = auto()
     TERROR_IDENTIFIED = auto()
+    HARRASSMENT_IDENTIFIED = auto()
     MODERATE_READY = auto()
     REPORT_COMPLETE = auto()
 
@@ -87,6 +88,11 @@ class Report:
                         reply += " |"
                     return [reply]
                 
+                # harassment flow
+                elif (message.content.lower() in self.level_one_categories and message.content.lower() = "harassment"):
+                    self.report_type = "harassment"
+                    self.state = State.
+
                 elif (message.content.lower() in self.level_one_categories and message.content.lower() != "terrorist activity"): ## category isn't terorrism but is valid
                     self.report_type = message.content.lower()
                     self.state = State.MODERATE_READY
@@ -148,16 +154,16 @@ class Report:
             reported_message = reported_content[2]
             if (report_type in self.level_one_categories and report_type != "terrorist activity"):
                 reply = " \nMESSAGE_TO_REPORTED_USER (pending moderator approval) \n"
-                reply += reported_message.author.name + ", you have been reported for the following message: \n"
+                reply += reported_message.author.name + ", you have been reported for the following post: \n"
                 reply += "```" + reported_message.author.name + ": " + reported_message.content + "```"
                 reply += "This post was reported as " + report_type + ", which is a violation of our community guidelines \n"
-                reply += "Your post has been deleted and your account has been indefinitely suspended \n"
+                reply += "Your post has been removed and your account has been indefinitely suspended \n"
                 reply += "You may appeal by writing to fake_email@fake_platform.com" + "\n-\n-\n"
                 return reply
             else: ## report_type is a segment of terrorist activity
                 ## will expand this to match to flow later
                 reply = " \nMESSAGE_TO_REPORTED_USER (pending moderator approval) \n"
-                reply += reported_message.author.name + ", you have been reported for the following message: \n"
+                reply += reported_message.author.name + ", you have been reported by a user for the following message: \n"
                 reply += "```" + reported_message.author.name + ": " + reported_message.content + "```"
                 reply += "This post was reported as " + report_type + ", which is a violation of our community guidelines \n"
                 if report_type == "account belongs to terrorist entity":
