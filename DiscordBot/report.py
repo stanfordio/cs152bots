@@ -8,7 +8,9 @@ class State(Enum):
     MESSAGE_IDENTIFIED = auto()
     AWAITING_CATEGORY = auto()
     TERROR_IDENTIFIED = auto()
-    HARRASSMENT_IDENTIFIED = auto()
+    HARASSMENT_IDENTIFIED = auto()
+    SPAM_IDENTIFIED = auto()
+    OFFENSIVE_CONTENT_IDENTIFIED = auto()
     MODERATE_READY = auto()
     REPORT_COMPLETE = auto()
 
@@ -27,7 +29,11 @@ class Report:
 
         self.report_type = "miscellaneous"
         self.level_one_categories = ["offensive content", "harassment", "spam", "terrorist activity"]
-        self.level_two_categories = ["glorification or promotion", "financing", "recruitment", "threat or incitement", "account belongs to terrorist entity"]
+        self.harassment_categories = ["bullying", "hate speech"]
+        self.spam_categories = ["solicitation", "impersonation"]
+        self.offensive_categories = ["physical abuse", "nudity or sexual content", "self harm or suicide", "violent threat", "human trafficking", "graphic violence"]
+        self.terrorism_categories = ["glorification or promotion", "financing", "recruitment", "direct threat or incitement", "account represents terrorist entity"]
+        #self.target_identity = ["me", "someone else"]
     
     async def handle_message(self, message):
         '''
@@ -91,19 +97,51 @@ class Report:
                 # harassment flow
                 elif (message.content.lower() in self.level_one_categories and message.content.lower() = "harassment"):
                     self.report_type = "harassment"
-                    self.state = State.
+                    self.state = State.HARASSMENT_IDENTIFIED
+                    reply = "Please specify the type of harassment: \n"
+                    reply += "|"
+                    for category in self.harassment_categories:
+                        reply += " "
+                        reply += category
+                        reply += " |"
+                    return [reply]
 
+                #spam flow
+                elif (message.content.lower() in self.level_one_categories and message.content.lower() = "spam"):
+                    self.report_type = "spam"
+                    self.state = State.SPAM_IDENTIFIED
+                    reply = "Please specify the type of spam: \n"
+                    reply += "|"
+                    for category in self.spam_categories:
+                        reply += " "
+                        reply += category
+                        reply += " |"
+                    return [reply]
+
+                #offensive content flow
+                    self.report_type = "offensive content"
+                    self.state = State.OFFENSIVE_CONTENT_IDENTIFIED
+                    reply = "Please specify the type of offensive content: \n"
+                    reply += "|"
+                    for category in self.offensive_categories:
+                        reply += " "
+                        reply += category
+                        reply += " |"
+                    return [reply]
+
+                """
                 elif (message.content.lower() in self.level_one_categories and message.content.lower() != "terrorist activity"): ## category isn't terorrism but is valid
                     self.report_type = message.content.lower()
                     self.state = State.MODERATE_READY
                     reply = "Thank you for reporting a message as being " + message.content.lower() + ". The content moderation team will review the post and determine the appropriate action, which may include removal of the post or suspension of the account."
                     return [reply]
+                """
 
                 else: ## category is terrorism
                     self.state = State.TERROR_IDENTIFIED
                     reply = "Please specify what kind of terrorist activity: \n"
                     reply += "|"
-                    for category in self.level_two_categories:
+                    for category in self.terrorism_categories:
                         reply += " "
                         reply += category
                         reply += " |"
@@ -112,12 +150,71 @@ class Report:
             except Exception as e:
                 return ["What is happening? This is: ", str(e)]
 
-        if self.state == State.TERROR_IDENTIFIED:
+        #follow up questions on report of SPAM
+        if self.state == State.SPAM_IDENTIFIED:
             try: 
-                if (message.content.lower() not in self.level_two_categories):
+                if (message.content.lower() not in self.spam_categories):
                     reply = "The category you wrote, '" + message.content + "', is not a valid category. Please reenter one of the given options. \n"
                     reply += "|"
-                    for category in self.level_two_categories:
+                    for category in self.spam_categories:
+                        reply += " "
+                        reply += category
+                        reply += " |"
+                    return [reply]
+                else:
+                    self.report_type = message.content.lower()
+                    self.state = State.MODERATE_READY
+                    reply = "Thank you for reporting a post including " + message.content.lower() + " The content moderation team will review the activity and determine the appropriate action, which may include removal of the post and/or suspension of the offending account. "
+                    return [reply]
+
+            except Exception as e:
+                return ["Uhhhh, here's an error: ", str(e)]
+
+        # follow up on HARASSMENT report
+        if self.state == State.HARASSMENT_IDENTIFIED:
+            try: 
+                if (message.content.lower() not in self.harassment_categories):
+                    reply = "The category you wrote, '" + message.content + "', is not a valid category. Please reenter one of the given options. \n"
+                    reply += "|"
+                    for category in self.harassment_categories:
+                        reply += " "
+                        reply += category
+                        reply += " |"
+                    return [reply]
+                else: # how to add follow up question on target of harassment??
+                    else:
+                    self.report_type = message.content.lower()
+                    self.state = State.MODERATE_READY
+                    reply = "Thank you for reporting a post including " + message.content.lower() + " The content moderation team will review the activity and determine the appropriate action, which may include removal of the post and/or suspension of the offending account. Would you like to block the user?"
+                    # need to add another layer of response for blocking
+                    return [reply]
+
+            except Exception as e:
+                return ["Uhhhh, here's an error: ", str(e)]
+
+        # follow up on OFFENSIVE CONTENT report
+        if self.state = State.OFFENSIVE_CONTENT_IDENTIFIED:
+            try:
+                if (message.content.lower() not in self.offensive_categories):
+                    reply = "The category you wrote, '" + message.content + "', is not a valid category. Please reenter one of the given options. \n"
+                    reply += "|"
+                    for category in self.terrorism_categories:
+                        reply += " "
+                        reply += category
+                        reply += " |"
+                    return [reply]
+                else:
+                    self.report_type = message.content.lower()
+                    self.State = State.MODERATE_READY
+                    reply = "Thank you for reporting offensive content including " + message.content.lower() + ". We take the safety of our users and communities seriously. If you or someone else is in imminent danger, please call 911. The content moderation team will review the activity and determine the appropriate action, which may involve contacting local authorities, removing the post, and suspending the offending account. "
+        
+        #follow up on TERRORISM
+        if self.state == State.TERROR_IDENTIFIED:
+            try: 
+                if (message.content.lower() not in self.terrorism_categories):
+                    reply = "The category you wrote, '" + message.content + "', is not a valid category. Please reenter one of the given options. \n"
+                    reply += "|"
+                    for category in self.terrorism_categories:
                         reply += " "
                         reply += category
                         reply += " |"
@@ -189,7 +286,7 @@ class Report:
             if report_type == "glorification or promotion":
                 reply += "The content has been also been uploaded to the GIFCT hash bank if it wasn't already."
 
-            elif report_type in self.level_two_categories:
+            elif report_type in self.terrorism_categories:
                 reply += "A report of this incident has been sent to local authorities and/or the FBI, including the nature of the violation, user information, and activity."
 
             reply += "\n-\n-\n"
