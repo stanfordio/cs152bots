@@ -249,19 +249,35 @@ class ModBot(discord.Client):
 
         # Forward the message to the mod channel
         ## gemini prompting
+        try:
+            project_id = "moderation-424102 "  ## for parker's gcloud account, please use responsibly <3
+            vertexai.init(project=project_id, location="us-central1")
+            model = GenerativeModel(model_name="gemini-1.0-pro-002")
+            prompt = "Does the following message seem like it supports the glorification, financing, or promotion of terrorism (yes/no)?" + message
+            response = model.generate_content(
+                prompt
+            )
+            reply = "GEMINI_REVIEW_FOR_MESSAGE: " + message + "\n"
+            reply += "Does this message violate our policy? " + response + "\n-\n-\n"
+            await asyncio.sleep(1)
+            await mod_channel.send(reply)
 
-        project_id = "moderation-424102 "  ## for parker's gcloud account, please use responsibly <3
-        vertexai.init(project=project_id, location="us-central1")
-        model = GenerativeModel(model_name="gemini-1.0-pro-002")
-        prompt = "Does the following message seem like it supports the glorification, financing, or promotion of terrorism (yes/no)?" + message
-        response = model.generate_content(
-            prompt
-        )
-        reply = "GEMINI_REVIEW_FOR_MESSAGE: " + message + "\n"
-        reply += "Does this message violate our policy? " + response + "\n-\n-\n"
-        await asyncio.sleep(1)
-        await mod_channel.send(reply)
-        
+        except Exception as e:
+                # Get the stack trace as a string
+                stack_trace = traceback.format_exc()
+                
+                # Construct the error message with detailed information
+                error_message = (
+                    "Oops! Something went wrong. Here's the error message and additional details:\n\n"
+                    f"Error Type: {type(e).__name__}\n"
+                    f"Error Details: {str(e)}\n\n"
+                    "Stack Trace:\n"
+                    f"{stack_trace}"
+                )
+                
+                # Send the detailed error message to the Discord channel
+                await mod_channel.send(error_message)
+                return
         
         ##await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
         ##scores = self.eval_text(message.content)
