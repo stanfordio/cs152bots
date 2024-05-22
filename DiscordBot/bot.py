@@ -11,7 +11,6 @@ import pdb
 import traceback
 import asyncio
 import vertexai
-from googlecloud import aiplatform
 from vertexai.generative_models import GenerativeModel
 
 
@@ -256,12 +255,12 @@ class ModBot(discord.Client):
             project_id = "moderation-424102"  ## for parker's gcloud account, please use responsibly <3
             vertexai.init(project=project_id, location="us-central1")
             model = GenerativeModel(model_name="gemini-1.0-pro-002")
-            prompt = "Does the following message seem like it supports the glorification, financing, or promotion of terrorism (yes/no)?" + message.content
+            prompt = "I run a social media company. Our platform's policy is that we explicitly prohibit messages that promote or glorify terrorism, regardless of the context. Does the following message appear to violate our policy? Evaluate objectively, no opinion is necessary. We will have a human verify. Answer yes or no. Here is the message: " + message.content
             response = model.generate_content(
                 prompt
             )
             reply = "GEMINI_REVIEW_FOR_MESSAGE: " + message.content + "\n"
-            reply += "Does this message violate our policy? " + response + "\n-\n-\n"
+            reply += "Does this message violate our policy? " + response.text + "\n-\n-\n"
             await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
             await asyncio.sleep(1)
             await mod_channel.send(reply)
