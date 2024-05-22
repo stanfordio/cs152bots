@@ -10,6 +10,9 @@ from report import Report
 import pdb
 import traceback
 import asyncio
+import vertexai
+from vertexai.generative_models import GenerativeModel
+
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -189,6 +192,23 @@ class ModBot(discord.Client):
             mod_channel = self.mod_channels[message.guild.id]
     
             if message.channel.name == f'group-{self.group_num}-mod':
+
+                ## gemini prompting
+
+                project_id = "moderation-424102 "  ## for parker's gcloud account, please use responsibly <3
+                vertexai.init(project=project_id, location="us-central1")
+                model = GenerativeModel(model_name="gemini-1.0-pro-002")
+                prompt = "Does the following message seem like it supports the glorification, financing, or promotion of terrorism (yes/no)?" + message
+                response = model.generate_content(
+                    prompt
+                )
+                reply = "GEMINI_REVIEW_FOR_MESSAGE: " + message + "\n"
+                reply += "Does this message violate our policy? " + response + "\n-\n-\n"
+                await asyncio.sleep(1)
+                await mod_channel.send(reply)
+
+                ### keywords
+
                 if message.content == 'require mod review':
                     self.require_approval = 1
                     self.waiting_mod = 0
