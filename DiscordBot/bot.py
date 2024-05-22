@@ -11,6 +11,7 @@ import pdb
 import traceback
 import asyncio
 import vertexai
+from googlecloud import aiplatform
 from vertexai.generative_models import GenerativeModel
 
 
@@ -252,7 +253,7 @@ class ModBot(discord.Client):
         try:
             os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "service-account.json"
 
-            project_id = "moderation-424102 "  ## for parker's gcloud account, please use responsibly <3
+            project_id = "moderation-424102"  ## for parker's gcloud account, please use responsibly <3
             vertexai.init(project=project_id, location="us-central1")
             model = GenerativeModel(model_name="gemini-1.0-pro-002")
             prompt = "Does the following message seem like it supports the glorification, financing, or promotion of terrorism (yes/no)?" + message.content
