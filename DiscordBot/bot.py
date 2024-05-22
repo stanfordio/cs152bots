@@ -253,11 +253,11 @@ class ModBot(discord.Client):
             project_id = "moderation-424102 "  ## for parker's gcloud account, please use responsibly <3
             vertexai.init(project=project_id, location="us-central1")
             model = GenerativeModel(model_name="gemini-1.0-pro-002")
-            prompt = "Does the following message seem like it supports the glorification, financing, or promotion of terrorism (yes/no)?" + message
+            prompt = "Does the following message seem like it supports the glorification, financing, or promotion of terrorism (yes/no)?" + message.content
             response = model.generate_content(
                 prompt
             )
-            reply = "GEMINI_REVIEW_FOR_MESSAGE: " + message + "\n"
+            reply = "GEMINI_REVIEW_FOR_MESSAGE: " + message.content + "\n"
             reply += "Does this message violate our policy? " + response + "\n-\n-\n"
             await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
             await asyncio.sleep(1)
