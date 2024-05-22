@@ -259,8 +259,11 @@ class ModBot(discord.Client):
             )
             reply = "GEMINI_REVIEW_FOR_MESSAGE: " + message + "\n"
             reply += "Does this message violate our policy? " + response + "\n-\n-\n"
+            await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
             await asyncio.sleep(1)
             await mod_channel.send(reply)
+            scores = self.eval_text(message.content)
+            await mod_channel.send(self.code_format(scores))
 
         except Exception as e:
                 # Get the stack trace as a string
