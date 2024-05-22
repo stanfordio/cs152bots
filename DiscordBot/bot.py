@@ -9,6 +9,7 @@ import requests
 from report import Report
 import pdb
 from moderate import Moderate
+from perspective import check_hate_speech
 
 
 # Set up logging to the console
@@ -114,9 +115,12 @@ class ModBot(discord.Client):
     async def handle_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel
         if message.channel.name == f'group-{self.group_num}':
-            return
+            # use automation to catch hate speech
+            if check_hate_speech(message.content):  # only works for the Google Perspective API
+                await message.channel.send("This message has been automatically flagged as potential hateful conduct. Our moderators will review it shortly.")
+                self.reports[message.author.id] = {'content': message, 'hate_speech_type': None, 'more_info': "This was flagged by the automated system."}
         else:
-            await self.handle_mod_channel_message(message)
+            await self.handle_mod_channel_message(message)  
               
     async def handle_mod_channel_message(self, message):
         mod_channel = self.mod_channels[message.guild.id]
@@ -126,10 +130,9 @@ class ModBot(discord.Client):
 
             await mod_channel.send(reply)
             if self.current_moderation.current_step == 3:
-                print("Made it into the curerent moderation step is step 3")
+                print("Made it into the current moderation step is step 3")
                 self.HANDLING_REPORT = False
                 print("Handling report is now set to false")
-
 
         elif message.content.lower() == 'handle report':
             if not self.reports:
@@ -137,15 +140,27 @@ class ModBot(discord.Client):
                 return
 
             id, report = next(iter(self.reports.items()))
-            await mod_channel.send(f"Now handling user's {id} report:")
+            if isinstance(report, Report):  # necessary because automated reports won't be instances of the Report class
+                report = report.reported_message
+            await mod_channel.send(f"Now handling user {id}'s report:")
             self.reports.pop(id)
-            await mod_channel.send(f'ID {id}, Message: {report.reported_message["content"]}')
+            printed_report = f''' 
+..........................................................................................................................
+Message: {report["content"].content}
+    
+Hate Speech Type: {report["hate_speech_type"]}
+    
+More Information: {report["more_info"]} 
+    
+Message Metadata: {report["content"]}
+..........................................................................................................................'''
+            await mod_channel.send(printed_report)
             self.current_moderation = Moderate(mod_channel, id, report, self.violations)
             self.HANDLING_REPORT = True
             await mod_channel.send(f'Is this hateful conduct? Please say `yes` or `no`.')
 
         else:
-            await mod_channel.send("Please type 'handle report' to see oldest report.")
+            await mod_channel.send("Please type 'handle report' to see the oldest report.")
             await mod_channel.send(f'There are {len(self.reports)} reports pending.')
 
 

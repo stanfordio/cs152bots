@@ -32,8 +32,6 @@ class Report:
         prompts to offer at each of those states. You're welcome to change anything you want; this skeleton is just here to
         get you started and give you a model for working with Discord. 
         '''
-        message = message.content.strip()
-
         if message.content == self.CANCEL_KEYWORD:
             self.state = State.REPORT_COMPLETE
             return ["Report cancelled."]
@@ -46,9 +44,10 @@ class Report:
             self.state = State.AWAITING_MESSAGE
             return [reply]
         
-        if self.state == State.AWAITING_MESSAGE:
-            if message.content == self.START_KEYWORD:
+        if message.content == self.START_KEYWORD:
                 self.state = State.REPORT_START
+        
+        if self.state == State.AWAITING_MESSAGE:
                         
             # step 0: user reports something as hateful conduct
             if self.current_step == 0:
@@ -151,7 +150,7 @@ class Report:
             if message.content == self.SUBMIT_KEYWORD:
                 self.report_complete()
                 reply = "Thank you for submitting your report. We will follow up with you in 1-3 business days. In a live chat-based context, this may include muting or banning the user account, or removing the comment."
-                reply += "If you would like to block the user who sent that message, please paste their username here. Otherwise, say `no`."
+                reply += " If you would like to block the user who sent that message, please paste their username here. Otherwise, say `no`."
                 self.state = State.AWAITING_MESSAGE
                 self.current_step = 5
                 return [reply]
