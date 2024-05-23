@@ -259,7 +259,7 @@ class ModBot(discord.Client):
             response = model.generate_content(
                 prompt
             )
-            reply = "GEMINI_REVIEW_FOR_MESSAGE: " + message.content + "\n"
+            reply = "GEMINI_REVIEW: " + message.content + "\n"
             reply += "Does this message violate our policy? " + response.text + "\n-\n-\n"
             await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
             await asyncio.sleep(1)
