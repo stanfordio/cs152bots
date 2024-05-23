@@ -248,11 +248,30 @@ class ModBot(discord.Client):
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():
             self.reports.pop(author_id)
+        await self.log_dm(message)
 
     async def handle_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel
         if not message.channel.name == f'group-{self.group_num}':
             return
+    
+    async def have_mutual_guilds_or_friends(self, user_id, other_id):
+        user = await self.fetch_user(user_id)
+        other = await self.fetch_user(other_id)
+
+        # Check for mutual friends
+        if other in user.mutual_friends:
+            return True
+
+        # Check for mutual guilds
+        mutual_guilds = set(user.mutual_guilds).intersection(set(other.mutual_guilds))
+        return len(mutual_guilds) > 0
+    
+    async def flag_user(self, user_id):
+        user = await self.fetch_user(user_id)
+        for guild_id, mod_channel in self.mod_channels.items():
+            await mod_channel.send(f"User {user.name} ({user.id}) has been flagged for sending DMs to new users out of the blue.")
+
         
         print(message.content)
 
@@ -261,6 +280,34 @@ class ModBot(discord.Client):
         #await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
         scores = self.eval_text(message.content)
         #await mod_channel.send(self.code_format(scores))
+
+    # Create a log of DM messages for users that DM other users they have no connections with
+    # (Defined as having no mutual friends or servers)
+    async def log_dm(self, message):
+        author_id = message.author.id
+        receiver_id = message.channel.recipient.id
+        timestamp = datetime.now()
+
+        # Log the DM
+        self.dm_log[author_id].append((timestamp, receiver_id))
+
+        # Clean up old entries
+        one_week_ago = timestamp - timedelta(weeks=1)
+        self.dm_log[author_id] = [(t, r) for t, r in self.dm_log[author_id] if t > one_week_ago]
+
+        # Check if the user should be flagged
+        await self.check_flag_user(author_id)
+    
+    async def check_flag_user(self, author_id):
+        dm_entries = self.dm_log[author_id]
+        if len(dm_entries) > 3:
+            unique_receivers = {receiver_id for _, receiver_id in dm_entries}
+
+            if len(unique_receivers) > 3:
+                for receiver_id in unique_receivers:
+                    if not await self.have_mutual_guilds_or_friends(author_id, receiver_id):
+                        await self.flag_user(author_id)
+                        break
 
     
     def eval_text(self, message):
