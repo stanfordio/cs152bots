@@ -10,6 +10,7 @@ from report import Report, State
 import pdb
 from modReport import ModReport, ModState
 from threePersonReport import ThreePersonReport
+from googleapiclient import discovery
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -176,18 +177,13 @@ class ModBot(discord.Client):
         return
 
     async def handle_channel_message(self, message):
-        # Only handle messages sent in the "group-#" channel
-        # if not message.channel.name == f'group-{self.group_num}':
-        #     return
-
-
-        # If in group-16 channel, forward the message to the mod channel -> change later because we only send flagged messages
+        # If in group-16 channel, evaluate the message and forward to mod channel if above threshold
         if message.channel.name == f'group-{self.group_num}':
-            # mod_channel = self.mod_channels[message.guild.id]
-            # await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-            # scores = self.eval_text(message.content)
-            # await mod_channel.send(self.code_format(scores))
-            pass
+            scores = self.eval_text(message.content)
+            identity_attack_score = scores['IDENTITY_ATTACK']
+            if identity_attack_score > 0.5:
+                mod_channel = self.mod_channels[message.guild.id]
+                await self.send_report_to_mod_channel(message, identity_attack_score, mod_channel)
         elif message.channel.name == f'group-{self.group_num}-mod':
             # This is a message from a moderator in the mod channel
             # Let the ModReport class handle this message
@@ -224,7 +220,33 @@ class ModBot(discord.Client):
         TODO: Once you know how you want to evaluate messages in your channel, 
         insert your code here! This will primarily be used in Milestone 3. 
         '''
-        return message
+        api_key = tokens['perspective']  # Make sure your 'tokens.json' file includes the Perspective API key
+        client = discovery.build(
+            "commentanalyzer",
+            "v1alpha1",
+            developerKey=api_key,
+            discoveryServiceUrl="https://commentanalyzer.googleapis.com/$discovery/rest?version=v1alpha1",
+            static_discovery=False,
+        )
+
+        analyze_request = {
+            'comment': {'text': message},
+            'requestedAttributes': {
+                'TOXICITY': {},
+                'SEVERE_TOXICITY': {},
+                'IDENTITY_ATTACK': {}
+            }
+        }
+
+        response = client.comments().analyze(body=analyze_request).execute()
+
+        scores = {
+            'TOXICITY': response['attributeScores']['TOXICITY']['summaryScore']['value'],
+            'SEVERE_TOXICITY': response['attributeScores']['SEVERE_TOXICITY']['summaryScore']['value'],
+            'IDENTITY_ATTACK': response['attributeScores']['IDENTITY_ATTACK']['summaryScore']['value']
+        }
+        print(scores)
+        return scores
 
     
     def code_format(self, text):
@@ -234,6 +256,31 @@ class ModBot(discord.Client):
         shown in the mod channel. 
         '''
         return "Evaluated: '" + text+ "'"
+    
+    async def send_report_to_mod_channel(self, message, score, mod_channel):
+        priority = "Low"
+        if score > 0.7:
+            priority = "Medium"
+        if score > 0.9:
+            priority = "High"
+        
+        color_dict = {
+            "Low": discord.Color.blue(),
+            "Medium": discord.Color.gold(),
+            "High": discord.Color.red()
+        }
+        color = color_dict.get(priority, discord.Color.default())
+
+        embed = discord.Embed(
+            title="New Report Filed",
+            description=f"The following message was automatically flagged for review:",
+            color=color
+        )
+        embed.add_field(name="Message Content", value=f"```{message.author.name}: {message.content}```", inline=False)
+        embed.add_field(name="Priority", value=priority, inline=True)
+        embed.add_field(name="Identity Attack Score", value=score, inline=True)
+
+        await mod_channel.send(embed=embed)
 
 
 client = ModBot()
