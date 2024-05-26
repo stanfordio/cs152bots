@@ -128,10 +128,10 @@ class ModBot(discord.Client):
 
                     ## send logs message
                     reply = "MESSAGE_TO_MODERATOR_LOGS:\n"
-                    reply += "Report received of: " + report_type + "\n"
+                    reply += "Report received violation of type: " + report_type + "\n"
                     reply += "The reported message sent was in this guild: " + str(reported_guild) + "\n"
-                    reply += "And in this channel: " + str(reported_channel) + "\n"
-                    reply += "This was the reported message:" + "```" + reported_message.author.name + ": " + reported_message.content + "```" + "\n-\n-\n"
+                    reply += "Sent in channel: " + str(reported_channel) + "\n"
+                    reply += "Reported message:" + "```" + reported_message.author.name + ": " + reported_message.content + "```" + "\n-\n-\n"
                     await asyncio.sleep(1)
                     await mod_channel.send(reply)
                     
@@ -195,7 +195,7 @@ class ModBot(discord.Client):
 
                 ### keywords
 
-                if message.content == 'require mod review':
+                if message.content == 'Require moderator':
                     self.require_approval = 1
                     self.waiting_mod = 0
                     reply = "MESSAGE_TO_MODERATOR_LOGS\n"
@@ -203,10 +203,10 @@ class ModBot(discord.Client):
                     await asyncio.sleep(1)
                     await mod_channel.send(reply)
                     
-                if message.content == "don't require mod review":
+                if message.content == "Automatic system review":
                     self.require_approval = 0
                     reply = "MESSAGE_TO_MODERATOR_LOGS\n"
-                    reply += "Moderator manual review now not required." + "\n-\n-\n"
+                    reply += "Moderator manual review is now not required." + "\n-\n-\n"
                     await asyncio.sleep(1)
                     await mod_channel.send(reply)
 
