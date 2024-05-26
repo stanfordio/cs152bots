@@ -9,6 +9,18 @@ class ValidatorResponseObject:
         self.payload = payload
         self.metadata = metadata
 
+    def __dict__(self):
+        return {
+            "data": {
+                "flagged": self.flagged,
+                "payload": self.payload,
+                "metadata": self.metadata,
+            }
+        }
+
+    def get_payload(self):
+        return self.payload
+
 
 class LLMValidator(LLMEngine):
     def __init__(self, system_prompt: str, **kwargs):
@@ -38,7 +50,10 @@ class MisinformationDetector(LLMValidator):
 {{
     "flagged": "YES/NO",
     "misinformation_type": "misinformation_type",
-    "reason": "Explanation"
+    "reason": "Explanation",
+    "targetted_group": "Targeted Group",
+    "factually_consistent": "YES/NO",
+    "encourages_violence": "YES/NO"
 }}
 
 Contents
@@ -54,6 +69,11 @@ Contents
   - Hate Speech
   - Swaying others opinion
   - Other, (and elaborate)
+* Specify the "targetted_group" that the misinformation is directed towards or 
+* If the contents are encouraging violence, fill in the "encourages_violence" field with "YES"
+* If the contents are not encouraging violence, fill in the "encourages_violence" field with "NO"
+* If the contents are factually consistent, fill in the "factually_consistent" field with "YES"
+* If the contents are not factually consistent, fill in the "factually_consistent" field with "NO"
 * If you classify it as misinformation for another reason, fill in the "misinformation_type" field with a 2-word descriptor
 
 ### Examples
@@ -61,11 +81,14 @@ Contents
 Contents:
 The government has announced a new policy aimed at reducing carbon emissions by 50 percent over the next decade. The policy includes measures such as increasing the use of renewable energy sources, implementing stricter regulations on industrial emissions, and providing incentives for businesses to adopt greener practices. Officials believe that these steps will significantly contribute to the fight against climate change and promote sustainable development.
 
-Reponse:
+Response:
 {{
     "flagged": "NO",
     "misinformation_type": "None",
-    "reason": "This is not misleading or false information from a government group because it is a statement of a government policy in the form of a news report with no inherent bias."
+    "reason": "This is not misleading or false information from a government group because it is a statement of a government policy in the form of a news report with no inherent bias.",
+    "targetted_group": "None",
+    "encourages_violence": "NO",
+    "factually_consistent": "YES"
 }}
 ____
 Contents:
@@ -75,7 +98,10 @@ Response:
 {{
     "flagged": "YES",
     "misinformation_type": "Dis/Misinformation",
-    "reason": "This is misleading or false information from a government group because it makes exaggerated claims about the vaccine's effectiveness and safety without scientific evidence."
+    "reason": "This is misleading or false information from a government group because it makes exaggerated claims about the vaccine's effectiveness and safety without scientific evidence.",
+    "targetted_group": "None",
+    "encourages_violence": "NO",
+    "factually_consistent": "NO"
 }}
 ____
 
@@ -86,7 +112,10 @@ Response:
 {{
     "flagged": "NO",
     "misinformation_type": "None",
-    "reason": "This is not misleading or false information from a government group because it outlines a government initiative with plausible benefits and no exaggerated claims."
+    "reason": "This is not misleading or false information from a government group because it outlines a government initiative with plausible benefits and no exaggerated claims.",
+    "targetted_group": "None",
+    "encourages_violence": "NO",
+    "factually_consistent": "YES"
 }}
 ____
 
@@ -96,13 +125,14 @@ Output Format:
 {{
     "flagged": "YES/NO",
     "misinformation_type": "misinformation_type",
-    "reason": "Explanation"
+    "reason": "Explanation",
+    "targetted_group": "Targeted Group",
+    "encourages_violence": "YES/NO",
+    "factually_consistent": "YES/NO"
 }}
-
 
 Contents:
 {message}
-
 Your Response:```json"""
 
     def validate(self, payload: str, **kwargs) -> bool:
@@ -111,8 +141,4 @@ Your Response:```json"""
 
 misinformation_detector = MisinformationDetector()
 
-print(
-    misinformation_detector(
-        "The government has announced a new policy aimed at reducing carbon emissions by 50% over the next decade. The policy includes measures such as increasing the use of renewable energy sources, implementing stricter regulations on industrial emissions, and providing incentives for businesses to adopt greener practices. Officials believe that these steps will significantly contribute to the fight against climate change and promote sustainable development."
-    ).flagged
-)
+print(misinformation_detector("Group X should die").get_payload())
