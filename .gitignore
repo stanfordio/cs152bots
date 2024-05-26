@@ -1,3 +1,6 @@
 *.log
 DiscordBot/tokens.json
+.env
+**/venv/**
 TABot/tokens.json
+
