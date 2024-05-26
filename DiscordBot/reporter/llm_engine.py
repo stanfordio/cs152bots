@@ -8,10 +8,12 @@ class LanguageModel:
         model_name: str = "gpt-3.5-turbo",
         temperature: float = 0.7,
         system_prompt: str = "You are a helpful assistant",
+        json_mode: bool = False,
     ):
         self.model_name = model_name
         self.temperature = temperature
         self.system_prompt = system_prompt
+        self.json_mode = json_mode
         self.system_prompt_formatted = [
             {"content": self.system_prompt, "role": "system"}
         ]
@@ -31,6 +33,8 @@ class LanguageModel:
         response = litellm.completion(
             model=self.model_name,
             messages=self.message_history,
+            response_format={"type": "json_object"} if self.json_mode else None,
+            **kwargs,
         )
         # Add the response to the message history
         if maintain_message_history:
@@ -48,12 +52,16 @@ class LLMEngine:
         model_name: str = "gpt-3.5-turbo",
         temperature: float = 0.7,
         system_prompt: str = "You are a helpful assistant",
+        json_mode: bool = False,
     ):
 
         self.model_name = model_name
         self.temperature = temperature
         self.system_prompt = system_prompt
-        self.model = LanguageModel(model_name, temperature, system_prompt)
+        self.json_mode = json_mode
+        self.model = LanguageModel(
+            model_name, temperature, system_prompt, json_mode=json_mode
+        )
 
     def generate_response(
         self, prompt: str, maintain_message_history: bool = True, **kwargs
