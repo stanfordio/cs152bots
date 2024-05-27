@@ -1,15 +1,14 @@
-import os
+import io
 import json
 import logging
-import discord
+import os
 import re
-from collections import deque
-from openai import OpenAI
-import io
 import textwrap
+from collections import deque
 
+import discord
 import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
+from openai import OpenAI
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -71,6 +70,7 @@ class GeneratorBot(discord.Client):
             await self.handle_channel_message(message)
 
     async def handle_channel_message(self, message: discord.Message):
+        print(message)
         discussion_channel = message.channel.name
         if isinstance(message.channel, discord.Thread):
             discussion_channel = message.channel.parent.name
@@ -86,12 +86,12 @@ class GeneratorBot(discord.Client):
         mod_channel = self.mod_channels[message.guild.id]
         if mod_channel:
             if self.should_evaluate(message):
-
+                print(message)
                 evaluation_result = self.evaluate_risk(message)
                 evaluation_result_dict = self.code_format(evaluation_result)
                 current_score = evaluation_result_dict["score"]
                 highest_score = self.session_risk[thread.id]['highest_score']
-                self.session_risk[thread.id].append({
+                self.session_risk[thread.id]['entries'].append({
                     'datetime': message.created_at,
                     'score': current_score,
                     'message': message.content,
@@ -106,7 +106,7 @@ class GeneratorBot(discord.Client):
                     print(message.content, evaluation_result)
 
     async def plot_scores(self, thread_id, mod_channel):
-        data_entries = self.session_risk[thread_id]
+        data_entries = self.session_risk[thread_id]['entries']
         dates = [entry['datetime'] for entry in data_entries]
         scores = [entry['score'] for entry in data_entries]
 
@@ -165,7 +165,7 @@ class GeneratorBot(discord.Client):
         """\n\n 
         
         Your response should look like this which can be directly serialized into dictionary in python, the score should 
-        be an integer between 0 to 100
+        be an integer between 0 to 100. Do note that it takes multiple signals for the score to be high.
         
         {
         "score": ..., 
@@ -195,6 +195,8 @@ class GeneratorBot(discord.Client):
                                 3) Financial Opportunity: The scam typically involves suggesting an investment in cryptocurrency, stocks, or a similar venture, promising high returns.
                                 4) Urgency and Secrecy: Scammers create a sense of urgency and encourage keeping the investment opportunity confidential.
                                 5) Manipulation: Use emotional manipulation to pressure the victim into making quick decisions.
+                                6) Discretion: THe scammer will try to move the conversation to a encrypted chatting app such as telegram, whatsapp, signal. They will use tactics to make it hard to catch the spelling to present detection 
+                                7) Scripted: The scammer will try very hard to stick to a script and wouldn't want to waste time, so the conversation may seem unnatural in terms of directness and sometimes repetitiveness. 
     
                         Please check if the conversation have these elements and evaluate the conversations. Your goal is to check in this conversation who is the scammer and who is the victim. You always return results in JSON format with no additional description or context"""
                     }
@@ -203,9 +205,38 @@ class GeneratorBot(discord.Client):
                 max_tokens=2560,
                 top_p=1,
                 frequency_penalty=0,
-                presence_penalty=0
+                presence_penalty=0,
+                function_call={
+                    "name": "llm_evaluation"
+                },
+                functions=[{"name": "llm_evaluation",
+                            "description": "evaluation results from LLM",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "score": {
+                                        "type": "number",
+                                        "description": "A risk score between 0 and 100 indicating how suspicious this message sender is"
+                                    },
+                                    "explanation": {
+                                        "type": "string",
+                                        "description": "An explanation for the risk score"
+                                    },
+
+                                    "scammer": {
+                                        "type": "string",
+                                        "description": "Name of the scammer in the conversatio"
+                                    },
+                                    "victim": {
+                                        "type": "string",
+                                        "description": "Name of the victim in the conversation"
+                                    }
+                                },
+                                "required":["score", "explanation", "scammer", "victim"]
+                                }
+                            }]
             )
-            return response.choices[0].message.content
+            return response.choices[0].message.function_call.arguments
         except Exception as e:
             logger.error(f"Failed to generate response: {e}")
             return "Sorry, I encountered an error while processing your request."
