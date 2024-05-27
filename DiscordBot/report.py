@@ -119,7 +119,7 @@ class Report:
                     return [reply]
 
                 #offensive content flow
-                    elif (message.content.lower() == "offensive content"):
+                elif (message.content.lower() == "offensive content"):
                     self.report_type = "offensive content"
                     self.state = State.OFFENSIVE_CONTENT_IDENTIFIED
                     reply = "Please specify the type of offensive content: \n"
