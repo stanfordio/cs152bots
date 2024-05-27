@@ -12,6 +12,8 @@ import traceback
 import asyncio
 import vertexai
 from vertexai.generative_models import GenerativeModel
+from googleapiclient import discovery
+from dotenv import load_dotenv
 
 
 # Set up logging to the console
@@ -249,6 +251,57 @@ class ModBot(discord.Client):
 
         # Forward the message to the mod channel
         ## gemini prompting
+        await self.gemini_review(message)
+        await self.persepctive_review(message)
+        
+        ##await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
+        ##scores = self.eval_text(message.content)
+        ##await mod_channel.send(self.code_format(scores))
+
+    async def persepctive_review(self, message):
+        load_dotenv()
+        mod_channel = self.mod_channels[message.guild.id]
+
+        perspective_API_key = os.getenv("perspective_API_key")
+        service = discovery.build(
+            "commentanalyzer",
+            "v1alpha1",
+            developerKey=perspective_API_key,
+            discoveryServiceUrl="https://commentanalyzer.googleapis.com/$discovery/rest?version=v1alpha1",
+            static_discovery=False,
+        )
+        analyze_request = {
+            'comment': {'text': message.content, 'type': 'PLAIN_TEXT'},
+            'languages': ["eng"],
+            'requestedAttributes': {
+                'TOXICITY': {},
+                'INSULT': {},
+            }
+        }
+        try:
+            # Execute the analyze request
+            response = service.comments().analyze(body=analyze_request).execute()
+            scores = response['attributeScores']
+        except Exception as e:
+            return {}
+        
+        thresholds = {
+            'toxicity': 0.8,
+            'insult': 0.3,
+        }
+        reply = "PERSPECTIVE_REVIEW_FOR_MESSAGE: " + message.content + "\n"
+        if scores.get("TOXICITY", {}).get("summaryScore", {}).get("value", 0) > thresholds["toxicity"]:
+            reply += "This message violates our policy for toxicity" + "\n-\n-\n"
+        elif scores.get("INSULT", {}).get("summaryScore", {}).get("value", 0) > thresholds["insult"]:
+            reply += "This message violates our policy for insults" + "\n-\n-\n"
+        else:
+            reply += "This message does not violate our policy for insults and toxicity" + "\n-\n-\n"
+
+        await mod_channel.send(reply)
+        return 
+
+    async def gemini_review(self, message):
+        mod_channel = self.mod_channels[message.guild.id]
         try:
             os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "service-account.json"
 
@@ -283,10 +336,6 @@ class ModBot(discord.Client):
                 # Send the detailed error message to the Discord channel
                 await mod_channel.send(error_message)
                 return
-        
-        ##await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-        ##scores = self.eval_text(message.content)
-        ##await mod_channel.send(self.code_format(scores))
 
     
     def eval_text(self, message):
