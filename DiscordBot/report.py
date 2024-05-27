@@ -67,6 +67,19 @@ class Report:
                     print("No permission to fetch the message.")
                 except discord.HTTPException as e:
                     print(f"Failed to fetch message: {e}")
+    
+    async def send_warning(self, reported_user, report_reason, sub_reason, reported_message):
+        try:
+            warning_message = (
+                f"You have been reported for the following reason: {report_reason}, specific issue: {sub_reason}.\n\n"
+                f"The message reported was:\n\"{reported_message.content}\"\n\n"
+                "Please be careful of your conduct in the future to avoid similar reports. Ensure that your messages adhere to community guidelines and do not contain inappropriate content."
+            )
+            await reported_user.send(warning_message)
+            print("Sent warning to user: %s", reported_user.id)
+        except Exception as e:
+            print("Failed to send warning to user: %s. Error: %s", reported_user.id, e)
+
 
     async def handle_message(self, message):
         '''
@@ -128,6 +141,10 @@ class Report:
         if self.state == State.AWAITING_SUB_REASON:
             if message.content.strip() in self.SUB_REASONS[self.report_reason]:
                 self.sub_reason = self.SUB_REASONS[self.report_reason][message.content.strip()]
+
+                # send warning message to the reported user
+                if self.message:
+                    await self.send_warning(self.message.author, self.report_reason, self.sub_reason, self.message)
 
                 # For Crypto Scams -- our specific abuse -- follow a certain mod pathway
                 if self.sub_reason == "Crypto Scam":
