@@ -178,14 +178,16 @@ class ModBot(discord.Client):
             self.current_script_step[thread.id] = "greeting"
             self.response_pending[thread.id] = False  # Initialize the response pending flag
             await self.send_script_message(thread)
+        
+        # Handle report reviews
+        elif message.channel.id in self.reviews:
+            await self.reviews[message.channel.id].handle_message(message)
+
         elif isinstance(message.channel, discord.Thread):
             thread_id = message.channel.id
             if thread_id in self.current_script_step and not self.response_pending.get(thread_id, False):
                 await self.continue_script(message)
 
-        # Handle report reviews
-        elif message.channel.id in self.reviews:
-            await self.reviews[message.channel.id].handle_message(message)
 
         # Handle messages in specific group channels for moderation
         elif message.channel.name == f'group-{self.group_num}':
