@@ -1,6 +1,8 @@
 from enum import Enum, auto
 import discord
 import re
+from deep_translator import GoogleTranslator
+#Todo import our new classifier
 
 class State(Enum):
     REPORT_START = auto()
@@ -24,6 +26,8 @@ class Report:
         self.report_type = None
         self.sub_type = None
         self.reported_message = None
+        self.translator = GoogleTranslator(source='auto', target='en')
+        #instantiate our new classifier in the object.
 
     async def handle_message(self, message, mod_channel):
         '''
@@ -56,7 +60,15 @@ class Report:
             
             self.state = State.SELECT_TYPE
             self.reported_message = self.message
-            return ["Message found:", f"```{self.message.author.name}: {self.message.content}```",
+            
+            self.reported_message.content = self.translator.translate(self.reported_message.content)
+        
+            
+            #TODO Chloe and Tish input in your classifier here
+            #issues = classifier(message content) to check if there are ussues
+            # if any(issues):
+            #        await self.send_to_mod_channel(translated_content, issues, mod_channel)
+            return ["Message found:", f"```{self.message.author.name}: {self.reported_message.content}```",
                     "Please select the type of issue:",
                     "1. Harassment  2. Offensive Content  3. Spam  4. Imminent Danger"]
 
