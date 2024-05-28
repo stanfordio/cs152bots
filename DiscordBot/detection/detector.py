@@ -44,6 +44,7 @@ class DetectorBot(discord.Client):
         self.session_risk = {}
         self.last_sent_index = {}
         self.classifier = ScamClassifier()
+        self.alert_queue = {}
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -75,8 +76,12 @@ class DetectorBot(discord.Client):
 
 
     def construct_classification_input(self, message: discord.Message):
-        chat_history = ' '.join([z.split(message.author.display_name + ': ')[1] for z in self.threaded_conversations[message.channel.id]
+
+        print(f"""speaker: {message.author.display_name}\nMessage: {self.threaded_conversations[message.channel.id]}\n\n""")
+
+        chat_history = ' '.join([z.strip(message.author.display_name + ': ') for z in self.threaded_conversations[message.channel.id]
                                      if message.author.display_name in z])
+
         ip_fraud_score = random.randint(0, 100)
         channel_topic = message.channel.name
         feature_input = f"""Channel: {channel_topic} \nFraud Score: {ip_fraud_score} \nMessage: {chat_history}"""
@@ -99,9 +104,14 @@ class DetectorBot(discord.Client):
         if mod_channel:
             if self.should_evaluate(message):
                 classifier_feature = self.construct_classification_input(message)
-                if self.classifier.predict_scammer(classifier_feature) == 'Scam':
-                    await mod_channel.send(
-                        f"""Scam Early Warning! \n\nScammer: {message.author.display_name} Classified as Pig Butcher \n\nMessage: {message.content}""")
+                if self.classifier.predict_scammer(classifier_feature) == 'Scam' or (message.channel.id in self.alert_queue and self.alert_queue['message.channel.id']['status'] != 'dismissed'):
+
+                    if message.channel.id not in self.alert_queue:
+                        self.alert_queue[message.channel.id] = {
+                            'status': 'watched'
+                        }
+                        await mod_channel.send(
+                            f"""Early Warning, Discussion {message.channel.id} Added to Watchlist!\n\n""")
 
                     evaluation_result = self.evaluate_risk(message)
                     evaluation_result_dict = self.code_format(evaluation_result)
@@ -118,10 +128,10 @@ class DetectorBot(discord.Client):
                         await mod_channel.send(f"""Scam Alert!\nScammer: {evaluation_result_dict['scammer']}\nVictim: {evaluation_result_dict['victim']}\nMessage: {message.content}\nScore: {evaluation_result_dict["score"]}""" )
                         await mod_channel.send(f'''\nExplanation: {evaluation_result_dict["explanation"]}''')
                         await self.plot_scores(thread.id, self.mod_channels[message.guild.id])
-                    else:
-                        print(message.content, evaluation_result)
-                else:
-                    print(message.content, "Dismissed")
+                        self.alert_queue[message.channel.id] = {
+                            'status': 'alerted'
+                        }
+
 
     async def plot_scores(self, thread_id, mod_channel):
         data_entries = self.session_risk[thread_id]['entries']
