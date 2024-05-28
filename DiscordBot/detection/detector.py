@@ -5,10 +5,13 @@ import os
 import re
 import textwrap
 from collections import deque
+import random
 
 import discord
 import matplotlib.pyplot as plt
 from openai import OpenAI
+
+from DiscordBot.detection.model.model_inference import ScamClassifier
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -28,7 +31,7 @@ with open(token_path) as f:
     openai_token = tokens['chatgpt']
 
 
-class GeneratorBot(discord.Client):
+class DetectorBot(discord.Client):
     def __init__(self): 
         intents = discord.Intents.default()
         intents.message_content = True
@@ -40,6 +43,7 @@ class GeneratorBot(discord.Client):
         self.threaded_conversations = {}
         self.session_risk = {}
         self.last_sent_index = {}
+        self.classifier = ScamClassifier()
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -69,6 +73,14 @@ class GeneratorBot(discord.Client):
         if message.guild:
             await self.handle_channel_message(message)
 
+
+    def construct_classification_input(self, message: discord.Message):
+        chat_history = ' '.join([z.split(message.author.display_name + ': ')[1] for z in self.threaded_conversations[message.channel.id]
+                                     if message.author.display_name in z])
+        ip_fraud_score = random.randint(0, 100)
+        channel_topic = message.channel.name
+        feature_input = f"""Channel: {channel_topic} \nFraud Score: {ip_fraud_score} \nMessage: {chat_history}"""
+        return feature_input
     async def handle_channel_message(self, message: discord.Message):
         print(message)
         discussion_channel = message.channel.name
@@ -86,24 +98,30 @@ class GeneratorBot(discord.Client):
         mod_channel = self.mod_channels[message.guild.id]
         if mod_channel:
             if self.should_evaluate(message):
-                print(message)
-                evaluation_result = self.evaluate_risk(message)
-                evaluation_result_dict = self.code_format(evaluation_result)
-                current_score = evaluation_result_dict["score"]
-                highest_score = self.session_risk[thread.id]['highest_score']
-                self.session_risk[thread.id]['entries'].append({
-                    'datetime': message.created_at,
-                    'score': current_score,
-                    'message': message.content,
-                    'explanation': evaluation_result_dict["explanation"]
-                })
-                if evaluation_result_dict["score"] > 60 and (current_score > highest_score + 10):
-                    self.session_risk[thread.id]['highest_score'] = current_score  # Update the highest score
-                    await mod_channel.send(f"""Scam Alert!\nScammer: {evaluation_result_dict['scammer']}\nVictim: {evaluation_result_dict['victim']}\nMessage: {message.content}\nScore: {evaluation_result_dict["score"]}""" )
-                    await mod_channel.send(f'''\nExplanation: {evaluation_result_dict["explanation"]}''')
-                    await self.plot_scores(thread.id, self.mod_channels[message.guild.id])
+                classifier_feature = self.construct_classification_input(message)
+                if self.classifier.predict_scammer(classifier_feature) == 'Scam':
+                    await mod_channel.send(
+                        f"""Scam Early Warning! \n\nScammer: {message.author.display_name} Classified as Pig Butcher \n\nMessage: {message.content}""")
+
+                    evaluation_result = self.evaluate_risk(message)
+                    evaluation_result_dict = self.code_format(evaluation_result)
+                    current_score = evaluation_result_dict["score"]
+                    highest_score = self.session_risk[thread.id]['highest_score']
+                    self.session_risk[thread.id]['entries'].append({
+                        'datetime': message.created_at,
+                        'score': current_score,
+                        'message': message.content,
+                        'explanation': evaluation_result_dict["explanation"]
+                    })
+                    if evaluation_result_dict["score"] > 60 and (current_score > highest_score + 10):
+                        self.session_risk[thread.id]['highest_score'] = current_score  # Update the highest score
+                        await mod_channel.send(f"""Scam Alert!\nScammer: {evaluation_result_dict['scammer']}\nVictim: {evaluation_result_dict['victim']}\nMessage: {message.content}\nScore: {evaluation_result_dict["score"]}""" )
+                        await mod_channel.send(f'''\nExplanation: {evaluation_result_dict["explanation"]}''')
+                        await self.plot_scores(thread.id, self.mod_channels[message.guild.id])
+                    else:
+                        print(message.content, evaluation_result)
                 else:
-                    print(message.content, evaluation_result)
+                    print(message.content, "Dismissed")
 
     async def plot_scores(self, thread_id, mod_channel):
         data_entries = self.session_risk[thread_id]['entries']
@@ -267,5 +285,5 @@ class GeneratorBot(discord.Client):
         except:
             print(text)
 
-client = GeneratorBot()
+client = DetectorBot()
 client.run(discord_token)
