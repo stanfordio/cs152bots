@@ -234,6 +234,8 @@ class ModBot(discord.Client):
         '''
         return "Evaluated: '" + text+ "'"
     
+    
+    # TODO: Change this to handle specific images/embeds
     async def blur_image(self, message):
         """
         This function will blur the image present in a message.
