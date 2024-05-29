@@ -10,6 +10,9 @@ from report import Report
 import pdb
 import uuid
 
+#import apis
+from classifiers.gpt import gpt_classify
+
 # Set up logging to the console
 logger = logging.getLogger('discord')
 logger.setLevel(logging.DEBUG)
@@ -479,22 +482,24 @@ class ModBot(discord.Client):
         if not message.channel.name == f'group-{self.group_num}' and not message.channel.name == f'group-{self.group_num}-mod':
             return
         
+        mod_channel = self.mod_channels[message.guild.id]
         if message.channel.name == f'group-{self.group_num}-mod':
-            mod_channel = self.mod_channels[message.guild.id]
             # Process messages within moderator 
             await handle_mod_response(self, message, mod_channel)
             return
 
         # Forward the message to the mod channel
-        # await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-        # scores = self.eval_text(message.content)
-        # await mod_channel.send(self.code_format(scores))
+        await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
+        scores = self.eval_text(message.content)
+        await mod_channel.send(self.code_format(scores))
 
     def eval_text(self, message):
         ''''
         TODO: Once you know how you want to evaluate messages in your channel, 
         insert your code here! This will primarily be used in Milestone 3. 
         '''
+        score = gpt_classify(message)
+        print(score)
         return message
 
     
