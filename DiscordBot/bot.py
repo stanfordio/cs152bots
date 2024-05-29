@@ -72,15 +72,15 @@ class ModBot(discord.Client):
         # Ignore messages from the bot 
         if message.author.id == self.user.id:
             return
-        # await self.blur_image(message)
+        await self.blur_image(message)
         # Check if this message was sent in a server ("guild") or if it's a DM
-        if message.guild and message.guild.id in self.mod_channels:
-            await self.handle_mod_message(message)
-        if message.guild:
-            # print(self.mod_channels[message.guild.id])
-            await self.handle_channel_message(message)
-        else:
-            await self.handle_dm(message)
+        # if message.guild and message.guild.id in self.mod_channels:
+        #     await self.handle_mod_message(message)
+        # if message.guild:
+        #     # print(self.mod_channels[message.guild.id])
+        #     await self.handle_channel_message(message)
+        # else:
+        #     await self.handle_dm(message)
 
     async def handle_dm(self, message):
         # Handle a help message
