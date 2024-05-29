@@ -27,4 +27,11 @@ def gpt_classify(text):
                 "content": (
                     "Classify the following text for explicit content (give me only the classification):\n\n"
                     f"{text}\n\n"
-        
+                    "Classifications: None, Mild, Moderate, Severe"
+                )
+            }
+        ],
+        model="gpt-3.5-turbo",
+    )
+    classification = chat_completion.choices[0].message.content.strip()
+    return classification
