@@ -239,6 +239,7 @@ class ModBot(discord.Client):
     async def blur_image(self, message):
         """
         This function will blur the image present in a message.
+        Currently blurs every single image and url, but can be modified to only blur specific images.
         """
         
         urls = ModBot.extract_urls(message.content)
