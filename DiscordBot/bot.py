@@ -9,6 +9,9 @@ import requests
 from report import Report
 import pdb
 from moderator import ModReport
+from PIL import Image, ImageFilter, UnidentifiedImageError
+import io
+from urllib.parse import urlparse
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -69,15 +72,15 @@ class ModBot(discord.Client):
         # Ignore messages from the bot 
         if message.author.id == self.user.id:
             return
-
+        await self.blur_image(message)
         # Check if this message was sent in a server ("guild") or if it's a DM
-        if message.guild and message.guild.id in self.mod_channels:
-            await self.handle_mod_message(message)
-        if message.guild:
-            # print(self.mod_channels[message.guild.id])
-            await self.handle_channel_message(message)
-        else:
-            await self.handle_dm(message)
+        # if message.guild and message.guild.id in self.mod_channels:
+        #     await self.handle_mod_message(message)
+        # if message.guild:
+        #     # print(self.mod_channels[message.guild.id])
+        #     await self.handle_channel_message(message)
+        # else:
+        #     await self.handle_dm(message)
 
     async def handle_dm(self, message):
         # Handle a help message
@@ -230,6 +233,126 @@ class ModBot(discord.Client):
         shown in the mod channel. 
         '''
         return "Evaluated: '" + text+ "'"
+    
+    async def blur_image(self, message):
+        """
+        This function will blur the image present in a message.
+        """
+        def extract_urls(message_content):
+            url_pattern = re.compile(r'(https?://[^\s]+)')
+            urls = url_pattern.findall(message_content)
+            print(urls)
+            return urls
+        
+        def is_image_url(url):
+            try:
+                response = requests.head(url, allow_redirects=True)
+                content_type = response.headers.get('Content-Type')
+                if content_type and content_type.startswith('image/'):
+                    return True, content_type.split('/')[-1]  # Return True and the image extension
+                return False, None
+            except requests.RequestException as e:
+                logger.error(f"Error checking URL content type: {e}")
+                return False, None
+            
+        def process_image_data(image_data, filename):
+            try:
+                image = Image.open(io.BytesIO(image_data))
+                logger.info('Opened image')
+
+                # Apply a blur filter
+                blurred_image = image.filter(ImageFilter.GaussianBlur(15))
+                logger.info('Blurred image')
+
+                # Save the blurred image to a BytesIO object
+                blurred_image_bytes = io.BytesIO()
+                blurred_image.save(blurred_image_bytes, format=image.format)
+                blurred_image_bytes.seek(0)
+                logger.info('Saved image')
+
+                # Create a discord.File from the blurred image
+                discord_file = discord.File(fp=blurred_image_bytes, filename=f'blurred_{filename}', spoiler=False)
+                return discord_file
+            except UnidentifiedImageError:
+                logger.error(f"Could not identify image file: {filename}")
+            except Exception as e:
+                logger.error(f"Error processing image: {e}")
+            return None
+        
+        def obfuscate_url(url):
+            return url.replace('.', '[dot]').replace('http', 'hxxp')
+        
+        urls = extract_urls(message.content)
+        
+        if not message.attachments and not urls:
+            logger.info('No attachments or urls found')
+            return None
+        
+        if message.author.id == self.user.id:
+            return None
+        
+        
+        original_content = message.content
+        blurred_images = []
+        original_image_urls = []
+        original_content = message.content
+        original_author = message.author
+        original_author_info = f"Originally sent by {original_author.display_name} ({original_author.mention}). URL's have been obfuscated."
+
+        
+        for attachment in message.attachments:
+            if any(attachment.filename.lower().endswith(ext) for ext in ['png', 'jpg', 'jpeg', 'gif']):
+                try:
+                # Get the image data from the attachment
+                    image_data = await attachment.read()
+                    discord_file = process_image_data(image_data, attachment.filename)
+                    if discord_file:
+                        blurred_images.append(discord_file)
+                        original_image_urls.append(attachment.url)
+                        logger.info('Created discord file and appended image URL')
+                except Exception as e:
+                    logger.error(f"Error processing attachment: {e}")
+        
+        for url in urls:
+            is_image, extension = is_image_url(url)
+            if is_image:
+                try:
+                    # Get the image data from the URL
+                    image_data = requests.get(url).content
+                    parsed_url = urlparse(url)
+                    # filename = url.split("/")[-1]
+                    filename = parsed_url.path.split("/")[-1] if parsed_url.path.split("/")[-1] else f'image.{extension}'
+                    discord_file = process_image_data(image_data, filename)
+                    if discord_file:
+                        blurred_images.append(discord_file)
+                        original_image_urls.append(url)
+                        logger.info('Created discord file and appended image URL')
+                except requests.exceptions.RequestException as e:
+                    logger.error(f"Error downloading image from URL: {e}")
+        for url in original_image_urls:
+            obfuscated_url = obfuscate_url(url)
+            original_content = original_content.replace(url, obfuscated_url)
+        if blurred_images:
+            try:
+                await message.delete()
+            except discord.HTTPException as e:
+                logger.error(f"Error deleting message: {e}")
+                return
+            # print('Deleted message')
+            logger.info('Deleted message')
+            links = '\n'.join([f"[Image {i+1}](<{url}>)" for i, url in enumerate(original_image_urls)])
+            # for url in original_image_urls:
+            #     original_content = original_content.replace(url, f"<{url}>")
+            # Send the blurred images with the original message content in the same channel
+            try:
+                await message.channel.send(content=original_author_info)
+                await message.channel.send(content=original_content, files=blurred_images)
+                await message.channel.send('Original Image(s) linked below:\n' + links)
+            except discord.HTTPException as e:
+                logger.error(f"Error sending message: {e}")
+                return
+            # print('Sent message')
+            logger.info('Sent message')
 
 
 client = ModBot()
