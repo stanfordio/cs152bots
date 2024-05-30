@@ -24,9 +24,9 @@ def perspective_classify(text):
   analyze_request = {
     # Type the text you want to evaluate below. BTW, this message was taken from the internet, I didn't write it lol
     'comment': { 'text': text },
-    'requestedAttributes': {'TOXICITY': {}, 'CURIOSITY_EXPERIMENTAL': {}}
+    'requestedAttributes': {'SEXUALLY_EXPLICIT': {}, 'CURIOSITY_EXPERIMENTAL': {}}
   }
 
   response = client.comments().analyze(body=analyze_request).execute()
-  toxicity_score = response['attributeScores']['TOXICITY']['summaryScore']['value']
-  return toxicity_score
+  sexually_explicit_score = response['attributeScores']['SEXUALLY_EXPLICIT']['summaryScore']['value']
+  return sexually_explicit_score
