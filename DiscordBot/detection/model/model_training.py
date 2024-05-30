@@ -5,7 +5,7 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
-with open('synthetic_full.json', 'r') as json_file:
+with open('../synthetic/synthetic_full.json', 'r') as json_file:
     results = json.load(json_file)
 
 def time_since_first(first, now):
