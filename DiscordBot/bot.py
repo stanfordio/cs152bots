@@ -492,7 +492,8 @@ class ModBot(discord.Client):
         # Forward the message to the mod channel
         await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
         scores = self.eval_text(message.content)
-        await mod_channel.send(self.code_format(scores))
+        severity = self.calculate_severity(*scores)
+        await mod_channel.send(self.code_format(message.content, severity))
 
     def eval_text(self, message):
         ''''
@@ -503,16 +504,28 @@ class ModBot(discord.Client):
         perspective_score = perspective_classify(message)
         print('gpt_score: ', gpt_score)
         print('perspective_score: ', perspective_score)
-        return message
+
+        return gpt_score, perspective_score
+
+
+    def calculate_severity(self, gpt_score, perspective_score):
+        if gpt_score == 'None':
+            return 1
+        elif gpt_score == 'Mild':
+            return 2
+        elif gpt_score == 'Moderate' or perspective_score < 0.6:
+            return 3
+        else:
+            return 4
 
     
-    def code_format(self, text):
+    def code_format(self, message, severity):
         ''''
         TODO: Once you know how you want to show that a message has been 
         evaluated, insert your code here for formatting the string to be 
         shown in the mod channel. 
         '''
-        return "Evaluated: '" + text+ "'"
+        return "Evaluated: '" + message + "' with Severity " + str(severity)
 
 
 client = ModBot()
