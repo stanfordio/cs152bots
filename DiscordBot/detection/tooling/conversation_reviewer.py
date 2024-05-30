@@ -1,13 +1,10 @@
-import os
 import json
-import re
+import tkinter as tk
+from tkinter import scrolledtext, ttk
 
 with open('synthetic_full.json', 'r') as json_file:
     results = json.load(json_file)
-import tkinter as tk
-from tkinter import scrolledtext, ttk
-import tkinter as tk
-from tkinter import scrolledtext, ttk
+
 
 class ConversationViewer:
     def __init__(self, root, conversations):
