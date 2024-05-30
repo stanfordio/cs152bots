@@ -11,7 +11,7 @@ import discord
 import matplotlib.pyplot as plt
 from openai import OpenAI
 
-from DiscordBot.detection.model.model_inference import ScamClassifier
+from model.model_inference import ScamClassifier
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
