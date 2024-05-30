@@ -73,14 +73,15 @@ class ModBot(discord.Client):
         if message.author.id == self.user.id:
             return
         # await self.blur_image(message)
+        await ModBot.get_images(message)
         # Check if this message was sent in a server ("guild") or if it's a DM
-        if message.guild and message.guild.id in self.mod_channels:
-            await self.handle_mod_message(message)
-        if message.guild:
-            # print(self.mod_channels[message.guild.id])
-            await self.handle_channel_message(message)
-        else:
-            await self.handle_dm(message)
+        # if message.guild and message.guild.id in self.mod_channels:
+        #     await self.handle_mod_message(message)
+        # if message.guild:
+        #     # print(self.mod_channels[message.guild.id])
+        #     await self.handle_channel_message(message)
+        # else:
+        #     await self.handle_dm(message)
 
     async def handle_dm(self, message):
         # Handle a help message
@@ -308,6 +309,34 @@ class ModBot(discord.Client):
                 logger.error(f"Error sending message: {e}")
                 return
             logger.info('Sent message')
+            
+    @staticmethod
+    async def get_images(message):
+        """
+        This function gets the images from a message.
+        Returns a tuple containing a list of attachment image data and a list of URL image data.
+        """
+        images = []
+        for attachment in message.attachments:
+            if any(attachment.filename.lower().endswith(ext) for ext in ['png', 'jpg', 'jpeg', 'gif']):
+                images.append(attachment)
+                
+        url_attachments = ModBot.extract_urls(message.content)
+        for url in url_attachments:
+            is_image, _ = ModBot.is_image_url(url)
+            if is_image:
+                images.append(url)
+        
+        # get the images from the attachments and urls
+        
+        attachment_images = [await attachment.read() for attachment in message.attachments if any(attachment.filename.lower().endswith(ext) for ext in ['png', 'jpg', 'jpeg', 'gif'])]
+        
+        try: 
+            url_image_data = [requests.get(url).content for url in url_attachments if ModBot.is_image_url(url)]
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error downloading image from URL: {e}")
+
+        return attachment_images, url_image_data
 
     @staticmethod
     def extract_urls(message_content):
