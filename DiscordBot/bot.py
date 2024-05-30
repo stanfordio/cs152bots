@@ -12,6 +12,7 @@ import uuid
 
 #import apis
 from classifiers.gpt import gpt_classify
+from classifiers.perspective import perspective_classify
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -498,8 +499,10 @@ class ModBot(discord.Client):
         TODO: Once you know how you want to evaluate messages in your channel, 
         insert your code here! This will primarily be used in Milestone 3. 
         '''
-        score = gpt_classify(message)
-        print(score)
+        gpt_score = gpt_classify(message)
+        perspective_score = perspective_classify(message)
+        print('gpt_score: ', gpt_score)
+        print('perspective_score: ', perspective_score)
         return message
 
     
