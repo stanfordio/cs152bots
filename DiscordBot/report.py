@@ -7,8 +7,6 @@ from azure.ai.textanalytics import TextAnalyticsClient
 import os
 from dotenv import load_dotenv
 
-#Todo import our new classifier
-
 load_dotenv()
 
 class State(Enum):
@@ -35,13 +33,6 @@ class Report:
         self.reported_message = None
         self.translator = GoogleTranslator(source='auto', target='en')
         #instantiate our new classifier in the object.
-
-        self.endpoint = os.getenv("AZURE_TEXT_ANALYTICS_ENDPOINT")
-        self.key = os.getenv("AZURE_TEXT_ANALYTICS_KEY")
-        self.text_analytics_client = TextAnalyticsClient(
-            endpoint=self.endpoint,
-            credential=AzureKeyCredential(self.key)
-        )
 
     async def handle_message(self, message, mod_channel):
         '''
@@ -79,11 +70,17 @@ class Report:
         
             
             #TODO Chloe and Tish input in your classifier here
-            issues = self.classify_message(self.reported_message.content)
-            if issues:
-                await self.send_to_mod_channel(self.reported_message.content, issues, mod_channel)
-                return ["Message found:", f"```{self.message.author.name}: {self.reported_message.content}```",
-                        "The message has been classified with issues. Our moderation team has been notified."]
+            #issues = classifier(message content) to check if there are ussues
+            # if any(issues):
+            #        await self.send_to_mod_channel(translated_content, issues, mod_channel)
+            is_issue, confidence = classify_message_with_azure(self.reported_message.content)
+            if is_issue:
+                if confidence > 0.90:
+                    return ["Message found:", f"```{self.message.author.name}: {self.reported_message.content}```",
+                        "The message has been classified as DEFINITELY an issue. Thanks for reporting. Our moderation team has been notified."]
+                else: 
+                    return ["Message found:", f"```{self.message.author.name}: {self.reported_message.content}```",
+                            "The message has been classified as an issue. Our moderation team has been notified."]
             else:
                 return ["Message found:", f"```{self.message.author.name}: {self.reported_message.content}```",
                         "Please select the type of issue:",
@@ -137,32 +134,39 @@ class Report:
     def report_complete(self):
         return self.state == State.FINAL_MESSAGE
 
-    def classify_message(self, message_content):
-        print("Classifying message:", message_content)
-        try:
-            poller = self.text_analytics_client.begin_analyze(
-                documents=[{"id": "1", "text": message_content}],
-                actions=[{"action_type": "singleCategoryClassify", "project_name": "<your_project_name>", "deployment_name": "<your_deployment_name>"}]
-            )
-            result = poller.result()
-            if "singleCategoryClassify" in result:
-                classification_result = result["singleCategoryClassify"][0]
-                if classification_result["error"] is not None:
-                    return ["Error occurred during classification: " + classification_result["error"]["message"]]
-                else:
-                    category = classification_result["category"]
-                    confidence_score = classification_result["confidenceScore"]
-                    print(f"Message: {message_content}")
-                    print(f"Classified as: '{category}' with confidence score {confidence_score}")
-                    return [f"Message classified as '{category}' with confidence score {confidence_score}"]
-            else:
-                return ["Classification not available"]
-        except Exception as e:
-            return ["Error occurred during classification: " + str(e)]
+def classify_message_with_azure(message_content):
+    try:
+        endpoint = os.getenv("AZURE_LANGUAGE_ENDPOINT")
+        key = os.getenv("AZURE_LANGUAGE_KEY")
+        project_name = os.getenv("SINGLE_LABEL_CLASSIFY_PROJECT_NAME")
+        deployment_name = os.getenv("SINGLE_LABEL_CLASSIFY_DEPLOYMENT_NAME")
 
+        text_analytics_client = TextAnalyticsClient(
+            endpoint=endpoint,
+            credential=AzureKeyCredential(key),
+        )
 
-    async def send_to_mod_channel(self, content, issues, mod_channel):
-        await mod_channel.send(f'ALERT: Issues detected in reported message: {content}\nIssues: {issues}')
+        documents = [message_content]
 
+        poller = text_analytics_client.begin_single_label_classify(
+            documents,
+            project_name=project_name,
+            deployment_name=deployment_name
+        )
 
-        
+        document_results = poller.result()
+        for classification_result in document_results:
+            if classification_result.kind == "CustomDocumentClassification":
+                classification = classification_result.classifications[0]
+                print("Classified as '{}' with confidence score {}".format(
+                    classification.category, classification.confidence_score)
+                )
+                return classification.category, classification.confidence_score
+            elif classification_result.is_error is True:
+                print("Error with code '{}' and message '{}'".format(
+                    classification_result.error.code, classification_result.error.message
+                ))
+                return None
+    except Exception as e:
+        print("Error occurred during classification: " + str(e))
+        return None

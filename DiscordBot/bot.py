@@ -1,10 +1,16 @@
 import discord
+from discord.ext import commands
 import os
 import json
 import logging
 import re
 from report import Report
 from mod import Mod
+from dotenv import load_dotenv
+from report import Report, classify_message_with_azure
+
+# Load environment variables
+load_dotenv()
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -22,12 +28,11 @@ with open(token_path) as f:
     tokens = json.load(f)
     discord_token = tokens['discord']
 
-
 class ModBot(discord.Client):
     def __init__(self): 
         intents = discord.Intents.default()
         intents.message_content = True
-        super().__init__(intents=intents)
+        super().__init__(command_prefix='.', intents=intents)
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
@@ -53,7 +58,6 @@ class ModBot(discord.Client):
                 if channel.name == f'group-{self.group_num}-mod':
                     self.mod_channels[guild.id] = channel
                     self.mod_channel = channel
-        
 
     async def on_message(self, message):
         '''
@@ -108,9 +112,17 @@ class ModBot(discord.Client):
 
         # Forward the message to the mod channel
         mod_channel = self.mod_channels[message.guild.id]
-        await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-        scores = self.eval_text(message.content)
-        await mod_channel.send(self.code_format(scores))
+        #await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
+        
+        # Evaluate the message
+        classification_result = self.eval_text(message.content)
+        
+        # If flagged, notify the mod channel
+        if classification_result:
+            print("notified")
+            category, confidence_score = classification_result
+            await mod_channel.send(self.code_format(message.content, confidence_score))
+        print("test")
 
     async def handle_mod_message(self, message):
         author_id = message.author.id
@@ -121,52 +133,29 @@ class ModBot(discord.Client):
         if author_id not in self.mod_flows:
             self.mod_flows[author_id] = Mod(self)
         
-        # Let the report class handle this message; forward all the messages it returns to us
+        # Let the report class handle this message; forward all the messages it returns to uss
         responses = await self.mod_flows[author_id].handle_message(message, self.mod_channel)
         for r in responses:
             await message.channel.send(r)
 
-        # Modify the eval_text and code_format functions here
-        # Assuming that the report object is accessible and contains the classification result
-        if self.mod_flows[author_id].state == State.REPORT_SUBMITTED:
-            report = self.mod_flows[author_id]
-            message_content = report.reported_message.content
-            evaluation_result = report.classify_message(message_content)
-            formatted_result = self.code_format(evaluation_result)
-            await message.channel.send(formatted_result)
-
         # If the report is complete or cancelled, remove it from our map
         if self.mod_flows[author_id].report_complete():
             self.mod_flows.pop(author_id)
-
+        
     def eval_text(self, message):
-        ''''
-        Placeholder for message evaluation logic
         '''
-        return classify_message(message)
-
-    def code_format(self, evaluation_result):
-        ''''
-        Formats the string to be shown in the mod channel.
+        Evaluate the message using the classifier.
         '''
-        print(f"evaluation_result: {evaluation_result}")  # Print the evaluation result for debugging
+        # Call the classification function
+        classification_result = classify_message_with_azure(message)
+        print(classification_result)
+        return classification_result
 
-        # Unpack the evaluation result
-        message_content, is_issue = evaluation_result
-
-        # Format the output message
-        if is_issue:
-            return f"Evaluated: Message '{message_content}' is an issue."
-        else:
-            return f"Evaluated: Message '{message_content}' is not an issue."
-
-
-def classify_message(message_content):
-    # Dummy classification logic for demonstration
-    # In a real scenario, this would call an actual classification function
-    is_issue = "issue" in message_content.lower()
-    return message_content, is_issue
-
+    def code_format(self, text, score):
+        '''
+        Format the string to be shown in the mod channel.
+        '''
+        return f"ALERT: The message '{text}' has been flagged by the classifier as potentially problematic with a confidence score of {score}."
 
 client = ModBot()
 client.run(discord_token)
