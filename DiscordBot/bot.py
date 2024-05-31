@@ -9,6 +9,7 @@ import sqlite3
 from datetime import datetime
 from report import Report
 from mod import Review
+import heapq
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -34,11 +35,13 @@ class ModBot(discord.Client):
         intents.message_content = True
         super().__init__(command_prefix='.', intents=intents)
         self.openai = openai.OpenAI(
-            api_key='sk-<API_KEY>')
+            api_key='sample-api-key')
         self.group_num = None
         self.mod_channels = {}  # Map from guild to the mod channel id for that guild
         self.db_connection = sqlite3.connect('mod_db.sqlite')
         self.reviews = {}  # Add a dictionary to keep track of reviews per user
+        self.reports = {}
+        self.reports_to_review = []
 
         # Create the database schema if it doesn't exist
         self.db_cursor = self.db_connection.cursor()
@@ -98,18 +101,32 @@ class ModBot(discord.Client):
         author_id = message.author.id
         responses = []
 
-        if not message.content.startswith(Report.START_KEYWORD):
-            return
+        # If we don't currently have an active report for this user, add one
+        if author_id not in self.reports:
+            self.reports[author_id] = Report(self)
 
+        # Check command
         command = message.content.split()[0]
         if command == Report.START_KEYWORD:
-            responses = await self.handle_start_report(message)
+            responses = await self.reports[author_id].handle_message(message)
         elif command == Report.BLOCK_KEYWORD:
-            responses = await self.handle_block_report(message)
+            responses = await self.reports[author_id].handle_block(message)
+        else:
+            if author_id in self.reports:
+                responses = await self.reports[author_id].handle_message(message)
+                blocks = await self.reports[author_id].handle_block(message)
+                responses.extend(blocks)
 
+        # Send all responses
         if responses:
             for r in responses:
                 await message.channel.send(r)
+
+        # If the report/block is complete or cancelled, remove it from our map
+        if self.reports[author_id].report_complete() or self.reports[author_id].block_complete():
+            heapq.heappush(self.reports_to_review,
+                           (self.reports[author_id].priority, self.reports[author_id]))
+            self.reports.pop(author_id)
 
     async def handle_start_report(self, message):
         author_id = message.author.id

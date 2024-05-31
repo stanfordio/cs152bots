@@ -94,6 +94,7 @@ class Report:
         self.priority = priority
         self.report_status = report_status
         self.time_reported = time_reported if time_reported else datetime.now()
+        self.state = State.REPORT_START
 
     def __lt__(self, other):
         return self.priority < other.priority and self.time_reported < other.time_reported
@@ -132,7 +133,7 @@ class Report:
 
             self.state = State.MESSAGE_IDENTIFIED
             self.reported_user = message.author.name
-            self.reported_message = message
+            self.reported_message = message.content
             reply = "I found this message:" + "```" + \
                 message.author.name + ": " + message.content + "```" + "\n\n"
             reply += "Why are you reporting this message? Please select the number corresponding to the appropriate category.\n"
@@ -444,17 +445,14 @@ class Report:
         return self.state == State.BLOCK_COMPLETE
 
     def save_report(self, db_cursor, db_connection):
-        '''
-        This function saves the report to the database.
-        '''
         report_data = {
             "reported_user_id": self.reported_user_id,
             "reporter_user_id": self.reporter_user_id,
             "reportee": self.reportee,
             "reported_user": self.reported_user,
             "reported_message": self.reported_message,
-            "report_category": self.report_category,
-            "report_subcategory": self.report_subcategory,
+            "report_category": self.report_category.name if self.report_category else None,
+            "report_subcategory": self.report_subcategory.name if self.report_subcategory else None,
             "additional_details": self.additional_details,
             "priority": self.priority,
             "report_status": self.report_status,
