@@ -12,7 +12,6 @@ supabase_key = tokens.get("SUPABASE_KEY")
 
 supabase: Client = create_client(supabase_url, supabase_key)
 
-
 class State(Enum):
     REPORT_START = auto()
     AWAITING_MESSAGE = auto()
@@ -27,12 +26,6 @@ class State(Enum):
     AWAITING_BLOCK_ANSWER = auto()
     REPORT_COMPLETE = auto()
 
-
-
-class ModeratorState(Enum):
-    AWAITING_DECISION = auto()
-    AWAITING_ACTION = auto()
-    ACTION_COMPLETE = auto()
     
 class Report:
     START_KEYWORD = "report"
@@ -359,101 +352,3 @@ class Report:
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
-
-
-
-class ModeratorReport:
-    def __init__(self, client, message):
-        self.client = client
-        self.original_message = message
-        self.state = ModeratorState.AWAITING_DECISION
-        self.reported_user_id = None
-        self.reported_user_name = None
-        self.extract_reported_user_info()
-
-    def extract_reported_user_info(self):
-        lines = self.original_message.content.split('\n')
-        for line in lines:
-            if line.startswith("**Reported User:**"):
-                match = re.search(r'<@(\d+)>', line)
-                if match:
-                    self.reported_user_id = int(match.group(1))
-                match = re.search(r'\((.+?)\)', line)
-                if match:
-                    self.reported_user_name = match.group(1)
-                break
-
-    # TODO: Trigger the appropriate action based on the commands below.
-
-    async def handle_ban(self, message):
-        current_report = supabase.table('User').select('*').eq('current_report', True).execute()
-
-        if len(current_report.data) > 0:
-            report_data = current_report.data[0]
-            reported_user = report_data['reported_user']
-            reported_message = report_data['reported_message']
-            message_link = report_data['message_link']
-            message_channel = report_data['message_channel']
-
-            try:
-                channel = discord.utils.get(self.client.get_all_channels(), name=message_channel)
-                if channel:
-                    await channel.send(f"User {reported_user} has been banned for the following message:\n```{reported_message}```\nMessage Link: {message_link}")
-
-                    await message.channel.send(f"User {reported_user} has been successfully banned. The reporting user has been notified.")
-                else:
-                    await message.channel.send("Channel not found.")
-            except Exception as e:
-                await message.channel.send(f"An error occurred: {str(e)}")
-        else:
-            await message.channel.send("No current report found.")
-
-    async def handle_hide_profile(self, message):
-        current_report = supabase.table('User').select('*').eq('current_report', True).execute()
-
-        if len(current_report.data) > 0:
-            report_data = current_report.data[0]
-            reported_user = report_data['reported_user']
-            message_channel = report_data['message_channel']
-
-            try:
-                channel = discord.utils.get(self.client.get_all_channels(), name=message_channel)
-                if channel:
-                    await channel.send(f"Profile for user {reported_user} has been hidden.")
-
-                    await message.channel.send(f"Profile of user {reported_user} has been successfully hidden. The reporting user has been notified.")
-                else:
-                    await message.channel.send("Channel not found.")
-            except Exception as e:
-                await message.channel.send(f"An error occurred: {str(e)}")
-        else:
-            await message.channel.send("No current report found.")
-
-    async def handle_escalate(self, message):
-        current_report = supabase.table('User').select('*').eq('current_report', True).execute()
-
-        if len(current_report.data) > 0:
-            report_data = current_report.data[0]
-            reported_user = report_data['reported_user']
-            reported_message = report_data['reported_message']
-            message_link = report_data['message_link']
-            message_channel = report_data['message_channel']
-
-            try:
-                channel = discord.utils.get(self.client.get_all_channels(), name=message_channel)
-                if channel:
-                    await channel.send(f"Report for user {reported_user} has been escalated to higher authorities.\nReported Message: ```{reported_message}```\nMessage Link: {message_link}")
-
-                    await message.channel.send(f"Report for user {reported_user} has been successfully escalated. The reporting user has been notified.")
-                else:
-                    await message.channel.send("Channel not found.")
-            except Exception as e:
-                await message.channel.send(f"An error occurred: {str(e)}")
-        else:
-            await message.channel.send("No current report found.")
-
-    async def handle_resolved(self, message):
-        await message.channel.send("Report has been resolved.")
-
-    def report_complete(self):
-        return self.state == ModeratorState.ACTION_COMPLETE

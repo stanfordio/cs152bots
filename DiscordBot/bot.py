@@ -6,7 +6,8 @@ import json
 import logging
 import re
 import requests
-from report import Report, ModeratorReport
+from report import Report
+from moderator import ModeratorReport
 import pdb
 
 # Set up logging to the console
