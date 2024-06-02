@@ -126,7 +126,7 @@ class Report:
         prompts to offer at each of those states. You're welcome to change anything you want; this skeleton is just here to
         get you started and give you a model for working with Discord. 
         '''
-
+        reply = ""
         if message.content == self.CANCEL_KEYWORD:
             self.state = State.REPORT_COMPLETE
             return ["Report cancelled."]
@@ -278,6 +278,7 @@ class Report:
                 return ["Please enter a number corresponding to the given options."]
             if i == 0:
                 # TODO: yes, block account
+                self.reason.append('Blocked user: ' + self.YES_NO_OPTIONS[i])
                 reply = "The account you've reported will be blocked. "
                 pass
             self.state = State.REPORT_COMPLETE
