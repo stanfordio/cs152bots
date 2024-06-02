@@ -97,13 +97,8 @@ class Report:
             report_message += "🙈 Hide Profile - React with 🙈\n\n"
             report_message += "✅ Close Report - React with ✅\n\n"
 
-            report_msg = await mod_channel.send(report_message)
-            await report_msg.add_reaction('🚫')
-            await report_msg.add_reaction('🚨')
-            await report_msg.add_reaction('🙈')
-            await report_msg.add_reaction('✅')
-
             await mod_channel.send(report_message)
+
             await self.user.send("Our moderators will review your report and take appropriate action.")
 
             # Update the existing reports to set current_report to false
