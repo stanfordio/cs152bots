@@ -13,6 +13,7 @@ import uuid
 #import apis
 from classifiers.gpt import gpt_classify
 from classifiers.perspective import perspective_classify
+from classifiers.classify import predict_classify
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -502,21 +503,38 @@ class ModBot(discord.Client):
         '''
         gpt_score = gpt_classify(message)
         perspective_score = perspective_classify(message)
+        naive_bayes_score, logistic_reg_score = predict_classify(message)
+        
         print('gpt_score: ', gpt_score)
         print('perspective_score: ', perspective_score)
+        print('naive_bayes_score: ', naive_bayes_score)
+        print('logistic_reg_score: ', logistic_reg_score)
 
-        return gpt_score, perspective_score
+        return gpt_score, perspective_score, naive_bayes_score, logistic_reg_score
 
 
-    def calculate_severity(self, gpt_score, perspective_score):
-        if gpt_score == 'None':
-            return 1
-        elif gpt_score == 'Mild':
-            return 2
-        elif gpt_score == 'Moderate' or perspective_score < 0.6:
+    def calculate_severity(self, gpt_score, perspective_score, naive_bayes_score, logistic_reg_score):
+        if (naive_bayes_score == 0 and logistic_reg_score == 0):
+            if gpt_score == 'None':
+                return 1
+            if gpt_score == 'Mild':
+                return 2
+            # if gpt_score  == 'Moderate' or perspective_score < 0.6:
+            #     return 3
             return 3
-        else:
+        
+        if ((naive_bayes_score == 0 and logistic_reg_score == 1) or (naive_bayes_score == 1 and logistic_reg_score == 0)):
+            if gpt_score == 'None' or gpt_score == 'Mild':
+                return 2
+            if gpt_score  == 'Moderate' and (perspective_score < 0.6 and perspective_score > 0.1): 
+                return 3
             return 4
+        
+        if (naive_bayes_score == 1 and logistic_reg_score == 1):
+            if gpt_score == 'None' or gpt_score == 'Mild' or gpt_score  == 'Moderate':
+                return 3
+            return 4
+        return 1 # technically shouldn't ever get here/run
 
     
     def code_format(self, message, severity):
