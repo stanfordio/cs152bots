@@ -103,6 +103,23 @@ class ModBot(discord.Client):
                 await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
                 scores = self.eval_text(message.content)
                 await mod_channel.send(self.code_format(scores))
+                
+    async def on_reaction_add(self, reaction, user):
+        if user.id == self.user.id:
+            return
+
+        if reaction.message.channel.name == f'group-{self.group_num}-mod':
+            print("Received reaction in mod channel")
+            moderator_report = ModeratorReport(self, reaction.message)
+
+            if reaction.emoji == '🚫':
+                await moderator_report.handle_ban(reaction.message)
+            elif reaction.emoji == '🙈':
+                await moderator_report.handle_hide_profile(reaction.message)
+            elif reaction.emoji == '🚨':
+                await moderator_report.handle_escalate(reaction.message)
+            elif reaction.emoji == '✅':
+                await moderator_report.handle_resolved(reaction.message)
 
     async def on_reaction_add(self, reaction, user):
         if user.id == self.user.id:

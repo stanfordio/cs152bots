@@ -12,6 +12,14 @@ supabase_key = tokens.get("SUPABASE_KEY")
 
 supabase: Client = create_client(supabase_url, supabase_key)
 
+with open("tokens.json", "r") as f:
+    tokens = json.load(f)
+
+supabase_url = tokens.get("SUPABASE_URL")
+supabase_key = tokens.get("SUPABASE_KEY")
+
+supabase: Client = create_client(supabase_url, supabase_key)
+
 class State(Enum):
     REPORT_START = auto()
     AWAITING_MESSAGE = auto()
@@ -55,20 +63,6 @@ class Report:
         "Threat to share or has shared images",
         "Something else"
     ]
-    MINOR_OPTIONS = [
-        "They sent me intimate images of themselves or of someone else",
-        "They are threatening to share intimate pictures of me",
-        "They asked for intimate images of me",
-        "Something else"
-    ]
-    HARASSMENT_OPTIONS = [
-        "Hate Speech or other",
-        "Blackmail"
-    ]
-    BLACKMAIL_OPTIONS = [
-        "Nudity or Sexual Activity",
-        "Other"
-    ]
 
     REPORT_COMPLETE_OTHER_MESSAGE = "Thank you for helping us keep our community safe! We will investigate the matter and follow up as needed."
     REPORT_COMPLETE_SEXTORTION_MESSAGE = '''Thank you for helping us keep our community safe! We will investigate the matter and follow up as needed.
@@ -91,15 +85,9 @@ class Report:
     async def submit_report(self):
         if not all([self.user_id, self.user, self.message_link, self.reason, self.message]):
             if self.user:
-                print("Sending feedback to user.")
-                print('User ID:', self.user_id)
-                print('User:', self.user)
-                print('Message Link:', self.message_link)
-                print('Message:', self.message)
-                print('Reason:', self.reason)
                 await self.user.send("Report cannot be submitted as some information is missing.")
             else:
-                print("User object not set, cannot send feedback.")
+                pass
             return
 
         mod_channel = discord.utils.get(self.client.get_all_channels(), name="group-29-mod")
@@ -124,6 +112,19 @@ class Report:
             await report_msg.add_reaction('🙈')
             await report_msg.add_reaction('✅')
 
+            report_message += "\nHow would you like to proceed?\n\n"
+            report_message += "🚫 Ban user - React with 🚫\n\n"
+            report_message += "🚨 Escalate to Law Enforcement - React with 🚨\n\n"
+            report_message += "🙈 Hide Profile - React with 🙈\n\n"
+            report_message += "✅ Close Report - React with ✅\n\n"
+
+            report_msg = await mod_channel.send(report_message)
+            await report_msg.add_reaction('🚫')
+            await report_msg.add_reaction('🚨')
+            await report_msg.add_reaction('🙈')
+            await report_msg.add_reaction('✅')
+
+            await mod_channel.send(report_message)
             await self.user.send("Our moderators will review your report and take appropriate action.")
 
             # Update the existing reports to set current_report to false
@@ -262,6 +263,7 @@ class Report:
             if i == 1:
                 # TODO: handle no
                 pass
+            self.reason.append('Minor involved: ' + self.YES_NO_OPTIONS[i])
             self.state = State.AWAITING_MET_IN_PERSON_ANSWER
             reply = self.create_options_list("Have you or the person you are reporting on behalf met them in person?",
                                               self.YES_NO_OPTIONS)
@@ -318,20 +320,19 @@ class Report:
             if len(message.content.split()) > self.EXPLANATION_INPUT_LIMIT:
                 reply = f"Please do not exceed the {self.EXPLANATION_INPUT_LIMIT} word limit."
             else:
-                # TODO: forward explantation to moderator?
-                reply = self.REPORT_COMPLETE_OTHER_MESSAGE
-                self.state = State.REPORT_COMPLETE
-                await self.submit_report()
+                self.reason.append('Something else: ' + message.content)
+                self.state = State.AWAITING_FINAL_ADDITIONAL_INFORMATION
+                reply = f"Please add any additional information you think is relevant ({self.EXPLANATION_INPUT_LIMIT} word limit)."
             return [reply]
         
         if self.state == State.AWAITING_MINOR_EXPLANATION_INPUT:
             if len(message.content.split()) > self.EXPLANATION_INPUT_LIMIT:
                 reply = f"Please do not exceed the {self.EXPLANATION_INPUT_LIMIT} word limit."
             else:
-                # TODO: forward explantation to moderator?
-                self.state = State.AWAITING_MET_IN_PERSON_ANSWER
-                reply = self.create_options_list("Have you or the person you are reporting on behalf met them in person?",
-                                            self.YES_NO_OPTIONS)
+                self.reason.append('Something else: ' + message.content)
+                self.state = State.AWAITING_MINOR_INVOLVEMENT_ANSWER
+                reply = self.create_options_list("Does the abuse involve someone under 18, either you or someone else?",
+                                                 self.YES_NO_OPTIONS)
             return [reply]
 
         return []
@@ -377,19 +378,16 @@ class ModeratorReport:
 
     async def handle_ban(self, message):
         current_report = supabase.table('User').select('*').eq('current_report', True).execute()
-        
         if len(current_report.data) > 0:
             report_data = current_report.data[0]
             reported_user = report_data['reported_user']
             reported_message = report_data['reported_message']
             message_link = report_data['message_link']
             message_channel = report_data['message_channel']
-            
             try:
                 channel = discord.utils.get(self.client.get_all_channels(), name=message_channel)
                 if channel:
                     await channel.send(f"User {reported_user} has been banned for the following message:\n```{reported_message}```\nMessage Link: {message_link}")
-                    
                     await message.channel.send(f"User {reported_user} has been successfully banned. The reporting user has been notified.")
                 else:
                     await message.channel.send("Channel not found.")
@@ -400,17 +398,14 @@ class ModeratorReport:
 
     async def handle_hide_profile(self, message):
         current_report = supabase.table('User').select('*').eq('current_report', True).execute()
-        
         if len(current_report.data) > 0:
             report_data = current_report.data[0]
             reported_user = report_data['reported_user']
             message_channel = report_data['message_channel']
-            
             try:
                 channel = discord.utils.get(self.client.get_all_channels(), name=message_channel)
                 if channel:
                     await channel.send(f"Profile for user {reported_user} has been hidden.")
-                    
                     await message.channel.send(f"Profile of user {reported_user} has been successfully hidden. The reporting user has been notified.")
                 else:
                     await message.channel.send("Channel not found.")
@@ -421,19 +416,16 @@ class ModeratorReport:
 
     async def handle_escalate(self, message):
         current_report = supabase.table('User').select('*').eq('current_report', True).execute()
-        
         if len(current_report.data) > 0:
             report_data = current_report.data[0]
             reported_user = report_data['reported_user']
             reported_message = report_data['reported_message']
             message_link = report_data['message_link']
             message_channel = report_data['message_channel']
-            
             try:
                 channel = discord.utils.get(self.client.get_all_channels(), name=message_channel)
                 if channel:
                     await channel.send(f"Report for user {reported_user} has been escalated to higher authorities.\nReported Message: ```{reported_message}```\nMessage Link: {message_link}")
-                    
                     await message.channel.send(f"Report for user {reported_user} has been successfully escalated. The reporting user has been notified.")
                 else:
                     await message.channel.send("Channel not found.")
