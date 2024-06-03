@@ -56,3 +56,34 @@ CREATE TABLE IF NOT EXISTS moderation_history (
     FOREIGN KEY (moderator_user_id) REFERENCES users (user_id),
     FOREIGN KEY (affected_user_id) REFERENCES users (user_id)
 );
+
+CREATE TABLE
+IF NOT EXISTS blocks
+(
+    block_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    blocker_user_id INTEGER,
+    blocked_user_id INTEGER,
+    time_blocked TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY
+(blocker_user_id) REFERENCES users
+(user_id),
+    FOREIGN KEY
+(blocked_user_id) REFERENCES users
+(user_id)
+);
+
+CREATE TABLE
+IF NOT EXISTS bans
+(
+    ban_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    banned_user_id INTEGER,
+    moderator_user_id INTEGER,
+    time_banned TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY
+(banned_user_id) REFERENCES users
+(user_id),
+    FOREIGN KEY
+(moderator_user_id) REFERENCES users
+(user_id)
+);
+

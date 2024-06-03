@@ -1,8 +1,9 @@
-from enum import Enum, auto
 import logging
 import discord
 from report import Report
 import sqlite3
+from enum import Enum, auto
+from datetime import datetime
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -23,20 +24,27 @@ class State(Enum):
     REVIEWING_ESCALATE = auto()
     REVIEW_COMPLETE = auto()
     REVIEW_ANOTHER = auto()
+    REVIEW_BAN = auto()
+    REVIEW_UNBAN = auto()
+    AWAITING_UNBAN_CONFIRM = auto()
 
 
 class Review:
     START_KEYWORD = "review"
+    UNBAN_KEYWORD = "unban"
 
     def __init__(self, client):
         self.state = State.REVIEW_START
         self.client = client
         self.message = None
         self.report = None
+        self.banned_users_list = []
 
     async def handle_review(self, message):
         logger.debug(
             f"Handling review with state: {self.state} and message: {message.content}")
+
+        reply = ""
 
         if message.content.startswith(self.START_KEYWORD):
             pending_reports = self.fetch_pending_reports()
@@ -48,6 +56,12 @@ class Review:
             logger.debug(f"Replying to review start, state: {self.state}")
             return [reply]
 
+        if message.content.startswith(self.UNBAN_KEYWORD):
+            return await self.handle_unban(message)
+
+        if self.state == State.AWAITING_UNBAN_CONFIRM:
+            return await self.handle_unban_confirm(message)
+
         if self.state == State.REVIEWING_VIOLATION:
             logger.debug("State: REVIEWING_VIOLATION")
             if message.content.lower() not in ["yes", "no"]:
@@ -57,7 +71,6 @@ class Review:
 
             if message.content.lower() == "yes":
                 logger.debug("Removing violating content")
-                # await self.report.reported_message.delete()
                 reply = "Violating content has been removed.\n"
                 reply += "Was the content illegal? Does the content pose an immediate danger? Please respond with `yes` or `no`."
                 self.state = State.REVIEWING_LEGALITY_DANGER
@@ -112,6 +125,7 @@ class Review:
             if message.content.lower() == "yes":
                 reply = "This message will be submitted to local authorities.\n"
                 reply += f"Reported user `{self.report.reported_user}` has been permanently banned.\n\n"
+                self.ban_user(self.report.reported_user_id, message.author.id)
                 self.mark_report_resolved()
                 reply += self.prompt_new_review()
                 return [reply]
@@ -138,6 +152,8 @@ class Review:
                     return [reply]
                 if not self.report.additional_details:
                     reply = f"Reported user `{self.report.reported_user}` has been permanently banned.\n\n"
+                    self.ban_user(self.report.reported_user_id,
+                                  message.author.name)
                     self.mark_report_resolved()
                     reply += self.prompt_new_review()
                     return [reply]
@@ -157,6 +173,7 @@ class Review:
             if message.content.lower() == "yes":
                 reply = "The harmful links have been blacklisted.\n"
             reply += f"Reported user `{self.report.reported_user}` has been permanently banned.\n\n"
+            self.ban_user(self.report.reported_user_id, message.author.name)
             self.mark_report_resolved()
             reply += self.prompt_new_review()
             return [reply]
@@ -230,6 +247,55 @@ class Review:
 
         return []
 
+    async def handle_unban(self, message):
+        banned_users = self.get_banned_users()
+        if not banned_users:
+            return ["There are no banned users."]
+
+        reply = "Here are the users you have banned:\n"
+        for idx, user in enumerate(banned_users):
+            user_info = await self.client.fetch_user(user['banned_user_id'])
+            reply += f"{idx + 1}. {user_info.name}#{user_info.discriminator} (banned on {user['time_banned']})\n"
+
+        reply += "\nPlease type the number of the user you want to unban or type `cancel` to cancel."
+        self.state = State.AWAITING_UNBAN_CONFIRM
+        self.banned_users_list = banned_users
+        return [reply]
+
+    def get_banned_users(self):
+        try:
+            self.client.db_cursor.execute(
+                'SELECT banned_user_id, time_banned FROM bans')
+            rows = self.client.db_cursor.fetchall()
+            return [{'banned_user_id': row[0], 'time_banned': row[1]} for row in rows]
+        except sqlite3.Error as e:
+            logger.error(f"Failed to retrieve banned users: {e}")
+            return []
+
+    async def handle_unban_confirm(self, message):
+        try:
+            logger.debug(
+                f"Unban confirmation received with message: {message.content}")
+            unban_idx = int(message.content) - 1
+            if unban_idx < 0 or unban_idx >= len(self.banned_users_list):
+                return ["Invalid selection. Please type the number of the user you want to unban or type `cancel` to cancel."]
+
+            banned_user_id = self.banned_users_list[unban_idx]['banned_user_id']
+            logger.debug(f"Unbanning user with ID: {banned_user_id}")
+
+            self.client.db_cursor.execute(
+                'DELETE FROM bans WHERE banned_user_id = ?', (banned_user_id,))
+            self.client.db_connection.commit()
+            self.state = State.REVIEW_COMPLETE
+            return [f"User `{banned_user_id}` has been unbanned."]
+
+        except ValueError:
+            return ["Invalid input. Please type the number of the user you want to unban or type `cancel` to cancel."]
+        except sqlite3.Error as e:
+            logger.error(f"Failed to unban the user: {e}")
+            self.client.db_connection.rollback()
+            return ["Failed to unban the user. Please try again later."]
+
     def start_review(self, pending_reports):
         logger.debug("Starting review")
         reply = "Here is the next report to review.\n\n"
@@ -297,4 +363,22 @@ class Review:
             self.client.db_connection.commit()
         except sqlite3.Error as e:
             logger.error(f"Error marking report as resolved: {e}")
+            self.client.db_connection.rollback()
+
+    def ban_user(self, banned_user_id, moderator_user_id):
+        try:
+            # Check if the user is already banned
+            self.client.db_cursor.execute(
+                'SELECT * FROM bans WHERE banned_user_id = ?', (banned_user_id,))
+            if self.client.db_cursor.fetchone():
+                logger.warning(f"User {banned_user_id} is already banned.")
+                return
+
+            self.client.db_cursor.execute('''
+                INSERT INTO bans (banned_user_id, moderator_user_id, time_banned)
+                VALUES (?, ?, ?)
+            ''', (banned_user_id, moderator_user_id, datetime.now()))
+            self.client.db_connection.commit()
+        except sqlite3.Error as e:
+            logger.error(f"Failed to ban the user: {e}")
             self.client.db_connection.rollback()

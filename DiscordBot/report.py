@@ -1,6 +1,6 @@
+from datetime import datetime
 from enum import Enum, auto
 import re
-from datetime import datetime
 import discord
 import logging
 import sqlite3
@@ -27,6 +27,7 @@ class State(Enum):
     BLOCK_START = auto()
     AWAITING_BLOCK = auto()
     AWAITING_BLOCK_CONFIRM = auto()
+    AWAITING_UNBLOCK = auto()
     BLOCK_COMPLETE = auto()
     PROMPTING_ADDITIONAL_DETAILS = auto()
     AWAITING_DETAILS = auto()
@@ -75,6 +76,7 @@ class Report:
     CANCEL_KEYWORD = "cancel"
     HELP_KEYWORD = "help"
     BLOCK_KEYWORD = "block"
+    UNBLOCK_KEYWORD = "unblock"
     REPORTING_OPTIONS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
     def __init__(self, client=None, report_id=None, reported_user_id=None, reporter_user_id=None,
@@ -91,10 +93,11 @@ class Report:
         self.report_category = report_category
         self.report_subcategory = report_subcategory
         self.additional_details = additional_details
-        self.priority = priority
+        self.priority = priority if priority is not None else LOWER_PRIORITY
         self.report_status = report_status
         self.time_reported = time_reported if time_reported else datetime.now()
         self.state = State.REPORT_START
+        self.blocked_users_list = []
 
     def __lt__(self, other):
         return self.priority < other.priority and self.time_reported < other.time_reported
@@ -114,6 +117,7 @@ class Report:
             reply += "You can obtain this link by right-clicking the message and clicking `Copy Message Link`."
             self.state = State.AWAITING_MESSAGE
             self.time_reported = datetime.now()
+            self.reporter_user_id = message.author.id
             return [reply]
 
         if self.state == State.AWAITING_MESSAGE:
@@ -132,6 +136,8 @@ class Report:
                 return ["It seems this message was deleted or never existed. Please try again or say `cancel` to cancel."]
 
             self.state = State.MESSAGE_IDENTIFIED
+            self.reported_user_id = message.author.id
+
             self.reported_user = message.author.name
             self.reported_message = message.content
             reply = "I found this message:" + "```" + \
@@ -410,6 +416,7 @@ class Report:
     async def handle_block(self, message):
         if message.content == self.CANCEL_KEYWORD:
             self.state = State.BLOCK_COMPLETE
+            return ["Blocking process cancelled."]
 
         if message.content.startswith(self.START_KEYWORD):
             return await self.handle_message(message)
@@ -418,13 +425,12 @@ class Report:
             self.state = State.BLOCK_START
             reply = "Thank you for starting the blocking process.\n"
             reply += "Say `help` at any time for more information.\n\n"
-            reply += "Please copy paste the username of the user you want to block.\n"
-            reply += "You can obtain this by right-clicking the user, clicking `Profile,` and copying the username."
+            reply += "Please enter the username of the user you want to block."
             self.state = State.AWAITING_BLOCK
             return [reply]
 
         if self.state == State.AWAITING_BLOCK:
-            self.reported_user = message.content.lower()
+            self.reported_user = message.content.strip()
             reply = f"Please confirm that you would like to block `{self.reported_user}`.\n"
             reply += "You will no longer be able to interact with them.\n"
             reply += "Please reply with `yes` or `no`."
@@ -433,7 +439,10 @@ class Report:
 
         if self.state == State.AWAITING_BLOCK_CONFIRM:
             if message.content.lower() == "yes":
-                reply = f"Thank you. `{self.reported_user}` has been blocked."
+                if self.block_user(message.author.id, self.reported_user):
+                    reply = f"Thank you. `{self.reported_user}` has been blocked."
+                else:
+                    reply = f"`{self.reported_user}` is already blocked."
             else:
                 reply = f"Thank you. `{self.reported_user}` has not been blocked."
             self.state = State.BLOCK_COMPLETE
@@ -441,8 +450,76 @@ class Report:
 
         return []
 
+    def block_user(self, blocker_user_id, blocked_user_id):
+        try:
+            # Check if the user is already blocked
+            self.client.db_cursor.execute(
+                'SELECT * FROM blocks WHERE blocker_user_id = ? AND blocked_user_id = ?', (blocker_user_id, blocked_user_id))
+            if self.client.db_cursor.fetchone():
+                logger.warning(
+                    f"User {blocked_user_id} is already blocked by {blocker_user_id}")
+                return False
+
+            # Block the user
+            self.client.db_cursor.execute('''
+                INSERT INTO blocks (blocker_user_id, blocked_user_id, time_blocked)
+                VALUES (?, ?, ?)
+            ''', (blocker_user_id, blocked_user_id, datetime.now()))
+            self.client.db_connection.commit()
+            return True
+
+        except sqlite3.Error as e:
+            logger.error(f"Failed to block the user: {e}")
+            self.client.db_connection.rollback()
+            return False
+
     def block_complete(self):
         return self.state == State.BLOCK_COMPLETE
+
+    async def handle_unblock(self, message):
+        blocked_users = self.get_blocked_users(message.author.id)
+        if not blocked_users:
+            return ["You have not blocked any users."]
+
+        reply = "Here are the users you have blocked:\n"
+        for idx, user in enumerate(blocked_users):
+            reply += f"{idx + 1}. {user['blocked_user_id']} (blocked on {user['time_blocked']})\n"
+
+        reply += "\nPlease type the number of the user you want to unblock or type `cancel` to cancel."
+        self.state = State.AWAITING_UNBLOCK
+        # Store blocked users list to use for unblocking
+        self.blocked_users_list = blocked_users
+        return [reply]
+
+    def get_blocked_users(self, blocker_user_id):
+        try:
+            self.client.db_cursor.execute(
+                'SELECT blocked_user_id, time_blocked FROM blocks WHERE blocker_user_id = ?', (blocker_user_id,))
+            rows = self.client.db_cursor.fetchall()
+            return [{'blocked_user_id': row[0], 'time_blocked': row[1]} for row in rows]
+        except sqlite3.Error as e:
+            logger.error(f"Failed to retrieve blocked users: {e}")
+            return []
+
+    async def handle_unblock_confirm(self, message):
+        try:
+            unblock_idx = int(message.content) - 1
+            if unblock_idx < 0 or unblock_idx >= len(self.blocked_users_list):
+                return ["Invalid selection. Please type the number of the user you want to unblock or type `cancel` to cancel."]
+            blocked_user_id = self.blocked_users_list[unblock_idx]['blocked_user_id']
+
+            self.client.db_cursor.execute(
+                'DELETE FROM blocks WHERE blocker_user_id = ? AND blocked_user_id = ?', (message.author.id, blocked_user_id))
+            self.client.db_connection.commit()
+            self.state = State.BLOCK_COMPLETE
+            return [f"User `{blocked_user_id}` has been unblocked."]
+
+        except ValueError:
+            return ["Invalid input. Please type the number of the user you want to unblock or type `cancel` to cancel."]
+        except sqlite3.Error as e:
+            logger.error(f"Failed to unblock the user: {e}")
+            self.client.db_connection.rollback()
+            return ["Failed to unblock the user. Please try again later."]
 
     def save_report(self, db_cursor, db_connection):
         report_data = {

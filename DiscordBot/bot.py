@@ -7,8 +7,9 @@ import re
 import openai
 import sqlite3
 from datetime import datetime
-from report import Report
+from report import Report, State
 from mod import Review
+import heapq
 import heapq
 
 # Set up logging to the console
@@ -42,6 +43,8 @@ class ModBot(discord.Client):
         self.reviews = {}  # Add a dictionary to keep track of reviews per user
         self.reports = {}
         self.reports_to_review = []
+        self.reports = {}
+        self.reports_to_review = []
 
         # Create the database schema if it doesn't exist
         self.db_cursor = self.db_connection.cursor()
@@ -59,6 +62,22 @@ class ModBot(discord.Client):
                 priority INTEGER,
                 report_status TEXT DEFAULT 'pending',
                 time_reported TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        self.db_cursor.execute('''
+            CREATE TABLE IF NOT EXISTS blocks (
+                block_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                blocker_user_id INTEGER,
+                blocked_user_id INTEGER,
+                time_blocked TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        self.db_cursor.execute('''
+            CREATE TABLE IF NOT EXISTS bans (
+                ban_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                banned_user_id INTEGER,
+                moderator_user_id INTEGER,
+                time_banned TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
         self.db_connection.commit()
@@ -94,6 +113,7 @@ class ModBot(discord.Client):
         if message.content == Report.HELP_KEYWORD:
             reply = "Use the `report` command to begin the reporting process.\n"
             reply += "Use the `block` command to begin the blocking process.\n"
+            reply += "Use the `unblock` command to unblock a user.\n"
             reply += "Use the `cancel` command to cancel the report process.\n"
             await message.channel.send(reply)
             return
@@ -104,18 +124,28 @@ class ModBot(discord.Client):
         # If we don't currently have an active report for this user, add one
         if author_id not in self.reports:
             self.reports[author_id] = Report(self)
+        # If we don't currently have an active report for this user, add one
+        if author_id not in self.reports:
+            self.reports[author_id] = Report(self)
 
+        # Check command
         # Check command
         command = message.content.split()[0]
         if command == Report.START_KEYWORD:
             responses = await self.reports[author_id].handle_message(message)
+            responses = await self.reports[author_id].handle_message(message)
         elif command == Report.BLOCK_KEYWORD:
             responses = await self.reports[author_id].handle_block(message)
+        elif command == Report.UNBLOCK_KEYWORD:
+            responses = await self.reports[author_id].handle_unblock(message)
         else:
             if author_id in self.reports:
-                responses = await self.reports[author_id].handle_message(message)
-                blocks = await self.reports[author_id].handle_block(message)
-                responses.extend(blocks)
+                if self.reports[author_id].state == State.AWAITING_UNBLOCK:
+                    responses = await self.reports[author_id].handle_unblock_confirm(message)
+                else:
+                    responses = await self.reports[author_id].handle_message(message)
+                    blocks = await self.reports[author_id].handle_block(message)
+                    responses.extend(blocks)
 
         # Send all responses
         if responses:
@@ -128,22 +158,18 @@ class ModBot(discord.Client):
                            (self.reports[author_id].priority, self.reports[author_id]))
             self.reports.pop(author_id)
 
-    async def handle_start_report(self, message):
+    async def handle_start_review(self, message):
         author_id = message.author.id
-        report = Report(self)
-
-        responses = await report.handle_message(message)
-        report.save_report(self.db_cursor, self.db_connection)
-
+        if author_id not in self.reviews:
+            self.reviews[author_id] = Review(self)
+        responses = await self.reviews[author_id].handle_review(message)
         return responses
 
-    async def handle_block_report(self, message):
+    async def handle_unban_review(self, message):
         author_id = message.author.id
-        report = Report(self)
-
-        responses = await report.handle_block(message)
-        report.save_report(self.db_cursor, self.db_connection)
-
+        if author_id not in self.reviews:
+            self.reviews[author_id] = Review(self)
+        responses = await self.reviews[author_id].handle_unban(message)
         return responses
 
     async def handle_channel_message(self, message):
@@ -158,6 +184,8 @@ class ModBot(discord.Client):
                 if author_id not in self.reviews:
                     self.reviews[author_id] = Review(self)
                 responses = await self.reviews[author_id].handle_review(message)
+            elif message.content.split()[0] == Review.UNBAN_KEYWORD:
+                responses = await self.handle_unban_review(message)
             elif author_id in self.reviews:
                 responses = await self.reviews[author_id].handle_review(message)
         else:
