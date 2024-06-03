@@ -1,1 +1,1 @@
-
+create a pan12 test folder and a pan 12 train folder here with the pan12 zip file data (https://zenodo.org/records/3713280) -> refer to path in extract_data.py for refernce on data creation
