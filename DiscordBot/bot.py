@@ -10,7 +10,6 @@ from datetime import datetime
 from report import Report, State
 from mod import Review
 import heapq
-import heapq
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
