@@ -112,17 +112,23 @@ class ModBot(discord.Client):
 
         # Forward the message to the mod channel
         mod_channel = self.mod_channels[message.guild.id]
-        #await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
         
         # Evaluate the message
         classification_result = self.eval_text(message.content)
         
         # If flagged, notify the mod channel
         if classification_result:
-            print("notified")
             category, confidence_score = classification_result
-            await mod_channel.send(self.code_format(message.content, confidence_score))
-        print("test")
+            if confidence_score > 0.95:
+                # Delete the message
+                await message.delete()
+                # Notify in the same channel
+                await message.channel.send("This message has been auto-deleted for safety reasons.")
+                # Forward the flagged message to the mod channel
+                await mod_channel.send(self.code_format(message.content, confidence_score))
+            else:
+                await mod_channel.send(self.code_format(message.content, confidence_score))
+
 
     async def handle_mod_message(self, message):
         author_id = message.author.id
