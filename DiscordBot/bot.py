@@ -130,11 +130,11 @@ class ModBot(discord.Client):
             if message.content == ModeratorReport.START_KEYWORD:
                 # Let the report class handle this message; forward all the messages it returns to us
                 # TODO: get highest priority report
-                responses = await moderator_report.handle_report()
+                responses = await moderator_report.handle_report(message)
                 for r in responses:
                     await message.channel.send(r)
             else:
-                responses = await moderator_report.handle_report()
+                responses = await moderator_report.handle_report(message)
                 for r in responses:
                     await message.channel.send(r)
             # if message.content.startswith('!ban'):

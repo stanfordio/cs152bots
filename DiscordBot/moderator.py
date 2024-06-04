@@ -71,9 +71,9 @@ class ModeratorReport:
                     self.reported_user_name = match.group(1)
                 break
     
-    async def handle_report(self):
+    async def handle_report(self, message):
         report = self.original_message
-        reply = ""
+        replies = []
         
         if self.state == ModeratorState.EVAL_START:
             self.state = ModeratorState.AWAITING_VERACITY_DECISION
@@ -83,7 +83,7 @@ class ModeratorReport:
                                              self.VERACITY_OPTIONS)]
         
         if self.state == ModeratorState.AWAITING_VERACITY_DECISION:
-            i = self.get_index(report, self.VERACITY_OPTIONS)
+            i = self.get_index(message, self.VERACITY_OPTIONS)
             # self.reason.append(self.INITIAL_OPTIONS[i])
 
             if i == -1:
@@ -94,79 +94,84 @@ class ModeratorReport:
                 print("awaiting")
                 reply = self.create_options_list("This is a legit report. How would you like to proceed?",
                                                  self.LEGIT_REPORT_DECISION_OPTIONS)
-            if i == 1:
+                return [reply]
+            elif i == 1:
                 self.state = ModeratorState.AWAITING_FALSE_REPORT_DECISION
                 reply = self.create_options_list("This is the number of times the user has submitted fake reports in the past. How would you like to proceed?",
                                                  self.FALSE_REPORT_DECISION_OPTIONS)
+                return [reply]
             else:
                 self.state = ModeratorState.ACTION_COMPLETE
                 reply = "Report escalated to next moderator team."
-
-            return [reply]
+                replies += [reply]
 
         if self.state == ModeratorState.AWAITING_FALSE_REPORT_DECISION:
-            i = self.get_index(report, self.FALSE_REPORT_DECISION_OPTIONS)
+            i = self.get_index(message, self.FALSE_REPORT_DECISION_OPTIONS)
             if i == -1:
                 return ["Please enter a number corresponding to the given options."]
             
             if i == 0:
                 self.state = ModeratorState.ACTION_COMPLETE
                 reply = "User received a warning message. We are closing the report."
+                replies += [reply]
 
             if i == 1:
                 self.state = ModeratorState.ACTION_COMPLETE
                 reply = "We increased the number of false reports associated to this user. We are closing the report."
-                # TODO increase the number of times the user has submitted false reports 
+                replies += [reply]
+                # TODO increase the number of times the user has submitted false reports
         
         if self.state == ModeratorState.AWAITING_LEGIT_REPORT_DECISION:
-            i = self.get_index(report, self.LEGIT_REPORT_DECISION_OPTIONS)
-
+            i = self.get_index(message, self.LEGIT_REPORT_DECISION_OPTIONS)
             if i == -1:
                 return ["Please enter a number corresponding to the given options."]
             
             if i == 0:
-                handle_escalate(report)
-                handle_ban(report)
+                await self.handle_escalate(report)
+                await self.handle_ban(report)
                 self.state = ModeratorState.ACTION_COMPLETE
 
             if i == 1:
                 self.state = ModeratorState.AWAITING_REPORT_FREQUENCY_DECISION
                 reply = self.create_options_list("This is the number of times the user has been reported for potential CSAM. How would you like to proceed?",
                                                  self.REPORT_FREQUENCY_DECISION_OPTIONS)
+                return [reply]
                 
         if self.state == ModeratorState.AWAITING_REPORT_FREQUENCY_DECISION:
-            i = self.get_index(report, self.REPORT_FREQUENCY_DECISION_OPTIONS)
-
+            i = self.get_index(message, self.REPORT_FREQUENCY_DECISION_OPTIONS)
+            print(i, "?????????")
             if i == -1:
                 return ["Please enter a number corresponding to the given options."]
             
             if i == 0:
-                handle_escalate(report)
-                handle_ban(report)
+                await self.handle_escalate(report)
+                await self.handle_ban(report)
                 self.state = ModeratorState.ACTION_COMPLETE
 
             if i == 1:
+                print(i, "*********")
                 self.state = ModeratorState.AWAITING_HIDE_CHILDREN_DECISION
                 # TODO increase number of times user has been reported
                 reply = self.create_options_list("We increased the number of false reports associated to this user. Would you like to hide child profiles from this user?",
-                                                 self.self.YES_NO_OPTIONS)
+                                                 self.YES_NO_OPTIONS)
+                return [reply]
 
         if self.state == ModeratorState.AWAITING_HIDE_CHILDREN_DECISION:
-            i = self.get_index(report, self.YES_NO_OPTIONS)
-
+            i = self.get_index(message, self.YES_NO_OPTIONS)
             if i == -1:
                 return ["Please enter a number corresponding to the given options."]
             
             if i == 0:
-                handle_hide_profile(report)
+                await self.handle_hide_profile(report)
                 self.state = ModeratorState.ACTION_COMPLETE
 
             if i == 1:
                 self.state = ModeratorState.ACTION_COMPLETE
 
         if self.state == ModeratorState.ACTION_COMPLETE:
-            report_complete()
-            return ["Report completed."] 
+            self.report_complete()
+            self.state = ModeratorState.EVAL_START
+            return replies + ["Report completed."] 
 
     # TODO: Trigger the appropriate action based on the commands below.
 
@@ -184,6 +189,7 @@ class ModeratorReport:
             i -= 1
         except:
             return -1
+        print(range(len(options)))
         if i not in range(len(options)):
             return -1
         return i
