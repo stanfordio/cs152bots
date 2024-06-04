@@ -91,7 +91,6 @@ class ModeratorReport:
             
             if i == 0:
                 self.state = ModeratorState.AWAITING_LEGIT_REPORT_DECISION
-                print("awaiting")
                 reply = self.create_options_list("This is a legit report. How would you like to proceed?",
                                                  self.LEGIT_REPORT_DECISION_OPTIONS)
                 return [reply]
@@ -139,7 +138,6 @@ class ModeratorReport:
                 
         if self.state == ModeratorState.AWAITING_REPORT_FREQUENCY_DECISION:
             i = self.get_index(message, self.REPORT_FREQUENCY_DECISION_OPTIONS)
-            print(i, "?????????")
             if i == -1:
                 return ["Please enter a number corresponding to the given options."]
             
@@ -149,7 +147,6 @@ class ModeratorReport:
                 self.state = ModeratorState.ACTION_COMPLETE
 
             if i == 1:
-                print(i, "*********")
                 self.state = ModeratorState.AWAITING_HIDE_CHILDREN_DECISION
                 # TODO increase number of times user has been reported
                 reply = self.create_options_list("We increased the number of false reports associated to this user. Would you like to hide child profiles from this user?",
@@ -182,14 +179,11 @@ class ModeratorReport:
         return res
 
     def get_index(self, message, options):
-        print(message.content)
         try:
             i = int(message.content.strip())
-            print(f'option: {i}')
             i -= 1
         except:
             return -1
-        print(range(len(options)))
         if i not in range(len(options)):
             return -1
         return i
