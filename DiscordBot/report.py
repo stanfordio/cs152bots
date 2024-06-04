@@ -91,13 +91,15 @@ class Report:
             for reason in self.reason:
                 report_message += f"- {reason}\n"
 
-            report_message += "\nHow would you like to proceed?\n\n"
-            report_message += "🚫 Ban user - React with 🚫\n\n"
-            report_message += "🚨 Escalate to Law Enforcement - React with 🚨\n\n"
-            report_message += "🙈 Hide Profile - React with 🙈\n\n"
-            report_message += "✅ Close Report - React with ✅\n\n"
+            report_message += "\nThere is a new report on the queue. Use the `eval` command to begin the evaluation process.\n\n"
+
+            # report_message += "🚫 Ban user - React with 🚫\n\n"
+            # report_message += "🚨 Escalate to Law Enforcement - React with 🚨\n\n"
+            # report_message += "🙈 Hide Profile - React with 🙈\n\n"
+            # report_message += "✅ Close Report - React with ✅\n\n"
 
             await mod_channel.send(report_message)
+            # TODO add to queue
 
             await self.user.send("Our moderators will review your report and take appropriate action.")
 

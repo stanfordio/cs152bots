@@ -34,6 +34,7 @@ class ModBot(discord.Client):
         super().__init__(command_prefix='.', intents=intents)
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
+        self.mod = None
         self.reports = {} # Map from user IDs to the state of their report
 
     async def on_ready(self):
@@ -73,11 +74,14 @@ class ModBot(discord.Client):
 
     async def handle_dm(self, message):
         # Handle a help message
+        print(f"Received dm: {message.content}")
         if message.content == Report.HELP_KEYWORD:
             reply =  "Use the `report` command to begin the reporting process.\n"
             reply += "Use the `cancel` command to cancel the report process.\n"
             await message.channel.send(reply)
             return
+
+        # TODO: re-prompt if any other word
 
         author_id = message.author.id
         responses = []
@@ -109,20 +113,41 @@ class ModBot(discord.Client):
             if message.author.id == self.user.id:
                 return
     
+            if not self.mod:
+                print("not mod")
+            print(self.mod)
             # Create an instance of ModeratorReport only once
-            moderator_report = ModeratorReport(self, message)
+            # Only respond to messages if they're part of a reporting flow
+            if not self.mod and not message.content.startswith(ModeratorReport.START_KEYWORD):
+                return
 
-            if message.content.startswith('!ban'):
-                # Call the handle_ban function from the ModeratorReport instance
-                await moderator_report.handle_ban(message)
-            elif message.content.startswith('!hide'):
-                # Call the handle_hide_profile function from the ModeratorReport instance
-                await moderator_report.handle_hide_profile(message)
-            elif message.content.startswith('!escalate'):
-                # Call the handle_escalate function from the ModeratorReport instance
-                await moderator_report.handle_escalate(message)
+            # If we don't currently have an active report for this user, add one
+            if not self.mod:
+                self.mod = ModeratorReport(client, message)
+            
+            moderator_report = self.mod
+            print(self.mod.state)
+            if message.content == ModeratorReport.START_KEYWORD:
+                # Let the report class handle this message; forward all the messages it returns to us
+                # TODO: get highest priority report
+                responses = await moderator_report.handle_report()
+                for r in responses:
+                    await message.channel.send(r)
             else:
-                await message.channel.send("Please enter a valid command: `!ban`, `!hide`, or `!escalate`.")
+                responses = await moderator_report.handle_report()
+                for r in responses:
+                    await message.channel.send(r)
+            # if message.content.startswith('!ban'):
+            #     # Call the handle_ban function from the ModeratorReport instance
+            #     await moderator_report.handle_ban(message)
+            # elif message.content.startswith('!hide'):
+            #     # Call the handle_hide_profile function from the ModeratorReport instance
+            #     await moderator_report.handle_hide_profile(message)
+            # elif message.content.startswith('!escalate'):
+            #     # Call the handle_escalate function from the ModeratorReport instance
+            #     await moderator_report.handle_escalate(message)
+            # else:
+            #     await message.channel.send("Please enter a valid command: `!ban`, `!hide`, or `!escalate`.")
             return
 
         # Handle group-specific messages
@@ -133,22 +158,22 @@ class ModBot(discord.Client):
                 scores = self.eval_text(message.content)
                 await mod_channel.send(self.code_format(scores))
                 
-    async def on_reaction_add(self, reaction, user):
-        if user.id == self.user.id:
-            return
+    # async def on_reaction_add(self, reaction, user):
+    #     if user.id == self.user.id:
+    #         return
 
-        if reaction.message.channel.name == f'group-{self.group_num}-mod':
-            print("Received reaction in mod channel")
-            moderator_report = ModeratorReport(self, reaction.message)
+    #     if reaction.message.channel.name == f'group-{self.group_num}-mod':
+    #         print("Received reaction in mod channel")
+    #         moderator_report = ModeratorReport(self, reaction.message)
 
-            if reaction.emoji == '🚫':
-                await moderator_report.handle_ban(reaction.message)
-            elif reaction.emoji == '🙈':
-                await moderator_report.handle_hide_profile(reaction.message)
-            elif reaction.emoji == '🚨':
-                await moderator_report.handle_escalate(reaction.message)
-            elif reaction.emoji == '✅':
-                await moderator_report.handle_resolved(reaction.message)
+    #         if reaction.emoji == '🚫':
+    #             await moderator_report.handle_ban(reaction.message)
+    #         elif reaction.emoji == '🙈':
+    #             await moderator_report.handle_hide_profile(reaction.message)
+    #         elif reaction.emoji == '🚨':
+    #             await moderator_report.handle_escalate(reaction.message)
+    #         elif reaction.emoji == '✅':
+    #             await moderator_report.handle_resolved(reaction.message)
 
     def eval_text(self, message):
         ''''
