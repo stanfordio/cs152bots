@@ -289,59 +289,17 @@ class Report:
             return [reply]
 
         return reply
-
-    async def handle_report(self, report):
-        '''
-        This function makes up the meat of the user-side reporting flow. It defines how we transition between states and what 
-        prompts to offer at each of those states. You're welcome to change anything you want; this skeleton is just here to
-        get you started and give you a model for working with Discord. 
-        '''
-
-        if message.content == self.CANCEL_KEYWORD:
-            self.state = State.REPORT_COMPLETE
-            return ["Report cancelled."]
-
-        if self.state == State.REPORT_START:
-            self.state = State.AWAITING_REPORT_LEGIT
-            return [self.create_options_list("Is report legit?",
-                                             self.REPORT_LEGIT_OPTIONS)]
-
-        if self.state == State.AWAITING_REPORT_LEGIT:
-            i = self.get_index(message, self.REPORT_LEGIT_OPTIONS)
-            self.reason.append(self.REPORT_LEGIT_OPTIONS[i])
-
-            if i == -1:
-                return ["Please enter a number corresponding to the given options."]
-            if i == 0:
-                self.state = State.AWAITING_VIOLATION_DECISION
-                reply = self.create_options_list("Please select how to proceed:",
-                                                 self.VIOLATION_OPTIONS)
-            elif i == 1:
-                pass
-            else:
-                pass
-            return [reply]
-
-        if self.state == State.AWAITING_VIOLATION_DECISION:
-            i = self.get_index(message, self.VIOLATION_OPTIONS)
-            self.reason.append(self.VIOLATION_OPTIONS[i])
-            if i == -1:
-                return ["Please enter a number corresponding to the given options."]
-            if i == 0:
-                pass
-            elif i == 1:
-                pass
-        return []
     
     def create_options_list(self, prompt, options):
         res = prompt
         for i, option in enumerate(options):
-            res += f"\n\t{i}\. {option}"
+            res += f"\n\t{i + 1}\. {option}"
         return res
 
     def get_index(self, message, options):
         try:
             i = int(message.content.strip())
+            i -= 1
         except:
             return -1
         if i not in range(len(options)):
