@@ -38,6 +38,7 @@ class ModBot(discord.Client):
         self.reports = {} # Map from user IDs to the state of their report
         self.mod_flows = {} # Map from moderator's ID to state of their mod flow
         self.mod_channel = None
+        self.offenders = {}
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -125,9 +126,19 @@ class ModBot(discord.Client):
                 # Notify in the same channel
                 await message.channel.send("This message has been auto-deleted for safety reasons.")
                 # Forward the flagged message to the mod channel
-                await mod_channel.send(self.code_format(message.content, confidence_score))
+                await mod_channel.send(self.code_format(message.content, confidence_score, message.author.name))
             else:
-                await mod_channel.send(self.code_format(message.content, confidence_score))
+                await mod_channel.send(self.code_format(message.content, confidence_score, message.author.name))
+            
+            # Track offenses
+            user_id = message.author.id
+            if user_id not in self.offenders:
+                self.offenders[user_id] = 0
+            self.offenders[user_id] += 1
+            
+            # If the user has 3 or more offenses, notify the mod channel
+            if self.offenders[user_id] >= 3:
+                await mod_channel.send(f"User {message.author.name} has been flagged {self.offenders[user_id]} times for content relating to terrorism. Consider contacting or banning them.")
 
 
     async def handle_mod_message(self, message):
@@ -157,11 +168,12 @@ class ModBot(discord.Client):
         print(classification_result)
         return classification_result
 
-    def code_format(self, text, score):
+    def code_format(self, text, score, username):
         '''
         Format the string to be shown in the mod channel.
         '''
-        return f"ALERT: The message '{text}' has been flagged by the classifier as potentially problematic with a confidence score of {score}."
+        return f"ALERT: The message '{text}' by {username} has been flagged by the classifier as potentially problematic with a confidence score of {score}."
+
 
 client = ModBot()
 client.run(discord_token)
