@@ -2,23 +2,22 @@ from enum import Enum, auto
 import discord
 import json
 import re
-from supabase import create_client, Client
+from supabase_client import SupabaseClient
 
-with open("tokens.json", "r") as f:
-    tokens = json.load(f)
+def format_report(data):
+    reasons = data['reasons'].split(',')
+    report_message = "**Report**\n\n"
+    report_message += f"**Priority:** {data['priority']}\n"
+    report_message += f"**Reported By:** <@{data['reported_by']}>\n"
+    report_message += f"**Reported User:** <@{data['reported_user']}>\n\n"
+    report_message += f"**Reported Message:**\n```{data['reported_message']}```\n"
+    report_message += f"**Message Link:** {data['message_link']}\n\n"
+    report_message += "**Reason(s):**\n"
+    for reason in reasons:
+        report_message += f"- {reason}\n"
+    return report_message
 
-supabase_url = tokens.get("SUPABASE_URL")
-supabase_key = tokens.get("SUPABASE_KEY")
-
-supabase: Client = create_client(supabase_url, supabase_key)
-
-with open("tokens.json", "r") as f:
-    tokens = json.load(f)
-
-supabase_url = tokens.get("SUPABASE_URL")
-supabase_key = tokens.get("SUPABASE_KEY")
-
-supabase: Client = create_client(supabase_url, supabase_key)
+supabase = SupabaseClient()
 
 class State(Enum):
     REPORT_START = auto()
@@ -35,11 +34,7 @@ class State(Enum):
     AWAITING_MINOR_EXPLANATION_INPUT = auto()
     REPORT_COMPLETE = auto()
 
-class ModeratorState(Enum):
-    AWAITING_DECISION = auto()
-    AWAITING_ACTION = auto()
-    ACTION_COMPLETE = auto()
-
+    
 class Report:
     START_KEYWORD = "report"
     CANCEL_KEYWORD = "cancel"
@@ -81,6 +76,7 @@ class Report:
         self.user_id = None
         self.message_link = None
         self.reason = []
+        self.priority = 4
 
     async def submit_report(self):
         if not all([self.user_id, self.user, self.message_link, self.reason, self.message]):
@@ -92,56 +88,14 @@ class Report:
 
         mod_channel = discord.utils.get(self.client.get_all_channels(), name="group-29-mod")
         if mod_channel:
-            report_message = "**New Report Submitted**\n\n"
-            report_message += f"**Reported By:** <@{self.user_id}>\n"
-            report_message += f"**Reported User:** <@{self.message.author.id}> ({self.message.author.name}#{self.message.author.discriminator})\n\n"
-            report_message += f"**Reported Message:**\n```{self.message.content}```\n"
-            report_message += f"**Message Link:** {self.message_link}\n\n"
-            report_message += "**Reason(s):**\n"
-            for reason in self.reason:
-                report_message += f"- {reason}\n"
-            report_message += "\nHow would you like to proceed?\n\n"
-            report_message += "🚫 Ban user - React with 🚫\n\n"
-            report_message += "🚨 Escalate to Law Enforcement - React with 🚨\n\n"
-            report_message += "🙈 Hide Profile - React with 🙈\n\n"
-            report_message += "✅ Close Report - React with ✅\n\n"
-
-            report_msg = await mod_channel.send(report_message)
-            await report_msg.add_reaction('🚫')
-            await report_msg.add_reaction('🚨')
-            await report_msg.add_reaction('🙈')
-            await report_msg.add_reaction('✅')
-
-            report_message += "\nHow would you like to proceed?\n\n"
-            report_message += "🚫 Ban user - React with 🚫\n\n"
-            report_message += "🚨 Escalate to Law Enforcement - React with 🚨\n\n"
-            report_message += "🙈 Hide Profile - React with 🙈\n\n"
-            report_message += "✅ Close Report - React with ✅\n\n"
-
-            report_msg = await mod_channel.send(report_message)
-            await report_msg.add_reaction('🚫')
-            await report_msg.add_reaction('🚨')
-            await report_msg.add_reaction('🙈')
-            await report_msg.add_reaction('✅')
-
+            supabase.store_report(self)
+            num_reports = supabase.fetch_total_num_reports()
+            report_message = f"\nThere is a new report on the queue. There are currently {num_reports} active reports.\n" \
+                            "Use the `eval` command to begin the evaluation process.\n\n"
+            
             await mod_channel.send(report_message)
             await self.user.send("Our moderators will review your report and take appropriate action.")
 
-            # Update the existing reports to set current_report to false
-            supabase.table('User').update({'current_report': False}).eq('current_report', True).execute()
-
-            # Insert the report data into the Supabase database
-            reasons_text = ', '.join(self.reason)
-            data = {
-                'reported_user': f'{self.message.author.name}#{self.message.author.discriminator}',
-                'current_report': True,
-                'reported_by': str(self.user),
-                'reported_message': self.message.content,
-                'message_link': self.message_link,
-                'reasons': reasons_text,
-                'message_channel': self.message.channel.name
-            }
-            supabase.table('User').insert(data).execute()
         else:
             await self.user.send("Sorry, an error occurred while submitting your report. Please try again later or contact a moderator directly.")
 
@@ -152,7 +106,7 @@ class Report:
         prompts to offer at each of those states. You're welcome to change anything you want; this skeleton is just here to
         get you started and give you a model for working with Discord. 
         '''
-
+        reply = ""
         if message.content == self.CANCEL_KEYWORD:
             self.state = State.REPORT_COMPLETE
             return ["Report cancelled."]
@@ -222,12 +176,15 @@ class Report:
             if i == -1:
                 return ["Please enter a number corresponding to the given options."]
             if i == 0:
-                self.state = State.AWAITING_MINOR_REASON
-                reply = self.create_options_list("What best describes the issue?",
-                                                  self.MINOR_OPTIONS)
-            elif i == 4:
-                self.state = State.AWAITING_EXPLANATION_INPUT
-                reply = f"Please tell us what happened in {self.EXPLANATION_INPUT_LIMIT} words or less."
+                self.priority = 1
+            elif i == 1:
+                self.priority = 3
+            elif i == 2:
+                self.priority = 2
+            if i == 3:
+                self.priority = 2
+                self.state = State.AWAITING_NUDITY_EXPLANATION_INPUT
+                reply = f"Please tell us what happened ({self.EXPLANATION_INPUT_LIMIT} word limit)"
             else:
                 self.state = State.REPORT_COMPLETE
                 reply = self.REPORT_COMPLETE_OTHER_MESSAGE
@@ -240,29 +197,7 @@ class Report:
             if i == -1:
                 return ["Please enter a number corresponding to the given options."]
             if i == 0:
-                self.state = State.AWAITING_ASKED_FOR_MONEY_ANSWER
-                reply = self.create_options_list("Did they ask for money?",
-                                                  self.YES_NO_OPTIONS)
-            elif i == 3:
-                self.state = State.AWAITING_MINOR_EXPLANATION_INPUT
-                reply = f"Please tell us what happened in {self.EXPLANATION_INPUT_LIMIT} words or less."
-            else:
-                self.state = State.AWAITING_MET_IN_PERSON_ANSWER
-                reply = self.create_options_list("Have you met them in person?",
-                                                  self.YES_NO_OPTIONS)
-            return [reply]
-        
-        if self.state == State.AWAITING_ASKED_FOR_MONEY_ANSWER:
-            i = self.get_index(message, self.YES_NO_OPTIONS)
-            self.reason.append(f'Asked for money: {self.YES_NO_OPTIONS[i]}')
-            if i == -1:
-                return ["Please enter a number corresponding to the given options."]
-            if i == 0:
-                # TODO: handle yes
-                pass
-            if i == 1:
-                # TODO: handle no
-                pass
+                self.priority -= 1
             self.reason.append('Minor involved: ' + self.YES_NO_OPTIONS[i])
             self.state = State.AWAITING_MET_IN_PERSON_ANSWER
             reply = self.create_options_list("Have you or the person you are reporting on behalf met them in person?",
@@ -275,45 +210,9 @@ class Report:
             if i == -1:
                 return ["Please enter a number corresponding to the given options."]
             if i == 0:
-                # TODO: handle yes, give highest priority
-                pass
-            if i == 1:
-                # TODO: handle no
-                pass
-            self.state = State.REPORT_COMPLETE
-            reply = self.REPORT_COMPLETE_SEXTORTION_MESSAGE
-            await self.submit_report()
-            return [reply]
-        
-        if self.state == State.AWAITING_HARASSMENT_REASON:
-            i = self.get_index(message, self.HARASSMENT_OPTIONS)
-            self.reason.append(self.HARASSMENT_OPTIONS[i])
-            if i == -1:
-                return ["Please enter a number corresponding to the given options."]
-            if i == 0:
-                # TODO: handle hate speech / other
-                self.state = State.REPORT_COMPLETE
-                reply = self.REPORT_COMPLETE_OTHER_MESSAGE
-                await self.submit_report()
-            if i == 1: # blackmail, potentially sextortion
-                self.state = State.AWAITING_BLACKMAIL_REASON
-                reply= self.create_options_list("What best describes the issue?",
-                                                  self.BLACKMAIL_OPTIONS)
-            return [reply]
-        
-        if self.state == State.AWAITING_BLACKMAIL_REASON:
-            i = self.get_index(message, self.BLACKMAIL_OPTIONS)
-            self.reason.append(self.BLACKMAIL_OPTIONS[i])
-            if i == -1:
-                return ["Please enter a number corresponding to the given options."]
-            if i == 0:
-                self.state = State.AWAITING_NUDITY_REASON
-                reply = self.create_options_list("What best describes the issue?",
-                                                 self.NUDITY_OPTIONS)
-            if i == 1:
-                self.state = State.REPORT_COMPLETE
-                reply = self.REPORT_COMPLETE_OTHER_MESSAGE
-                await self.submit_report()
+                self.priority -= 1
+            self.state = State.AWAITING_FINAL_ADDITIONAL_INFORMATION
+            reply = f"Please add any additional information you think is relevant ({self.EXPLANATION_INPUT_LIMIT} word limit)."
             return [reply]
         
         if self.state == State.AWAITING_EXPLANATION_INPUT:
@@ -335,17 +234,44 @@ class Report:
                                                  self.YES_NO_OPTIONS)
             return [reply]
 
-        return []
-                          
+        if self.state == State.AWAITING_FINAL_ADDITIONAL_INFORMATION:
+            if len(message.content.split()) > self.EXPLANATION_INPUT_LIMIT:
+                reply = f"Please do not exceed the {self.EXPLANATION_INPUT_LIMIT} word limit."
+            else:
+                self.reason.append('Additional information: ' + message.content)
+                self.state = State.AWAITING_BLOCK_ANSWER
+                reply = [self.REPORT_COMPLETE_SEXTORTION_MESSAGE,
+                         self.create_options_list("Would you like to block this account?",
+                                                  self.YES_NO_OPTIONS)]
+            return reply
+
+        if self.state == State.AWAITING_BLOCK_ANSWER:
+            reply = ""
+            i = self.get_index(message, self.YES_NO_OPTIONS)
+            if i == -1:
+                return ["Please enter a number corresponding to the given options."]
+            if i == 0:
+                # TODO: yes, block account
+                self.reason.append('Blocked user: ' + self.YES_NO_OPTIONS[i])
+                reply = "The account you've reported will be blocked. "
+                pass
+            self.state = State.REPORT_COMPLETE
+            reply += "Report complete."
+            await self.submit_report()
+            return [reply]
+
+        return reply
+    
     def create_options_list(self, prompt, options):
         res = prompt
         for i, option in enumerate(options):
-            res += f"\n\t{i}\. {option}"
+            res += f"\n\t{i + 1}\. {option}"
         return res
     
     def get_index(self, message, options):
         try:
             i = int(message.content.strip())
+            i -= 1
         except:
             return -1
         if i not in range(len(options)):
@@ -354,88 +280,3 @@ class Report:
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
-    
-class ModeratorReport:
-    def __init__(self, client, message):
-        self.client = client
-        self.original_message = message
-        self.state = ModeratorState.AWAITING_DECISION
-        self.reported_user_id = None
-        self.reported_user_name = None
-        self.extract_reported_user_info()
-
-    def extract_reported_user_info(self):
-        lines = self.original_message.content.split('\n')
-        for line in lines:
-            if line.startswith("**Reported User:**"):
-                match = re.search(r'<@(\d+)>', line)
-                if match:
-                    self.reported_user_id = int(match.group(1))
-                match = re.search(r'\((.+?)\)', line)
-                if match:
-                    self.reported_user_name = match.group(1)
-                break
-
-    async def handle_ban(self, message):
-        current_report = supabase.table('User').select('*').eq('current_report', True).execute()
-        if len(current_report.data) > 0:
-            report_data = current_report.data[0]
-            reported_user = report_data['reported_user']
-            reported_message = report_data['reported_message']
-            message_link = report_data['message_link']
-            message_channel = report_data['message_channel']
-            try:
-                channel = discord.utils.get(self.client.get_all_channels(), name=message_channel)
-                if channel:
-                    await channel.send(f"User {reported_user} has been banned for the following message:\n```{reported_message}```\nMessage Link: {message_link}")
-                    await message.channel.send(f"User {reported_user} has been successfully banned. The reporting user has been notified.")
-                else:
-                    await message.channel.send("Channel not found.")
-            except Exception as e:
-                await message.channel.send(f"An error occurred: {str(e)}")
-        else:
-            await message.channel.send("No current report found.")
-
-    async def handle_hide_profile(self, message):
-        current_report = supabase.table('User').select('*').eq('current_report', True).execute()
-        if len(current_report.data) > 0:
-            report_data = current_report.data[0]
-            reported_user = report_data['reported_user']
-            message_channel = report_data['message_channel']
-            try:
-                channel = discord.utils.get(self.client.get_all_channels(), name=message_channel)
-                if channel:
-                    await channel.send(f"Profile for user {reported_user} has been hidden.")
-                    await message.channel.send(f"Profile of user {reported_user} has been successfully hidden. The reporting user has been notified.")
-                else:
-                    await message.channel.send("Channel not found.")
-            except Exception as e:
-                await message.channel.send(f"An error occurred: {str(e)}")
-        else:
-            await message.channel.send("No current report found.")
-
-    async def handle_escalate(self, message):
-        current_report = supabase.table('User').select('*').eq('current_report', True).execute()
-        if len(current_report.data) > 0:
-            report_data = current_report.data[0]
-            reported_user = report_data['reported_user']
-            reported_message = report_data['reported_message']
-            message_link = report_data['message_link']
-            message_channel = report_data['message_channel']
-            try:
-                channel = discord.utils.get(self.client.get_all_channels(), name=message_channel)
-                if channel:
-                    await channel.send(f"Report for user {reported_user} has been escalated to higher authorities.\nReported Message: ```{reported_message}```\nMessage Link: {message_link}")
-                    await message.channel.send(f"Report for user {reported_user} has been successfully escalated. The reporting user has been notified.")
-                else:
-                    await message.channel.send("Channel not found.")
-            except Exception as e:
-                await message.channel.send(f"An error occurred: {str(e)}")
-        else:
-            await message.channel.send("No current report found.")
-
-    async def handle_resolved(self, message):
-        await message.channel.send("Report has been resolved.")
-
-    def report_complete(self):
-        return self.state == ModeratorState.ACTION_COMPLETE
