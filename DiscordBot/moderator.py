@@ -47,7 +47,7 @@ class ModeratorReport:
         "Increase the number of times user has submitted false reports"
     ]
     REPORT_FREQUENCY_DECISION_OPTIONS = [
-        "Report to NCMEC",
+        "Report to law enforcement, NCMEC, and Lantern",
         "Increase the number of times this user has been reported",
     ]
 
@@ -149,7 +149,7 @@ class ModeratorReport:
             if i == 1:
                 self.state = ModeratorState.AWAITING_HIDE_CHILDREN_DECISION
                 # TODO increase number of times user has been reported
-                reply = self.create_options_list("We increased the number of false reports associated to this user. Would you like to hide child profiles from this user?",
+                reply = self.create_options_list("We increased the number of times this user has been reported for CSAM. Would you like to hide child profiles from this user?",
                                                  self.YES_NO_OPTIONS)
                 return [reply]
 

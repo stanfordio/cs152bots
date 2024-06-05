@@ -113,9 +113,6 @@ class ModBot(discord.Client):
             if message.author.id == self.user.id:
                 return
     
-            if not self.mod:
-                print("not mod")
-            print(self.mod)
             # Create an instance of ModeratorReport only once
             # Only respond to messages if they're part of a reporting flow
             if not self.mod and not message.content.startswith(ModeratorReport.START_KEYWORD):
@@ -126,7 +123,6 @@ class ModBot(discord.Client):
                 self.mod = ModeratorReport(client, message)
             
             moderator_report = self.mod
-            print(self.mod.state)
             if message.content == ModeratorReport.START_KEYWORD:
                 # Let the report class handle this message; forward all the messages it returns to us
                 # TODO: get highest priority report
@@ -137,17 +133,6 @@ class ModBot(discord.Client):
                 responses = await moderator_report.handle_report(message)
                 for r in responses:
                     await message.channel.send(r)
-            # if message.content.startswith('!ban'):
-            #     # Call the handle_ban function from the ModeratorReport instance
-            #     await moderator_report.handle_ban(message)
-            # elif message.content.startswith('!hide'):
-            #     # Call the handle_hide_profile function from the ModeratorReport instance
-            #     await moderator_report.handle_hide_profile(message)
-            # elif message.content.startswith('!escalate'):
-            #     # Call the handle_escalate function from the ModeratorReport instance
-            #     await moderator_report.handle_escalate(message)
-            # else:
-            #     await message.channel.send("Please enter a valid command: `!ban`, `!hide`, or `!escalate`.")
             return
 
         # Handle group-specific messages
@@ -157,23 +142,6 @@ class ModBot(discord.Client):
                 await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
                 scores = self.eval_text(message.content)
                 await mod_channel.send(self.code_format(scores))
-                
-    # async def on_reaction_add(self, reaction, user):
-    #     if user.id == self.user.id:
-    #         return
-
-    #     if reaction.message.channel.name == f'group-{self.group_num}-mod':
-    #         print("Received reaction in mod channel")
-    #         moderator_report = ModeratorReport(self, reaction.message)
-
-    #         if reaction.emoji == '🚫':
-    #             await moderator_report.handle_ban(reaction.message)
-    #         elif reaction.emoji == '🙈':
-    #             await moderator_report.handle_hide_profile(reaction.message)
-    #         elif reaction.emoji == '🚨':
-    #             await moderator_report.handle_escalate(reaction.message)
-    #         elif reaction.emoji == '✅':
-    #             await moderator_report.handle_resolved(reaction.message)
 
     def eval_text(self, message):
         ''''
