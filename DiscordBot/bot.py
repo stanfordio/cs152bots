@@ -9,6 +9,9 @@ import requests
 from report import Report
 import pdb
 import uuid
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
 #import apis
 from classifiers.gpt import gpt_classify
@@ -501,6 +504,21 @@ class ModBot(discord.Client):
         TODO: Once you know how you want to evaluate messages in your channel, 
         insert your code here! This will primarily be used in Milestone 3. 
         '''
+
+        # Sample messages and their true labels
+        messages = [
+            ("Hello, how are you today?", "None"),
+            ("A: did u eat supper yet\nB: yeah I ordered papa johns pizza and u baby\nA: gonna go eat now\nB: will u b on later\nA: okay babby what u eating", "Mild"),
+            ("rickzipper234: Hey thecoolsaraa123, you're doing great at this game! How old are you? I'm curious because you're so good.\nthecoolsaraa123: I’m 13. Thanks for saying that!\nrickzipper234: That's awesome. You seem really mature for your age. Do you like getting special gifts?\nthecoolsaraa123: I guess so. What kind of gifts?\nrickzipper234: I could send you some in-game credits or even real presents. How about that?\nthecoolsaraa123: Sounds cool! How do I get them?\nrickzipper234: I’d love to send them to you, but maybe we could exchange something. Could you send me some nice photos?\nthecoolsaraa123: What kind of photos?\nrickzipper234: Just some that show how cute you are. No big deal. It’ll be our little secret.\nthecoolsaraa123: I don’t know. I don’t usually share photos.\nrickzipper234: It’s nothing to worry about! If you trust me, I promise I’ll keep your pictures safe. You’ll get something great in return.\nthecoolsaraa123: I’m not sure this is okay…\nrickzipper234: Come on, just a few photos. Friends trust each other. And remember, you’re getting cool stuff.\nthecoolsaraa123: I don’t feel good about.", "Severe"),
+            ("hey babe been thinking about you", "Moderate"),
+            ("You look beautiful today baby. Could I get some pictures?", "Moderate"),
+            ("Do you want to get some food?", "None"),
+            ("A: I’m 13\nB: Could you send some pictures?", "Moderate"),
+            ("Hey are you free later tonight? So we can spend some time just the two of us?", "Mild"),
+            ("You’re really mature for your age. You don’t seem 14.", "Mild"),
+            ("I know you’re 12, but that doesn’t mean I don’t want to see your body.", "Severe"),
+        ]
+
         gpt_score = gpt_classify(message)
         perspective_score = perspective_classify(message)
         naive_bayes_score, logistic_reg_score = predict_classify(message)
@@ -509,6 +527,18 @@ class ModBot(discord.Client):
         print('perspective_score: ', perspective_score)
         print('naive_bayes_score: ', naive_bayes_score)
         print('logistic_reg_score: ', logistic_reg_score)
+
+        # true_labels = [label for _, label in messages]
+        # predicted_labels = [gpt_classify(message) for message, _ in messages]
+
+        # # Generate confusion matrix
+        # cm = confusion_matrix(true_labels, predicted_labels, labels=['None', 'Mild', 'Moderate', 'Severe'])
+
+        # # Display confusion matrix
+        # disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=['None', 'Mild', 'Moderate', 'Severe'])
+        # disp.plot(cmap=plt.cm.Blues)
+        # plt.title('Confusion Matrix')
+        # plt.show()
 
         return gpt_score, perspective_score, naive_bayes_score, logistic_reg_score
 
