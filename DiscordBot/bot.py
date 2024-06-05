@@ -136,7 +136,7 @@ class ModBot(discord.Client):
                     await message.channel.send(r)
             return
         else:
-            # Messages from non-moderator channels should be classified
+            # classify messages from non-moderator channels
             classification_result = await classify_text(message.content, subscription_key, project_name, deployment_name)
             await self.process_classification_results(message, classification_result)
 
@@ -167,7 +167,7 @@ class ModBot(discord.Client):
             report_message = f"Deleted predatory message. Confidence score is ({score:.2f}). Message author is {message.author.display_name}."
             await mod_channel.send(report_message)
 
-        # send notification to the channel where the message was deleted
+        # send notification to the channel where the message was sent initially
         notification_msg = f"*This message was deleted because it contains harmful content.*"
         await message.channel.send(notification_msg)
 
