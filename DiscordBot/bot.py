@@ -27,6 +27,7 @@ with open(token_path) as f:
     subscription_key = tokens['SUBSCRIPTION_KEY']
     project_name = tokens['PROJECT_NAME']
     deployment_name = tokens['DEPLOYMENT_NAME']
+    endpoint = tokens['ENDPOINT']
 
 
 class ModBot(discord.Client):
@@ -137,7 +138,7 @@ class ModBot(discord.Client):
             return
         else:
             # classify messages from non-moderator channels
-            classification_result = await classify_text(message.content, subscription_key, project_name, deployment_name)
+            classification_result = await classify_text(message.content, subscription_key, project_name, deployment_name, endpoint)
             await self.process_classification_results(message, classification_result)
 
         # Handle group-specific messages
