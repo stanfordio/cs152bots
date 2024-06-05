@@ -2,15 +2,22 @@ from enum import Enum, auto
 import discord
 import json
 import re
-from supabase import create_client, Client
+from supabase_client import SupabaseClient
 
-with open("tokens.json", "r") as f:
-    tokens = json.load(f)
+def format_report(data):
+    reasons = data['reasons'].split(',')
+    report_message = "**Report**\n\n"
+    report_message += f"**Priority:** {data['priority']}\n"
+    report_message += f"**Reported By:** <@{data['reported_by']}>\n"
+    report_message += f"**Reported User:** <@{data['reported_user']}>\n\n"
+    report_message += f"**Reported Message:**\n```{data['reported_message']}```\n"
+    report_message += f"**Message Link:** {data['message_link']}\n\n"
+    report_message += "**Reason(s):**\n"
+    for reason in reasons:
+        report_message += f"- {reason}\n"
+    return report_message
 
-supabase_url = tokens.get("SUPABASE_URL")
-supabase_key = tokens.get("SUPABASE_KEY")
-
-supabase: Client = create_client(supabase_url, supabase_key)
+supabase = SupabaseClient()
 
 class State(Enum):
     REPORT_START = auto()
@@ -71,6 +78,7 @@ class Report:
         self.user_id = None
         self.message_link = None
         self.reason = []
+        self.priority = 4
 
     async def submit_report(self):
         if not all([self.user_id, self.user, self.message_link, self.reason, self.message]):
@@ -82,37 +90,13 @@ class Report:
 
         mod_channel = discord.utils.get(self.client.get_all_channels(), name="group-29-mod")
         if mod_channel:
-            report_message = "**New Report Submitted**\n\n"
-            report_message += f"**Reported By:** <@{self.user_id}>\n"
-            report_message += f"**Reported User:** <@{self.message.author.id}> ({self.message.author.name}#{self.message.author.discriminator})\n\n"
-            report_message += f"**Reported Message:**\n```{self.message.content}```\n"
-            report_message += f"**Message Link:** {self.message_link}\n\n"
-            report_message += "**Reason(s):**\n"
-            for reason in self.reason:
-                report_message += f"- {reason}\n"
-
-            report_message += "\nThere is a new report on the queue. Use the `eval` command to begin the evaluation process.\n\n"
-
+            supabase.store_report(self)
+            num_reports = supabase.fetch_total_num_reports()
+            report_message = f"\nThere is a new report on the queue. There are currently {num_reports} active reports.\n" \
+                            "Use the `eval` command to begin the evaluation process.\n\n"
+            
             await mod_channel.send(report_message)
-            # TODO add to queue
-
             await self.user.send("Our moderators will review your report and take appropriate action.")
-
-            # Update the existing reports to set current_report to false
-            supabase.table('User').update({'current_report': False}).eq('current_report', True).execute()
-
-            # Insert the report data into the Supabase database
-            reasons_text = ', '.join(self.reason)
-            data = {
-                'reported_user': f'{self.message.author.name}#{self.message.author.discriminator}',
-                'current_report': True,
-                'reported_by': str(self.user),
-                'reported_message': self.message.content,
-                'message_link': self.message_link,
-                'reasons': reasons_text,
-                'message_channel': self.message.channel.name
-            }
-            supabase.table('User').insert(data).execute()
 
         else:
             await self.user.send("Sorry, an error occurred while submitting your report. Please try again later or contact a moderator directly.")
@@ -190,15 +174,13 @@ class Report:
             if i == -1:
                 return ["Please enter a number corresponding to the given options."]
             if i == 0:
-                # TODO: give priority 1
-                pass
+                self.priority = 1
             elif i == 1:
-                # TODO: give priority 3
-                pass
+                self.priority = 3
             elif i == 2:
-                # TODO: give priority 2
-                pass
+                self.priority = 2
             if i == 3:
+                self.priority = 2
                 self.state = State.AWAITING_NUDITY_EXPLANATION_INPUT
                 reply = f"Please tell us what happened ({self.EXPLANATION_INPUT_LIMIT} word limit)"
             else:
@@ -212,11 +194,7 @@ class Report:
             if i == -1:
                 return ["Please enter a number corresponding to the given options."]
             if i == 0:
-                # TODO: add yes to moderator report
-                pass
-            if i == 1:
-                # TODO: add no to moderator report
-                pass
+                self.priority -= 1
             self.reason.append('Minor involved: ' + self.YES_NO_OPTIONS[i])
             self.state = State.AWAITING_MET_IN_PERSON_ANSWER
             reply = self.create_options_list("Have you or the person you are reporting on behalf met them in person?",
@@ -229,11 +207,7 @@ class Report:
             if i == -1:
                 return ["Please enter a number corresponding to the given options."]
             if i == 0:
-                # TODO: add yes to moderator report, give highest priority 1 if minor?
-                pass
-            if i == 1:
-                # TODO: add no to moderator report
-                pass
+                self.priority -= 1
             self.state = State.AWAITING_FINAL_ADDITIONAL_INFORMATION
             reply = f"Please add any additional information you think is relevant ({self.EXPLANATION_INPUT_LIMIT} word limit)."
             return [reply]
