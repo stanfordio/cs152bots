@@ -161,6 +161,10 @@ class ModBot(discord.Client):
                                     print("Deleting message and reporting.")
                                     await message.delete()
                                     await self.report_predatory_content(message, cls['confidenceScore'], True)
+
+                                    # send notification to the channel where the message was sent initially
+                                    notification_msg = f"*This message was deleted because it contains harmful content.*"
+                                    await message.channel.send(notification_msg)
                                 else:
                                     # Lower confidence predatory content: report but do not delete
                                     print("Reporting potentially harmful content for review.")
@@ -173,10 +177,6 @@ class ModBot(discord.Client):
         if mod_channel:
             report_message = f"Deleted predatory message. Confidence score is ({score:.2f}). Message author is {message.author.display_name}."
             await mod_channel.send(report_message)
-
-        # send notification to the channel where the message was sent initially
-        notification_msg = f"*This message was deleted because it contains harmful content.*"
-        await message.channel.send(notification_msg)
 
     async def on_reaction_add(self, reaction, user):
         if user.id == self.user.id:
