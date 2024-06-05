@@ -161,10 +161,7 @@ class ModBot(discord.Client):
                                     print("Deleting message and reporting.")
                                     await message.delete()
                                     await self.report_predatory_content(message, cls['confidenceScore'], True)
-
-                                    # send notification to the channel where the message was sent initially
-                                    notification_msg = f"*This message was deleted because it contains harmful content.*"
-                                    await message.channel.send(notification_msg)
+                                    
                                 else:
                                     # Lower confidence predatory content: report but do not delete
                                     print("Reporting potentially harmful content for review.")
@@ -172,11 +169,20 @@ class ModBot(discord.Client):
         except Exception as e:
             logger.error(f"Failed to process classification results: {e}")
 
-    async def report_predatory_content(self, message, score):
+    async def report_predatory_content(self, message, score, deleted):
         mod_channel = self.mod_channels.get(message.guild.id)
         if mod_channel:
-            report_message = f"Deleted predatory message. Confidence score is ({score:.2f}). Message author is {message.author.display_name}."
-            await mod_channel.send(report_message)
+            if deleted:
+                # Send notification to the mod channel about deletion
+                report_message = f"Deleted predatory message. Confidence score is ({score:.2f}). Message author is {message.author.display_name}."
+                await mod_channel.send(report_message)
+                # Send notification to the original channel where the message was deleted
+                notification_msg = f"*This message was deleted because it contains harmful content.*"
+                await message.channel.send(notification_msg)
+            else:
+                # Send notification to the mod channel about the detection without deletion
+                report_message = f"Detected potentially predatory content from {message.author.display_name} with confidence ({score:.2f}). Review needed."
+                await mod_channel.send(report_message)
 
     async def on_reaction_add(self, reaction, user):
         if user.id == self.user.id:
