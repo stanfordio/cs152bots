@@ -4,7 +4,6 @@ import asyncio
 async def classify_text(text, subscription_key, project_name, deployment_name, document_id='doc1', language='en-us'):
     endpoint = "https://cs152-spr24-group29.cognitiveservices.azure.com"
     api_version = "2022-05-01"
-    project_name = "child-sexortion-prediction"
 
     headers = {
         "Ocp-Apim-Subscription-Key": subscription_key,
