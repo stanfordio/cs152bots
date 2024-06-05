@@ -155,10 +155,16 @@ class ModBot(discord.Client):
                 if task['status'] == 'succeeded':
                     for doc in task['results']['documents']:
                         for cls in doc['class']:
-                            if cls['category'] == 'predatory' and cls['confidenceScore'] >= 0.95:
-                                print("Deleting message and reporting.")
-                                await message.delete()
-                                await self.report_predatory_content(message, cls['confidenceScore'])
+                            if cls['category'] == 'predatory':
+                                if cls['confidenceScore'] >= 0.95:
+                                    # High confidence predatory content: delete and report
+                                    print("Deleting message and reporting.")
+                                    await message.delete()
+                                    await self.report_predatory_content(message, cls['confidenceScore'], True)
+                                else:
+                                    # Lower confidence predatory content: report but do not delete
+                                    print("Reporting potentially harmful content for review.")
+                                    await self.report_predatory_content(message, cls['confidenceScore'], False)
         except Exception as e:
             logger.error(f"Failed to process classification results: {e}")
 
