@@ -157,3 +157,8 @@ class ModBot(discord.Client):
 
 client = ModBot()
 client.run(discord_token)
+
+# if __name__ == '__main__':
+#     text = "I am being blackmailed by a stranger on the internet. They have threatened to release my private photos if I don't send them more. What should I do?"
+#     result = classify_text(text, subscription_key)
+#     pprint.pprint(result)
