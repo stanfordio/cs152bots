@@ -1,0 +1,4 @@
+discord
+supabase
+requests
+aiohttp
