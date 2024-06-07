@@ -87,6 +87,7 @@ class ModeratorReport:
                                                  self.FALSE_REPORT_DECISION_OPTIONS)
                 return [reply]
             else:
+                await self.handle_escalate_moderation(report)
                 self.state = ModeratorState.ACTION_COMPLETE
                 reply = "Report escalated to next moderator team."
                 replies += [reply]
@@ -113,13 +114,14 @@ class ModeratorReport:
                 return ["Please enter a number corresponding to the given options."]
             
             if i == 0:
-                await self.handle_escalate(report)
+                await self.handle_escalate_law(report)
                 await self.handle_ban(report)
                 self.state = ModeratorState.ACTION_COMPLETE
 
             if i == 1:
                 self.state = ModeratorState.AWAITING_REPORT_FREQUENCY_DECISION
-                reply = self.create_options_list("This is the number of times the user has been reported for potential CSAM. How would you like to proceed?",
+                num_reports_received = supabase.fetch_num_reports_received(self.reported_user_id)
+                reply = self.create_options_list(f"@{self.reported_user_name} has been reported {num_reports_received} times for violating our Child Exploitation, Abuse, and Nudity Policy in the past. How would you like to proceed?",
                                                  self.REPORT_FREQUENCY_DECISION_OPTIONS)
                 return [reply]
                 
@@ -129,7 +131,7 @@ class ModeratorReport:
                 return ["Please enter a number corresponding to the given options."]
             
             if i == 0:
-                await self.handle_escalate(report)
+                await self.handle_escalate_law(report)
                 await self.handle_ban(report)
                 self.state = ModeratorState.ACTION_COMPLETE
 
@@ -183,20 +185,13 @@ class ModeratorReport:
                 supabase.ban_user(reported_user)
                 channel = discord.utils.get(self.client.get_all_channels(), name=message_channel)
                 if channel:
-                    await channel.send(f"User <@{reported_user}> has been banned for the following message:\n```{reported_message}```\nMessage Link: {message_link}")
-
-                    # Extract the message ID from the message link
-                    message_id = message_link.split('/')[-1]
-                    
-                    # Find the message to delete
-                    message_to_delete = await channel.fetch_message(message_id)
-                    
-                    # Delete the reported message
-                    await message_to_delete.delete()
-                    
                     # Notify that the user can no longer send new messages
-                    await channel.send(f"<@{reported_user}> has been banned and can no longer send messages.")
+                    await channel.send(f"User <@{reported_user}> has been banned for the following message and can no longer send any messages:\n```{reported_message}```Message Link: {message_link}\n\n" )
 
+                    # Notify banned user in private
+                    user_warning_msg = f"You have been banned for the following message and can no longer send any messages:\n```{reported_message}```Message Link: {message_link}\n\n"
+                    await message.author.send(user_warning_msg)
+                    
                     await message.channel.send(f"User <@{reported_user}> has been successfully banned. The reporting user has been notified.")
                 else:
                     await message.channel.send("Channel not found.")
@@ -208,8 +203,6 @@ class ModeratorReport:
     async def handle_hide_profile(self, message):
         if self.current_report:
             reported_user = self.current_report['reported_user']
-            reported_message = self.current_report['reported_message']
-            message_link = self.current_report['message_link']
             message_channel = 'group-29'
 
             try:
@@ -223,7 +216,23 @@ class ModeratorReport:
         else:
             await message.channel.send("No current report found.")
 
-    async def handle_escalate(self, message):
+    async def handle_escalate_moderation(self, message):
+        if self.current_report:
+            reported_message = self.current_report['reported_message']
+            message_link = self.current_report['message_link']
+
+            try:
+                # Notify user about escalation
+                user_warning_msg = f"Your report has been escalated to the next moderation team. We will contact you if needed. Thank you for your patience. Reported message:\n```{reported_message}```Message Link: {message_link}\n\n"
+                
+                await message.author.send(user_warning_msg)
+                
+            except Exception as e:
+                await message.channel.send(f"An error occurred: {str(e)}")
+        else:
+            await message.channel.send("No current report found.")
+
+    async def handle_escalate_law(self, message):
         if self.current_report:
             reported_user = self.current_report['reported_user']
             reported_message = self.current_report['reported_message']
@@ -233,7 +242,7 @@ class ModeratorReport:
             try:
                 channel = discord.utils.get(self.client.get_all_channels(), name=message_channel)
                 if channel:
-                    await channel.send(f"Report for user <@{reported_user}> has been escalated to higher authorities.\nReported Message: ```{reported_message}```\nMessage Link: {message_link}")
+                    await channel.send(f"Report for user <@{reported_user}> has been escalated to higher authorities.\nReported Message: ```{reported_message}```Message Link: {message_link}\n\n")
 
                     await message.channel.send(f"Report for user <@{reported_user}> has been successfully escalated. The reporting user has been notified.")
                 else:
