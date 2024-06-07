@@ -185,6 +185,18 @@ class ModeratorReport:
                 if channel:
                     await channel.send(f"User <@{reported_user}> has been banned for the following message:\n```{reported_message}```\nMessage Link: {message_link}")
 
+                    # Extract the message ID from the message link
+                    message_id = message_link.split('/')[-1]
+                    
+                    # Find the message to delete
+                    message_to_delete = await channel.fetch_message(message_id)
+                    
+                    # Delete the reported message
+                    await message_to_delete.delete()
+                    
+                    # Notify that the user can no longer send new messages
+                    await channel.send(f"<@{reported_user}> has been banned and can no longer send messages.")
+
                     await message.channel.send(f"User <@{reported_user}> has been successfully banned. The reporting user has been notified.")
                 else:
                     await message.channel.send("Channel not found.")

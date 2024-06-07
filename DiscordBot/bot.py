@@ -158,8 +158,7 @@ class ModBot(discord.Client):
                             if cls['category'] == 'predatory':
                                 if cls['confidenceScore'] >= 0.95:
                                     # High confidence predatory content: delete and report
-                                    print("Deleting message and reporting.")
-                                    await message.delete()
+                                    print("Sending warning, deleting message, and reporting.")
                                     await self.report_predatory_content(message, cls['confidenceScore'], True)
                                     
                                 else:
@@ -173,16 +172,25 @@ class ModBot(discord.Client):
         mod_channel = self.mod_channels.get(message.guild.id)
         if mod_channel:
             if deleted:
-                # Send notification to the mod channel about deletion
+                # send notification to the mod channel about deletion
                 report_message = f"Deleted predatory message. Confidence score is ({score:.2f}). Message author is {message.author.display_name}."
                 await mod_channel.send(report_message)
-                # Send notification to the original channel where the message was deleted
-                notification_msg = f"*This message was deleted because it contains harmful content.*"
+                
+                # send notification to the original channel where the message was deleted
+                notification_msg = f"Warning: The following message was forwarded to the moderators as it potentially violates our Community Standards regarding Child Sexual Exploitation, Abuse, and Nudity:\n```{message.content}```"
                 await message.channel.send(notification_msg)
+                
+                # Send notification to the reported user
+                user_warning_msg = f"Warning: Your message in {message.channel.mention} was forwarded to moderators as it potentially violates our community standards regarding Child Sexual Exploitation, Abuse, and Nudity. The message has been deleted. The content of the message was:\n\n{message.content}"
+                await message.author.send(user_warning_msg)
             else:
                 # Send notification to the mod channel about the detection without deletion
                 report_message = f"Detected potentially predatory content from {message.author.display_name} with confidence ({score:.2f}). Review needed."
                 await mod_channel.send(report_message)
+                
+                # Send notification to the reported user
+                user_warning_msg = f"Warning: Your message in {message.channel.mention} was forwarded to moderators as it potentially violates our community standards regarding Child Sexual Exploitation, Abuse, and Nudity. The content of the message was:\n\n{message.content}"
+                await message.author.send(user_warning_msg)
 
     async def on_reaction_add(self, reaction, user):
         if user.id == self.user.id:
