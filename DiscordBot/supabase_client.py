@@ -107,5 +107,12 @@ class SupabaseClient:
                 .update({'banned': True}) \
                 .eq('user', user) \
                 .execute()
+    
+    def is_user_banned(self, user):
+        data, count = self.client.table('UserStats') \
+                .select('banned') \
+                .eq('user', user) \
+                .execute()
+        return data[1] 
         
 

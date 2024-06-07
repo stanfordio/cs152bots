@@ -7,7 +7,9 @@ import re
 from text_classifier import classify_text
 from report import Report
 from moderator import ModeratorReport
+from supabase_client import SupabaseClient
 
+supabase = SupabaseClient()
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -76,22 +78,22 @@ class ModBot(discord.Client):
             await self.handle_dm(message)
 
     async def handle_dm(self, message):
+        logger.log(logging.INFO, f"Received DM from {message.author.name}: {message.content}")
         # Handle a help message
-        print(f"Received dm: {message.content}")
         if message.content == Report.HELP_KEYWORD:
             reply =  "Use the `report` command to begin the reporting process.\n"
             reply += "Use the `cancel` command to cancel the report process.\n"
             await message.channel.send(reply)
             return
 
-        # TODO: re-prompt if any other word
-
         author_id = message.author.id
         responses = []
 
         # Only respond to messages if they're part of a reporting flow
         if author_id not in self.reports and not message.content.startswith(Report.START_KEYWORD):
-            return
+            reply = "I am sorry, I cannot understand you. Please use the `help` command for instructions."
+            await message.channel.send(reply)
+            return 
 
         # If we don't currently have an active report for this user, add one
         if author_id not in self.reports:
@@ -108,10 +110,10 @@ class ModBot(discord.Client):
 
 
     async def handle_channel_message(self, message):
-        print(f"Received message in channel {message.channel.name} from {message.author.name}: {message.content}")
+        logger.log(logging.INFO, f"Received message in channel {message.channel.name} from {message.author.name}: {message.content}")
         # Check if the message is in the moderator channel
         if message.channel.name == f'group-{self.group_num}-mod':
-            print("Received message in mod channel")
+            logger.log(logging.INFO,f"Received message in mod channel: {message.content}")
             # Ignore messages from the bot
             if message.author.id == self.user.id:
                 return
@@ -137,17 +139,14 @@ class ModBot(discord.Client):
                     await message.channel.send(r)
             return
         else:
+            # if user has been banned, delete the message
+            if supabase.is_user_banned(message.author.id):
+                await message.delete()
+                await message.channel.send(f"*Message has been deleted because the user `@{message.author.name}` is banned and can no longer send messages to this channel.*")
+                return
             # classify messages from non-moderator channels
             classification_result = await classify_text(message.content, subscription_key, project_name, deployment_name, endpoint)
             await self.process_classification_results(message, classification_result)
-
-        # Handle group-specific messages
-        if message.channel.name == f'group-{self.group_num}':
-            mod_channel = self.mod_channels.get(message.guild.id)
-            if mod_channel:
-                await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-                scores = self.eval_text(message.content)
-                await mod_channel.send(self.code_format(scores))
 
     async def process_classification_results(self, message, classification_result):
         try:
@@ -157,74 +156,32 @@ class ModBot(discord.Client):
                         for cls in doc['class']:
                             if cls['category'] == 'predatory':
                                 if cls['confidenceScore'] >= 0.95:
-                                    # High confidence predatory content: delete and report
-                                    print("Sending warning, deleting message, and reporting.")
+                                    # High confidence predatory content: send warning message and report
+                                    logger.log(logging.INFO, f"Confidence score of {cls['confidenceScore']}. Sending warning to user and reporting.")
                                     await self.report_predatory_content(message, cls['confidenceScore'], True)
                                     
                                 else:
-                                    # Lower confidence predatory content: report but do not delete
-                                    print("Reporting potentially harmful content for review.")
+                                    # Lower confidence predatory content: report but do not send warning
+                                    logger.log(logging.INFO, f"Confidence score of {cls['confidenceScore']}. Reporting potentially harmful content for review.")
                                     await self.report_predatory_content(message, cls['confidenceScore'], False)
         except Exception as e:
             logger.error(f"Failed to process classification results: {e}")
 
-    async def report_predatory_content(self, message, score, deleted):
+    async def report_predatory_content(self, message, score, high_confidence):
         mod_channel = self.mod_channels.get(message.guild.id)
         if mod_channel:
-            if deleted:
-                # send notification to the mod channel about deletion
-                report_message = f"Deleted predatory message. Confidence score is ({score:.2f}). Message author is {message.author.display_name}."
-                await mod_channel.send(report_message)
-                
-                # send notification to the original channel where the message was deleted
-                notification_msg = f"Warning: The following message was forwarded to the moderators as it potentially violates our Community Standards regarding Child Sexual Exploitation, Abuse, and Nudity:\n```{message.content}```"
+            report_message = f"Detected potentially predatory content from `{message.author.display_name}` with confidence ({score:.2f}). Review needed."
+            await mod_channel.send(report_message)
+            #TODO add to the queue instead
+            if high_confidence:
+                supabase.increment_num_reports_received(message.author.id)
+                # send notification to the original channel where the message was detected
+                notification_msg = f"Warning: The following message was forwarded to the moderators as it potentially violates our Community Standards regarding Child Sexual Exploitation, Abuse, and Nudity:\n```{message.content}```\n\n"
                 await message.channel.send(notification_msg)
-                
-                # Send notification to the reported user
-                user_warning_msg = f"Warning: Your message in {message.channel.mention} was forwarded to moderators as it potentially violates our community standards regarding Child Sexual Exploitation, Abuse, and Nudity. The message has been deleted. The content of the message was:\n\n{message.content}"
-                await message.author.send(user_warning_msg)
-            else:
-                # Send notification to the mod channel about the detection without deletion
-                report_message = f"Detected potentially predatory content from {message.author.display_name} with confidence ({score:.2f}). Review needed."
-                await mod_channel.send(report_message)
-                
-                # Send notification to the reported user
-                user_warning_msg = f"Warning: Your message in {message.channel.mention} was forwarded to moderators as it potentially violates our community standards regarding Child Sexual Exploitation, Abuse, and Nudity. The content of the message was:\n\n{message.content}"
-                await message.author.send(user_warning_msg)
 
-    async def on_reaction_add(self, reaction, user):
-        if user.id == self.user.id:
-            return
-
-        if reaction.message.channel.name == f'group-{self.group_num}-mod':
-            print("Received reaction in mod channel")
-            moderator_report = ModeratorReport(self, reaction.message)
-
-            if reaction.emoji == '🚫':
-                await moderator_report.handle_ban(reaction.message)
-            elif reaction.emoji == '🙈':
-                await moderator_report.handle_hide_profile(reaction.message)
-            elif reaction.emoji == '🚨':
-                await moderator_report.handle_escalate(reaction.message)
-            elif reaction.emoji == '✅':
-                await moderator_report.handle_resolved(reaction.message)
-
-
-    def eval_text(self, message):
-        ''''
-        TODO: Once you know how you want to evaluate messages in your channel, 
-        insert your code here! This will primarily be used in Milestone 3. 
-        '''
-        return message
-
+            # Send warning to the reported user in private
+            user_warning_msg = f"Warning: Your message in {message.channel.mention} was forwarded to moderators as it potentially violates our community standards regarding Child Sexual Exploitation, Abuse, and Nudity. The content of the message was:\n```{message.content}```\n\n"
+            await message.author.send(user_warning_msg)
     
-    def code_format(self, text):
-        ''''
-        TODO: Once you know how you want to show that a message has been 
-        evaluated, insert your code here for formatting the string to be 
-        shown in the mod channel. 
-        '''
-        return "Evaluated: '" + text+ "'"
-
 client = ModBot()
 client.run(discord_token)
