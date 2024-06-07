@@ -208,8 +208,6 @@ class ModeratorReport:
     async def handle_hide_profile(self, message):
         if self.current_report:
             reported_user = self.current_report['reported_user']
-            reported_message = self.current_report['reported_message']
-            message_link = self.current_report['message_link']
             message_channel = 'group-29'
 
             try:
