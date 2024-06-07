@@ -1,14 +1,13 @@
 # bot.py
 import discord
-from discord.ext import commands
 import os
 import json
 import logging
 import re
-import requests
+from text_classifier import classify_text
 from report import Report
 from moderator import ModeratorReport
-import pdb
+
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -25,6 +24,10 @@ with open(token_path) as f:
     # If you get an error here, it means your token is formatted incorrectly. Did you put it in quotes?
     tokens = json.load(f)
     discord_token = tokens['discord']
+    subscription_key = tokens['SUBSCRIPTION_KEY']
+    project_name = tokens['PROJECT_NAME']
+    deployment_name = tokens['DEPLOYMENT_NAME']
+    endpoint = tokens['ENDPOINT']
 
 
 class ModBot(discord.Client):
@@ -113,7 +116,6 @@ class ModBot(discord.Client):
             if message.author.id == self.user.id:
                 return
     
-            # Create an instance of ModeratorReport only once
             # Only respond to messages if they're part of a reporting flow
             if not self.mod and not message.content.startswith(ModeratorReport.START_KEYWORD):
                 return
@@ -134,6 +136,10 @@ class ModBot(discord.Client):
                 for r in responses:
                     await message.channel.send(r)
             return
+        else:
+            # classify messages from non-moderator channels
+            classification_result = await classify_text(message.content, subscription_key, project_name, deployment_name, endpoint)
+            await self.process_classification_results(message, classification_result)
 
         # Handle group-specific messages
         if message.channel.name == f'group-{self.group_num}':
@@ -142,6 +148,67 @@ class ModBot(discord.Client):
                 await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
                 scores = self.eval_text(message.content)
                 await mod_channel.send(self.code_format(scores))
+
+    async def process_classification_results(self, message, classification_result):
+        try:
+            for task in classification_result['tasks']['items']:
+                if task['status'] == 'succeeded':
+                    for doc in task['results']['documents']:
+                        for cls in doc['class']:
+                            if cls['category'] == 'predatory':
+                                if cls['confidenceScore'] >= 0.95:
+                                    # High confidence predatory content: delete and report
+                                    print("Sending warning, deleting message, and reporting.")
+                                    await self.report_predatory_content(message, cls['confidenceScore'], True)
+                                    
+                                else:
+                                    # Lower confidence predatory content: report but do not delete
+                                    print("Reporting potentially harmful content for review.")
+                                    await self.report_predatory_content(message, cls['confidenceScore'], False)
+        except Exception as e:
+            logger.error(f"Failed to process classification results: {e}")
+
+    async def report_predatory_content(self, message, score, deleted):
+        mod_channel = self.mod_channels.get(message.guild.id)
+        if mod_channel:
+            if deleted:
+                # send notification to the mod channel about deletion
+                report_message = f"Deleted predatory message. Confidence score is ({score:.2f}). Message author is {message.author.display_name}."
+                await mod_channel.send(report_message)
+                
+                # send notification to the original channel where the message was deleted
+                notification_msg = f"Warning: The following message was forwarded to the moderators as it potentially violates our Community Standards regarding Child Sexual Exploitation, Abuse, and Nudity:\n```{message.content}```"
+                await message.channel.send(notification_msg)
+                
+                # Send notification to the reported user
+                user_warning_msg = f"Warning: Your message in {message.channel.mention} was forwarded to moderators as it potentially violates our community standards regarding Child Sexual Exploitation, Abuse, and Nudity. The message has been deleted. The content of the message was:\n\n{message.content}"
+                await message.author.send(user_warning_msg)
+            else:
+                # Send notification to the mod channel about the detection without deletion
+                report_message = f"Detected potentially predatory content from {message.author.display_name} with confidence ({score:.2f}). Review needed."
+                await mod_channel.send(report_message)
+                
+                # Send notification to the reported user
+                user_warning_msg = f"Warning: Your message in {message.channel.mention} was forwarded to moderators as it potentially violates our community standards regarding Child Sexual Exploitation, Abuse, and Nudity. The content of the message was:\n\n{message.content}"
+                await message.author.send(user_warning_msg)
+
+    async def on_reaction_add(self, reaction, user):
+        if user.id == self.user.id:
+            return
+
+        if reaction.message.channel.name == f'group-{self.group_num}-mod':
+            print("Received reaction in mod channel")
+            moderator_report = ModeratorReport(self, reaction.message)
+
+            if reaction.emoji == '🚫':
+                await moderator_report.handle_ban(reaction.message)
+            elif reaction.emoji == '🙈':
+                await moderator_report.handle_hide_profile(reaction.message)
+            elif reaction.emoji == '🚨':
+                await moderator_report.handle_escalate(reaction.message)
+            elif reaction.emoji == '✅':
+                await moderator_report.handle_resolved(reaction.message)
+
 
     def eval_text(self, message):
         ''''
@@ -158,7 +225,6 @@ class ModBot(discord.Client):
         shown in the mod channel. 
         '''
         return "Evaluated: '" + text+ "'"
-
 
 client = ModBot()
 client.run(discord_token)
