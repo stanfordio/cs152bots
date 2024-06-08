@@ -83,7 +83,7 @@ class ModeratorReport:
             elif i == 1:
                 self.state = ModeratorState.AWAITING_FALSE_REPORT_DECISION
                 num_false_reports = supabase.fetch_num_false_reports_submitted(self.current_report['reported_by'])
-                reply = self.create_options_list(f"@{self.current_report['reported_by']} has submitted {num_false_reports} fake reports in the past. How would you like to proceed?",
+                reply = self.create_options_list(f"<@{self.current_report['reported_by']}> has submitted {num_false_reports} fake reports in the past. How would you like to proceed?",
                                                  self.FALSE_REPORT_DECISION_OPTIONS)
                 return [reply]
             else:
@@ -121,7 +121,7 @@ class ModeratorReport:
             if i == 1:
                 self.state = ModeratorState.AWAITING_REPORT_FREQUENCY_DECISION
                 num_reports_received = supabase.fetch_num_reports_received(self.reported_user_id)
-                reply = self.create_options_list(f"@{self.reported_user_name} has been reported {num_reports_received} times for violating our Child Exploitation, Abuse, and Nudity Policy in the past. How would you like to proceed?",
+                reply = self.create_options_list(f"<@{self.reported_user_id}> has been reported {num_reports_received} times for violating our Child Exploitation, Abuse, and Nudity Policy in the past. How would you like to proceed?",
                                                  self.REPORT_FREQUENCY_DECISION_OPTIONS)
                 return [reply]
                 

@@ -113,6 +113,6 @@ class SupabaseClient:
                 .select('banned') \
                 .eq('user', user) \
                 .execute()
-        return data[1] 
+        return data[1][0]['banned'] 
         
 

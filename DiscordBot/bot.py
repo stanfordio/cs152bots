@@ -172,7 +172,7 @@ class ModBot(discord.Client):
         if mod_channel:
             report_message = f"Detected potentially predatory content from `{message.author.display_name}` with confidence ({score:.2f}). Review needed."
             await mod_channel.send(report_message)
-            #TODO add to the queue instead
+            await self.store_report_predator_content(message, high_confidence)
             if high_confidence:
                 supabase.increment_num_reports_received(message.author.id)
                 # send notification to the original channel where the message was detected
@@ -182,6 +182,20 @@ class ModBot(discord.Client):
             # Send warning to the reported user in private
             user_warning_msg = f"Warning: Your message in {message.channel.mention} was forwarded to moderators as it potentially violates our community standards regarding Child Sexual Exploitation, Abuse, and Nudity. The content of the message was:\n```{message.content}```\n\n"
             await message.author.send(user_warning_msg)
+    
+    async def store_report_predator_content(self, message, high_confidence):
+        report = Report(self)
+        report.user = self.user
+        report.message = message
+        report.user_id = self.user.id
+        report.message_link = message.jump_url
+        if (high_confidence):
+            report.reason = ["Message was flagged as potentially predatory with high confidence."]
+            report.priority = 1
+        else:
+            report.reason = ["Message was flagged as potentially predatory, although not with high confidence."]
+            report.priority = 2
+        await report.submit_report()
     
 client = ModBot()
 client.run(discord_token)
