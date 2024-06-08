@@ -193,10 +193,6 @@ class ModeratorReport:
                 if channel:
                     # Notify that the user can no longer send new messages
                     await channel.send(f"User <@{reported_user}> has been banned for the following message and can no longer send any messages:\n```{reported_message}```Message Link: {message_link}\n\n" )
-
-                    # Notify banned user in private
-                    user_warning_msg = f"You have been banned for the following message and can no longer send any messages:\n```{reported_message}```Message Link: {message_link}\n\n"
-                    await message.author.send(user_warning_msg)
                     
                     await message.channel.send(f"User <@{reported_user}> has been successfully banned. The reporting user has been notified.")
                 else:
