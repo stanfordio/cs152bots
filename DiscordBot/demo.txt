@@ -1,0 +1,46 @@
+Demo: I first create the reports and then execute my role as the moderator.
+
+1. Legit manual report related to child sextortion
+Reported user: @bless
+Message: ```send me nudes```
+Link: https://discord.com/channels/1211760623969370122/1211760626284896280/1248696819240669295
+Moderator action: Escalates to law enforcement + bans user. Channel gets notified that report was escalated to authorities and that @bless was banned.
+
+2. Legit manual report that does not violate policy, but is weird
+Reported user: @carol
+Message: ```hi honey```
+Link: https://discord.com/channels/1211760623969370122/1211760626284896280/1248842646839890001
+Moderator action: Report to law enforcement + ban user because #times user was reported for potential CSAM is high.
+
+3. Fake manual report
+Reported by: @larafranciulli
+Message: ```report```
+Link: https://discord.com/channels/1211760623969370122/1211760626284896280/1239476076657250405
+Moderator action: @larafranciulli receives warning in private about not submitting fake reports.
+
+4. Legit manual report not related to child sextortion
+Reported user: @bless
+Reported by: @larafranciulli
+Message: ```I am a scammer```
+Link: https://discord.com/channels/1211760623969370122/1211760626284896280/1239807115208691856
+Moderator action: Escalates to next moderator team. User who submitted the report is notified in private.
+
+5. Automated report with some confidence that is related to child sextortion
+User: @larafranciulli
+Message: ```Hi people```
+Bot action: Forwards to moderator. User @larafranciulli is notified in private.
+Moderator action: Increases the #times @larafranciulli was reported for potential CSAM. 
+Nuance: It can be a conversation among friends, so we need to fine tune our model to account for this.
+
+6. Non-harmful message
+User: @larafranciulli
+Message: ```Hi```
+Bot action: Nothing because it is not harmful message. 
+
+7. Automated report related to child sextortion
+User: @larafranciulli
+Message: ```send me nudes```
+Bot action: Forwards to moderator with high confidence. Channel is notified that message was forwarded.
+Moderator action: Escalates to law enforcement + bans user. Channel gets notified that @larafranciulli was banned.
+
+8. Banned user (@larafranciulli) sends message to channel. Because user is banned, message gets deleted.

@@ -38,7 +38,8 @@ class ModeratorReport:
     ]
     FALSE_REPORT_DECISION_OPTIONS = [
         "Warn user about not submitting false reports",
-        "Increase the number of times user has submitted false reports"
+        "Increase the number of times user has submitted false reports",
+        "Automated report"
     ]
     REPORT_FREQUENCY_DECISION_OPTIONS = [
         "Report to law enforcement, NCMEC, and Lantern",
@@ -106,6 +107,11 @@ class ModeratorReport:
                 self.state = ModeratorState.ACTION_COMPLETE
                 supabase.increment_num_false_reports_submitted(self.current_report['reported_by'])
                 reply = "We increased the number of false reports associated to this user. We are closing the report."
+                replies += [reply]
+            
+            if i == 2:
+                self.state = ModeratorState.ACTION_COMPLETE
+                reply = "False report issued by bot. No further action needed. We are closing the report."
                 replies += [reply]
         
         if self.state == ModeratorState.AWAITING_LEGIT_REPORT_DECISION:
