@@ -96,10 +96,13 @@ class Report:
                             "Use the `eval` command to begin the evaluation process.\n\n"
             
             await mod_channel.send(report_message)
-            await self.user.send("Our moderators will review your report and take appropriate action.")
+            if self.user != self.client.user:
+                await self.user.send("Our moderators will review your report and take appropriate action.")
 
         else:
-            await self.user.send("Sorry, an error occurred while submitting your report. Please try again later or contact a moderator directly.")
+            if self.user != self.client.user:
+                await self.user.send("Sorry, an error occurred while submitting your report. Please try again later or contact a moderator directly.")
+    
 
     async def handle_message(self, message):
         '''
