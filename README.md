@@ -11,9 +11,7 @@ If you’re not familiar with Discord, that’s okay! [Check out this short vide
 
 ### Joining your group channels
 
-First, every member of the team should join the Discord server using this invite link: 
-
-https://discord.gg/K4XmF7Yr
+First, every member of the team should join the Discord server using the invite link on Ed: 
 
 Discord can be used in your web browser, although most people prefer the [thick client apps.](https://discord.com/download)
 
