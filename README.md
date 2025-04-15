@@ -120,7 +120,7 @@ Try following its instructions from there by reporting a message from one of the
 
 If you look through the starter code, you’ll see the beginnings of the reporting flow that are already there. It will be up to you to build that out in whatever way your group decides is best. You’re welcome to edit any part of the starter code you’d like if you want to change what’s already there - we encourage it! This is just meant to be a starting point that you can pattern match off of.
 
-If you’re not familiar with Python and asynchronous programming, please come to a section for an introduction. The TAs are happy to walk you through the starter code and explain anything that’s unclear.
+If you’re not familiar with Python and asynchronous programming, checkout ![this video](https://www.youtube.com/watch?v=K56nNuBEd0c) for an overview. Please come to a section with any additional questions. The TAs are happy to walk you through the starter code and explain anything that’s unclear.
 
 ## Troubleshooting
 
