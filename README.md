@@ -91,7 +91,7 @@ Note that these permissions are just a starting point for your bot. We think the
 
 #### Setting up the starter code
 
-First things first, the starter code is written in Python. You’ll want to make sure that you have Python 3 installed on your machine; if you don’t, follow [these instructions to install PyCharm]https://web.stanford.edu/class/cs106a/#/installing-pycharm), the Stanford-recommended Python editor. Alternatively, you can use a text editor of your choice.
+First things first, the starter code is written in Python. You’ll want to make sure that you have Python 3 installed on your machine; if you don’t, follow [these instructions to install PyCharm](https://web.stanford.edu/class/cs106a/#/installing-pycharm), the Stanford-recommended Python editor. Alternatively, you can use a text editor of your choice.
 
 Once you’ve done that, open a terminal in the same folder as your `bot.py` file. (If you haven’t used your terminal before, check out [this guide](https://www.macworld.com/article/2042378/master-the-command-line-navigating-files-and-folders.html)!)
 
