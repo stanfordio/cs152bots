@@ -9,6 +9,8 @@ For this milestone, your group will be making your very own Discord bot. Discord
 
 If you’re not familiar with Discord, that’s okay! [Check out this short video](https://www.youtube.com/watch?v=rnYGrq95ezA) which overviews Discord’s features and quirks.
 
+A video walkthrough of the bot setup can be found ![here](https://drive.google.com/file/d/1moDeMnopIKlvHjQf5Ks5XLB_KEpY5vtS/view?usp=sharing).
+
 ### Joining your group channels
 
 First, every member of the team should join the Discord server using the invite link on Ed: 
@@ -102,7 +104,7 @@ Note that these permissions are just a starting point for your bot. We think the
 #### Setting up the starter code
 
 
-First things first, the starter code is written in Python. You’ll want to make sure that you have Python 3 installed on your machine; if you don’t, follow [these instructions to install PyCharm](https://web.stanford.edu/class/cs106a/handouts/installingpycharm.html), the Stanford-recommended Python editor. Alternatively, you can use a text editor of your choice.
+First things first, the starter code is written in Python. You’ll want to make sure that you have Python 3 installed on your machine; if you don’t, follow [these instructions to install PyCharm](https://web.stanford.edu/class/cs106a/#/installing-pycharm), the Stanford-recommended Python editor. Alternatively, you can use a text editor of your choice.
 
 
 Once you’ve done that, open a terminal in the same folder as your `bot.py` file. (If you haven’t used your terminal before, check out [this guide](https://www.macworld.com/article/2042378/master-the-command-line-navigating-files-and-folders.html)!)
@@ -140,7 +142,7 @@ Try following its instructions from there by reporting a message from one of the
 
 If you look through the starter code, you’ll see the beginnings of the reporting flow that are already there. It will be up to you to build that out in whatever way your group decides is best. You’re welcome to edit any part of the starter code you’d like if you want to change what’s already there - we encourage it! This is just meant to be a starting point that you can pattern match off of.
 
-If you’re not familiar with Python and asynchronous programming, please come to a section for an introduction. The TAs are happy to walk you through the starter code and explain anything that’s unclear.
+If you’re not familiar with Python and asynchronous programming, checkout ![this video](https://www.youtube.com/watch?v=K56nNuBEd0c) for an overview. Please come to a section with any additional questions. The TAs are happy to walk you through the starter code and explain anything that’s unclear
 
 
 ## Troubleshooting
