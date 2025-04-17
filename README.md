@@ -92,10 +92,9 @@ Next, we’ll add the bot to the 152 Discord server! You’ll need to generate a
 3. Check the box labeled “bot”. Once you do that, another area with a bunch of options should appear lower down on the page.
 4. Check these permissions, then copy the link that’s generated.
 
-<img width="700" alt="Screenshot 2024-04-22 at 4 31 31 PM" src="https://github.com/stanfordio/cs152bots/assets/96695971/520c040e-f494-4b7e-bb45-01dd59772462">
+<img width="700" alt="new permissions" src="./assets/new permissions.png">
 
 5. Send that link to any of the TAs via Discord (or by email) - they will use it to add your bot to the server. Once they do, your bot will appear in the `#general` channel and will be a part of the server!
-
 
 Note that these permissions are just a starting point for your bot. We think they’ll cover most cases, but you may run into cases where you want to be able to do more. If you do, you’re welcome to send updated links to the teaching team to re-invite your bot with new permissions. 
 
@@ -168,6 +167,14 @@ This is an issue with the version of Discord API that is installed. Try the foll
 1. running ```pip install --upgrade``` discord in the terminal in your folder in the project that contains this file
 2. IF that does not work, try changing the line in bot.py that says ```intents.message_content = True``` to  ```intents.messages = True```
 
+### `error: externally-managed-environment`
+
+If this occurs when you're attempting to install requests, you might have conflicting python environments from previous projects. Try creating an environment in your folder with the following lines:
+
+```python3 -m venv venv          # create a virtual environment```
+```source venv/bin/activate      # activate it (your prompt will change!)```
+
+Then try running the pip install commands again. You'll need to run the second line anytime you close your IDE (VSCode) window to reactive the environment. 
 
 ## Resources
 
