@@ -45,7 +45,7 @@ Additionally, you should be able to see two new channels under one of the “Gro
 
 If you accidentally join the wrong group, just message the TA Bot ```.leave #``` to have the role removed and leave those channels. 
 
-#### Please let Anthony Mensah (admensah@stanford.edu or admensah on Discord) know if something goes awry in this process! 
+#### Please let any CA know if something goes awry in this process! 
 
 ### [One student per group] Setting up your bot
 
