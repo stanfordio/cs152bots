@@ -4,14 +4,23 @@ import re
 
 class State(Enum):
     REPORT_START = auto()
-    AWAITING_MESSAGE = auto()
-    MESSAGE_IDENTIFIED = auto()
+    AWAITING_MESSAGE = auto() 
+    AWAITING_REASON = auto() # used for abuse type reason
+    MESSAGE_IDENTIFIED = auto() # currently not used
     REPORT_COMPLETE = auto()
 
 class Report:
     START_KEYWORD = "report"
     CANCEL_KEYWORD = "cancel"
     HELP_KEYWORD = "help"
+    REPORT_REASONS = {
+        "1": "Scam, fraud or spam",
+        "2": "Bullying, hate or harassment",
+        "3": "Suicide or self-injury",
+        "4": "Selling or promoting restricted items",
+        "5": "Nudity or sexual activity",
+        "6": "False information"
+    }
 
     def __init__(self, client):
         self.state = State.REPORT_START
@@ -54,19 +63,27 @@ class Report:
                 return ["It seems this message was deleted or never existed. Please try again or say `cancel` to cancel."]
 
             # Here we've found the message - it's up to you to decide what to do next!
-            self.state = State.MESSAGE_IDENTIFIED
+            self.state = State.AWAITING_REASON
+            options = "\n".join([f"{key}. {val}" for key, val in self.REPORT_REASONS.items()])
             return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
-                    "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
+                    "Please select the reason for reporting this message. Reply with a number:" +
+                    options]
         
-        if self.state == State.MESSAGE_IDENTIFIED:
-            return ["<insert rest of reporting flow here>"]
+        if self.state == State.AWAITING_REASON:
+             # will redirect to our manual report flow -> will need to adjust later on
+             content = message.content.strip()
+             if content not in self.REPORT_REASONS:
+                 return ["Invalid choice. Please reply with a number from the list."]
+    
+             reason = self.REPORT_REASONS[content]
+             self.state = State.REPORT_COMPLETE
+             return [
+                 f"Thank you. You reported the message for: **{reason}**.", \
+                 "Our internal team will decide on the appropriate action, including notifying law enforcement if necessary."
+             ]
 
         return []
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
     
-
-
-    
-
