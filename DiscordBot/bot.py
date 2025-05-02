@@ -8,6 +8,7 @@ import re
 import requests
 from report import Report
 import pdb
+from discord.ui import Button, View
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -30,7 +31,8 @@ class ModBot(discord.Client):
     def __init__(self): 
         intents = discord.Intents.default()
         intents.message_content = True
-        super().__init__(command_prefix='.', intents=intents)
+        intents.members = True  # Need this for blocking users
+        super().__init__(intents=intents)
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
@@ -73,7 +75,7 @@ class ModBot(discord.Client):
     async def handle_dm(self, message):
         # Handle a help message
         if message.content == Report.HELP_KEYWORD:
-            reply =  "Use the `report` command to begin the reporting process.\n"
+            reply = "Use the `report` command to begin the reporting process.\n"
             reply += "Use the `cancel` command to cancel the report process.\n"
             await message.channel.send(reply)
             return
@@ -89,10 +91,16 @@ class ModBot(discord.Client):
         if author_id not in self.reports:
             self.reports[author_id] = Report(self)
 
-        # Let the report class handle this message; forward all the messages it returns to uss
+        # Let the report class handle this message; forward all the messages it returns to us
         responses = await self.reports[author_id].handle_message(message)
-        for r in responses:
-            await message.channel.send(r)
+        for response in responses:
+            if isinstance(response, tuple) and len(response) == 2:
+                # If response is a tuple of (message, view)
+                msg, view = response
+                await message.channel.send(msg, view=view)
+            else:
+                # Regular string message
+                await message.channel.send(response)
 
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():
@@ -125,6 +133,14 @@ class ModBot(discord.Client):
         shown in the mod channel. 
         '''
         return "Evaluated: '" + text+ "'"
+
+    async def block_user(self, user_to_block, blocked_by):
+        """Implement the logic to block a user"""
+        try:
+            await blocked_by.block(user_to_block)
+            return True
+        except discord.errors.HTTPException:
+            return False
 
 
 client = ModBot()
