@@ -13,6 +13,14 @@ class ReportType(Enum):
     INAPPROPRIATE = "Inappropriate Content"
     OTHER = "Other"
 
+class InfoType(Enum):
+    CONTACT = "Contact Information"
+    LOCATION = "Location Information"
+    FINANCIAL = "Financial Information"
+    ID = "ID Information"
+    EXPLICIT = "Explicit Content"
+    OTHER = "Other"
+
 class Severity(Enum):
     LOW = "Low"
     MEDIUM = "Medium"
@@ -24,8 +32,12 @@ class State(Enum):
     AWAITING_MESSAGE = auto()
     MESSAGE_IDENTIFIED = auto()
     AWAITING_REPORT_TYPE = auto()
+    AWAITING_INFO_TYPE = auto()
     AWAITING_DOXXING_DETAILS = auto()
+    AWAITING_VICTIM_NAME = auto()
+    AWAITING_REPORTER_EMAIL = auto()
     AWAITING_SEVERITY = auto()
+    AWAITING_SIGNATURE = auto()
     AWAITING_CONFIRMATION = auto()
     REPORT_COMPLETE = auto()
 
@@ -39,7 +51,11 @@ class Report:
         self.client = client
         self.message = None
         self.report_type = None
+        self.info_types = []  # Changed from info_type to info_types list
         self.details = None
+        self.victim_name = None
+        self.reporter_email = None
+        self.signature = None
         self.severity = None
         self.reporter_id = None
         self.timestamp = None
@@ -109,10 +125,15 @@ class Report:
                     
                     # For doxxing reports, collect specific details
                     if self.report_type == ReportType.DOXXING:
-                        self.state = State.AWAITING_DOXXING_DETAILS
+                        self.state = State.AWAITING_INFO_TYPE
                         response = f"You selected: {self.report_type.value}\n\n"
-                        response += "Please specify what personal information was shared:\n"
-                        response += "(For example: real name, address, phone number, email, photos, etc.)"
+                        response += "What type(s) of confidential information was shared? Please select one or more of the following by typing the number(s), separated by commas (e.g., 1,3,5):\n\n"
+                        response += "1. Contact Information (phone numbers, email addresses)\n"
+                        response += "2. Location Information (home address, workplace)\n"
+                        response += "3. Financial Information (account numbers, financial details)\n"
+                        response += "4. ID Information (government IDs, SSN)\n"
+                        response += "5. Explicit Content (private photos/videos)\n"
+                        response += "6. Other"
                         return [response]
                     else:
                         # For other report types, jump to severity
@@ -129,18 +150,68 @@ class Report:
             except ValueError:
                 return ["Please enter a number to select a report type."]
         
+        if self.state == State.AWAITING_INFO_TYPE:
+            try:
+                # Split by comma and convert to integers
+                selections = [int(s.strip()) for s in message.content.split(',')]
+                info_types = list(InfoType)
+                
+                # Validate all selections
+                valid_selections = [s for s in selections if 1 <= s <= len(info_types)]
+                
+                if valid_selections:
+                    # Store multiple info types
+                    self.info_types = [info_types[s-1] for s in valid_selections]
+                    
+                    self.state = State.AWAITING_DOXXING_DETAILS
+                    
+                    # Format the selected info types for display
+                    selected_types = ", ".join([info_type.value for info_type in self.info_types])
+                    response = f"You selected: {selected_types}\n\n"
+                    response += "Please provide additional details about what specific information was shared."
+                    return [response]
+                else:
+                    return ["Please enter valid numbers between 1 and 6, separated by commas."]
+            except ValueError:
+                return ["Please enter numbers separated by commas to select information types (e.g., 1,3,5)."]
+        
         if self.state == State.AWAITING_DOXXING_DETAILS:
             # Store the details provided by the user
             self.details = message.content
             
-            self.state = State.AWAITING_SEVERITY
+            self.state = State.AWAITING_VICTIM_NAME
             response = "Thank you for the details.\n\n"
-            response += "Please rate the severity of this situation:\n\n"
-            response += "1. Low - Minor concern\n"
-            response += "2. Medium - Moderate concern\n"
-            response += "3. High - Serious concern\n"
-            response += "4. Urgent - Immediate attention needed"
+            response += "Please provide the name of the person whose confidential information was revealed.\n"
+            response += "(Type 'anonymous' if you prefer not to disclose this information)"
             return [response]
+        
+        if self.state == State.AWAITING_VICTIM_NAME:
+            # Store the victim name
+            self.victim_name = message.content
+            
+            self.state = State.AWAITING_REPORTER_EMAIL
+            response = "Thank you.\n\n"
+            response += "Please provide your email address for follow-up communication.\n"
+            response += "(This will only be used by moderators for updates about this report)"
+            return [response]
+        
+        if self.state == State.AWAITING_REPORTER_EMAIL:
+            # Basic email validation
+            email_regex = r"[^@]+@[^@]+\.[^@]+"
+            if re.match(email_regex, message.content) or message.content.lower() == "anonymous":
+                # Store the email
+                self.reporter_email = message.content
+                
+                self.state = State.AWAITING_SEVERITY
+                response = "Thank you.\n\n"
+                response += "Please rate the severity of this situation:\n\n"
+                response += "1. Low - Minor concern\n"
+                response += "2. Medium - Moderate concern\n"
+                response += "3. High - Serious concern\n"
+                response += "4. Urgent - Immediate attention needed"
+                return [response]
+            else:
+                return ["Please enter a valid email address or 'anonymous' if you prefer not to provide one."]
         
         if self.state == State.AWAITING_SEVERITY:
             try:
@@ -149,25 +220,44 @@ class Report:
                 if 1 <= selection <= len(severity_levels):
                     self.severity = severity_levels[selection-1]
                     
-                    # Create a summary for confirmation
-                    self.state = State.AWAITING_CONFIRMATION
-                    
-                    summary = "**Report Summary:**\n\n"
-                    summary += f"**Type:** {self.report_type.value}\n"
-                    summary += f"**Severity:** {self.severity.value}\n"
-                    summary += f"**Message Author:** {self.message.author.name}\n"
-                    summary += f"**Message Content:** ```{self.message.content}```\n"
-                    
-                    if self.details:
-                        summary += f"**Additional Details:** {self.details}\n\n"
-                    
-                    summary += "Is this information correct? Type `yes` to submit the report or `no` to cancel."
-                    
-                    return [summary]
+                    self.state = State.AWAITING_SIGNATURE
+                    response = "Thank you.\n\n"
+                    response += "Please provide your signature to confirm the authenticity of this report.\n"
+                    response += "(Type your full name or Discord username)"
+                    return [response]
                 else:
                     return ["Please enter a valid number between 1 and 4."]
             except ValueError:
                 return ["Please enter a number to select a severity level."]
+        
+        if self.state == State.AWAITING_SIGNATURE:
+            # Store the signature
+            self.signature = message.content
+            
+            # Create a summary for confirmation
+            self.state = State.AWAITING_CONFIRMATION
+            
+            summary = "**Report Summary:**\n\n"
+            summary += f"**Type:** {self.report_type.value}\n"
+            
+            if self.info_types:
+                info_types_str = ", ".join([info_type.value for info_type in self.info_types])
+                summary += f"**Information Types:** {info_types_str}\n"
+                
+            summary += f"**Severity:** {self.severity.value}\n"
+            summary += f"**Victim:** {self.victim_name}\n"
+            summary += f"**Contact Email:** {self.reporter_email}\n"
+            summary += f"**Message Author:** {self.message.author.name}\n"
+            summary += f"**Message Content:** ```{self.message.content}```\n"
+            
+            if self.details:
+                summary += f"**Additional Details:** {self.details}\n\n"
+                
+            summary += f"**Signature:** {self.signature}\n\n"
+            
+            summary += "Is this information correct? Type `yes` to submit the report or `no` to cancel."
+            
+            return [summary]
         
         if self.state == State.AWAITING_CONFIRMATION:
             if message.content.lower() == "yes":
@@ -215,8 +305,21 @@ class Report:
         embed.add_field(name="Reporter", value=f"<@{self.reporter_id}>", inline=True)
         embed.add_field(name="Severity", value=self.severity.value, inline=True)
         
+        if self.info_types:
+            info_types_str = ", ".join([info_type.value for info_type in self.info_types])
+            embed.add_field(name="Information Types", value=info_types_str, inline=True)
+            
+        if self.victim_name:
+            embed.add_field(name="Victim", value=self.victim_name, inline=True)
+            
+        if self.reporter_email:
+            embed.add_field(name="Contact Email", value=self.reporter_email, inline=True)
+            
         if self.details:
             embed.add_field(name="Additional Details", value=self.details[:1024], inline=False)
+            
+        if self.signature:
+            embed.add_field(name="Signature", value=self.signature, inline=True)
             
         embed.add_field(name="Message Link", value=f"[Click to view]({self.message.jump_url})", inline=False)
         
@@ -256,9 +359,29 @@ class Report:
             help_msg += "5. Inappropriate Content - NSFW or disturbing content\n"
             help_msg += "6. Other - Any other violations"
         
+        elif self.state == State.AWAITING_INFO_TYPE:
+            help_msg += "Please select the type(s) of confidential information that was shared:\n\n"
+            help_msg += "1. Contact Information - Phone numbers, email addresses\n"
+            help_msg += "2. Location Information - Home address, workplace, etc.\n"
+            help_msg += "3. Financial Information - Bank details, account numbers\n"
+            help_msg += "4. ID Information - Government IDs, social security numbers\n"
+            help_msg += "5. Explicit Content - Private photos or videos\n"
+            help_msg += "6. Other - Any other confidential information\n\n"
+            help_msg += "You can select multiple types by separating numbers with commas (e.g., 1,3,5)"
+        
         elif self.state == State.AWAITING_DOXXING_DETAILS:
-            help_msg += "Please describe what personal information was shared.\n"
-            help_msg += "Examples include: real names, addresses, phone numbers, emails, social media profiles, photos, etc."
+            help_msg += "Please describe what specific information was shared.\n"
+            help_msg += "Be as detailed as possible to help moderators address the issue effectively."
+        
+        elif self.state == State.AWAITING_VICTIM_NAME:
+            help_msg += "Please provide the name of the person whose information was shared.\n"
+            help_msg += "This helps moderators track and address the issue more effectively.\n"
+            help_msg += "You can type 'anonymous' if you prefer not to disclose this information."
+        
+        elif self.state == State.AWAITING_REPORTER_EMAIL:
+            help_msg += "Please provide your email address for follow-up communication.\n"
+            help_msg += "This will only be used by moderators for updates about your report.\n"
+            help_msg += "You can type 'anonymous' if you prefer not to provide an email."
         
         elif self.state == State.AWAITING_SEVERITY:
             help_msg += "Rate the severity of the situation:\n\n"
@@ -266,6 +389,10 @@ class Report:
             help_msg += "2. Medium - Moderate concern, should be addressed soon\n"
             help_msg += "3. High - Serious concern, should be addressed quickly\n"
             help_msg += "4. Urgent - Immediate attention needed, potentially harmful situation"
+        
+        elif self.state == State.AWAITING_SIGNATURE:
+            help_msg += "Please provide your signature to confirm the authenticity of this report.\n"
+            help_msg += "This can be your full name or Discord username."
         
         elif self.state == State.AWAITING_CONFIRMATION:
             help_msg += "Review the report summary and confirm it's correct.\n"
