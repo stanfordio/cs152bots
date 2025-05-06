@@ -82,8 +82,11 @@ class Report:
             if message.content in self.CATEGORIES:
                 self.state = State.TYPE_SELECTED
                 self.type_selected = message.content
-                return [f"We're sorry that you're experiencing this kind of content on our platform. We'll do our best to help.", \
-                        f"What type of {message.content} are you reporting?"]
+                subtypes = self.CATEGORIES[message.content] # Added subtypes 
+                return [
+                f"We're sorry that you're experiencing this kind of content on our platform. We'll do our best to help.",
+                f"What type of {message.content} are you reporting?\nOptions: {', '.join(subtypes)}"
+                ]
             else:
                 return ["Please respond with a valid category."]
         
