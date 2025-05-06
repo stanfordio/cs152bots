@@ -119,11 +119,11 @@ class Report:
                     
         if self.state == State.AWAITING_BLOCK_CONFIRMATION:
             if message.content.lower() == "yes":
-                self.report_complete()
-                return ["You will no longer see posts from this user in your feed."]
+                self.block_response = "yes"
+                self.report_complete("You will no longer see posts from this user in your feed.")
             elif message.content.lower() == "no":
-                self.report_complete()
-                return ["You will continue to see posts from this user in your feed. Thank you for your report."]
+                self.block_response = "no"
+                self.report_complete("You will continue to see posts from this user in your feed. Thank you for your report.")
             else:
                 return ["Please respond with `yes` or `no`."]
         
@@ -133,6 +133,7 @@ class Report:
                 "We may remove this post and/or remove the offender's account.", \
                 "Would you like to block posts from this user in the future? This change would only be visible to you. (yes/no)"]
     
-    def report_complete(self):
-        return self.state == State.REPORT_COMPLETE
+    def report_complete(self, response):
+        self.state == State.REPORT_COMPLETE
+        return [response]
     
