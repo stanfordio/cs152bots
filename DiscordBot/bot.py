@@ -6,7 +6,7 @@ import json
 import logging
 import re
 import requests
-from report import Report
+from report import Report, AbuseType, MisinfoCategory, HealthCategory, NewsCategory
 import pdb
 
 # Set up logging to the console
@@ -102,29 +102,6 @@ class ModBot(discord.Client):
         # Only handle messages sent in the "group-#" channel
         if not message.channel.name == f'group-{self.group_num}':
             return
-
-        # Forward the message to the mod channel
-        mod_channel = self.mod_channels[message.guild.id]
-        await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-        scores = self.eval_text(message.content)
-        await mod_channel.send(self.code_format(scores))
-
-    
-    def eval_text(self, message):
-        ''''
-        TODO: Once you know how you want to evaluate messages in your channel, 
-        insert your code here! This will primarily be used in Milestone 3. 
-        '''
-        return message
-
-    
-    def code_format(self, text):
-        ''''
-        TODO: Once you know how you want to show that a message has been 
-        evaluated, insert your code here for formatting the string to be 
-        shown in the mod channel. 
-        '''
-        return "Evaluated: '" + text+ "'"
 
 
 client = ModBot()
