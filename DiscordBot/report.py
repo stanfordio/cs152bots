@@ -209,6 +209,7 @@ class Report:
         self.client = client
         self.target_message = None
         self.reporting_flow = ReportingFlow(config=user_flow_config, start_state="why_report")
+        
     
     async def remove_message(self):
         try:
@@ -258,6 +259,7 @@ class Report:
                 return ["It seems this message was deleted or never existed. Please try again or say `cancel` to cancel."]
             
             self.state = State.IN_REPORTING_FLOW
+            
             return [
                 "I found this message:", "```"
                 + message.author.name + ": "
