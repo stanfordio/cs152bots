@@ -6,7 +6,9 @@ import json
 import logging
 import re
 import requests
-from report import Report
+
+from report import Report, State
+
 import pdb
 
 # Set up logging to the console
@@ -71,9 +73,8 @@ class ModBot(discord.Client):
             await self.handle_dm(message)
 
     async def handle_dm(self, message):
-        # Handle a help message
         if message.content == Report.HELP_KEYWORD:
-            reply =  "Use the `report` command to begin the reporting process.\n"
+            reply = "Use the `report` command to begin the reporting process.\n"
             reply += "Use the `cancel` command to cancel the report process.\n"
             await message.channel.send(reply)
             return
@@ -81,22 +82,37 @@ class ModBot(discord.Client):
         author_id = message.author.id
         responses = []
 
-        # Only respond to messages if they're part of a reporting flow
+        print(f"📩 Received DM from {author_id}: {message.content}")
+        print("📦 Current active reports:", list(self.reports.keys()))
+
+        # Only respond if it's part of a reporting flow
         if author_id not in self.reports and not message.content.startswith(Report.START_KEYWORD):
+            print("⚠️ Ignoring message (no active report and not starting one)")
             return
 
-        # If we don't currently have an active report for this user, add one
-        if author_id not in self.reports:
+        # Always reset report if user says "report"
+        if message.content.strip().lower() == Report.START_KEYWORD:
+            print(f"🔄 Restarting report for {author_id}")
             self.reports[author_id] = Report(self)
 
-        # Let the report class handle this message; forward all the messages it returns to uss
+        # If no current report, create one
+        if author_id not in self.reports:
+            print(f"🆕 Starting new report for {author_id}")
+            self.reports[author_id] = Report(self)
+
+        # Handle message VIA SENDING TO REPORT.PY
+        print(f"📨 Handling message at state: {self.reports[author_id].state}")
         responses = await self.reports[author_id].handle_message(message)
         for r in responses:
             await message.channel.send(r)
 
-        # If the report is complete or cancelled, remove it from our map
-        if self.reports[author_id].report_complete():
+        print(f"📊 New state after message: {self.reports[author_id].state}")
+
+        # ✅ Check if the report is complete
+        if self.reports[author_id].state == State.REPORT_COMPLETE:
+            print(f"✅ Report complete for {author_id}. Removing from memory.")
             self.reports.pop(author_id)
+
 
     async def handle_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel

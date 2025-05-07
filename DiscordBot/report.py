@@ -73,30 +73,48 @@ class Report:
                 return ["It seems this message was deleted or never existed. Please try again or say `cancel` to cancel."]
 
             # Here we've found the message - it's up to you to decide what to do next!
+            # Build numbered list of categories
+            categories = list(self.CATEGORIES.keys())
+            self.category_map = {str(i + 1): cat for i, cat in enumerate(categories)}  # e.g., "1": "harassment"
+            numbered_list = "\n".join([f"{i + 1}. {cat}" for i, cat in enumerate(categories)])
+
             self.state = State.MESSAGE_IDENTIFIED
-            return ["Thank you for taking the time to keep our community safe.", \
-                    "I found this message:", "```" + message.author.name + ": " + message.content + "```", \
-                    f" Why are you reporting this post?\nOptions: {', '.join(self.CATEGORIES.keys())}"]
-        
+            return [
+                "Thank you for taking the time to keep our community safe.",
+                f"I found this message:",
+                f"```{message.author.name}: {message.content}```",
+                "Why are you reporting this post?\n" + numbered_list,
+                "Please respond with the number of the category."
+            ]
+
+
         if self.state == State.MESSAGE_IDENTIFIED:
-            if message.content in self.CATEGORIES:
+            input_text = message.content.strip()
+            if input_text in self.category_map:
+                self.type_selected = self.category_map[input_text]
                 self.state = State.TYPE_SELECTED
-                self.type_selected = message.content
-                subtypes = self.CATEGORIES[message.content] # Added subtypes 
+                subtypes = self.CATEGORIES[self.type_selected]
+                self.subtype_map = {str(i+1): sub for i, sub in enumerate(subtypes)}
+                numbered_options = "\n".join([f"{i+1}. {sub}" for i, sub in enumerate(subtypes)])
                 return [
-                f"We're sorry that you're experiencing this kind of content on our platform. We'll do our best to help.",
-                f"What type of {message.content} are you reporting?\nOptions: {', '.join(subtypes)}"
+                    f"We're sorry that you're experiencing this kind of content on our platform. We'll do our best to help.",
+                    f"What type of {self.type_selected} are you reporting?\n{numbered_options}",
+                    "Please respond with the number of the option."
                 ]
             else:
-                return ["Please respond with a valid category."]
+                return ["Please respond with a valid category number from the list."]
+
+
         
         if self.state == State.TYPE_SELECTED:
-            if message.content in self.CATEGORIES[self.type_selected]:
+            input_text = message.content.strip()
+            if input_text in self.subtype_map:
+                self.subtype_selected = self.subtype_map[input_text]
                 self.state = State.SUBTYPE_SELECTED
-                self.subtype_selected = message.content
                 return ["Thank you for reporting this post. Would you like to answer more questions that will help us resolve this more quickly? (yes/no)"]
             else:
-                return ["Please respond with a valid sub-category."]
+                return ["Please respond with a valid number from the list."]
+
         
         if self.state == State.SUBTYPE_SELECTED:
             if message.content.lower() == "yes":
@@ -111,22 +129,22 @@ class Report:
             if message.content.lower() == "yes":
                 self.q1_response = "yes"
                 # if msg contains an image, ask q2. For now, only ask q1 and await block confirmation
-                self.ask_block_confirmation()
+                return self.ask_block_confirmation()
 
             elif message.content.lower() == "no":
                 self.q1_response = "no"
                 # if msg contains an image, ask q2. For now, only ask q1 and await block confirmation
-                self.ask_block_confirmation()
+                return self.ask_block_confirmation()
             else:
                 return ["Please respond with `yes` or `no`."]
                     
         if self.state == State.AWAITING_BLOCK_CONFIRMATION:
             if message.content.lower() == "yes":
                 self.block_response = "yes"
-                self.report_complete("You will no longer see posts from this user in your feed.")
+                return self.report_complete("You will no longer see posts from this user in your feed.")
             elif message.content.lower() == "no":
                 self.block_response = "no"
-                self.report_complete("You will continue to see posts from this user in your feed. Thank you for your report.")
+                return self.report_complete("You will continue to see posts from this user in your feed. Thank you for your report.")
             else:
                 return ["Please respond with `yes` or `no`."]
         
