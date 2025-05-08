@@ -1,6 +1,8 @@
 from enum import Enum, auto
 import discord
 import re
+import asyncio
+
 
 class State(Enum):
     REPORT_START = auto()
@@ -31,6 +33,7 @@ class Report:
         self.state = State.REPORT_START
         self.client = client
         self.message = None
+        self.reported_message = None
         self.type_selected = None
         self.subtype_selected = None
         self.q1_response = None
@@ -59,6 +62,7 @@ class Report:
         if self.state == State.AWAITING_MESSAGE:
             # Parse out the three ID strings from the message link
             m = re.search('/(\d+)/(\d+)/(\d+)', message.content)
+            print(m)
             if not m:
                 return ["I'm sorry, I couldn't read that link. Please try again or say `cancel` to cancel."]
             guild = self.client.get_guild(int(m.group(1)))
@@ -68,7 +72,13 @@ class Report:
             if not channel:
                 return ["It seems this channel was deleted or never existed. Please try again or say `cancel` to cancel."]
             try:
-                message = await channel.fetch_message(int(m.group(3)))
+                fetched_message = await channel.fetch_message(int(m.group(3)))
+                self.message = fetched_message
+                self.reported_message = fetched_message
+                print(self.reported_message)
+                print(type(self.reported_message))
+               
+
             except discord.errors.NotFound:
                 return ["It seems this message was deleted or never existed. Please try again or say `cancel` to cancel."]
 
@@ -154,7 +164,19 @@ class Report:
                 "We may remove this post and/or remove the offender's account.", \
                 "Would you like to block posts from this user in the future? This change would only be visible to you. (yes/no)"]
     
+
     def report_complete(self, response):
-        self.state == State.REPORT_COMPLETE
+        self.state = State.REPORT_COMPLETE
+        #asyncio.create_task(self.send_to_mod_channel())
         return [response]
-    
+    '''
+    async def send_to_mod_channel(self):
+        
+        mod_channel = self.client.mod_channels.get(self.message.guild.id)
+        embed = discord.Embed(
+            title="🛠️ Test Embed",
+            description="This is a simple test embed for manual-review.",
+            color=discord.Color.blue()
+        )
+        await mod_channel.send(embed=embed)
+    '''

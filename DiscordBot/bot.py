@@ -6,6 +6,7 @@ import json
 import logging
 import re
 import requests
+import random
 
 from report import Report, State
 
@@ -72,6 +73,24 @@ class ModBot(discord.Client):
         else:
             await self.handle_dm(message)
 
+    async def _send_report_embed(self, report):
+        msg    = report.message
+        mod_ch = self.mod_channels.get(report.guild_id)
+        if not mod_ch:
+            return
+        embed = discord.Embed(
+            title="🚨 New Report Submitted",
+            description=f"User <@{report.author_id}> completed a report.",
+            color=discord.Color.red()
+        )
+        embed.add_field("Category",     report.type_selected or "N/A", inline=True)
+        embed.add_field("Subtype",      report.subtype_selected or "N/A", inline=True)
+        if msg:
+            embed.add_field("Flagged Message", f"{msg.author.name}: {msg.content}", inline=False)
+        embed.add_field("AI Suspected?", report.q1_response or "N/A", inline=True)
+        embed.add_field("User Blocked?",  report.block_response or "N/A", inline=True)
+        await mod_ch.send(embed=embed)
+
     async def handle_dm(self, message):
         if message.content == Report.HELP_KEYWORD:
             reply = "Use the `report` command to begin the reporting process.\n"
@@ -82,56 +101,75 @@ class ModBot(discord.Client):
         author_id = message.author.id
         responses = []
 
-        print(f"📩 Received DM from {author_id}: {message.content}")
-        print("📦 Current active reports:", list(self.reports.keys()))
-
         # Only respond if it's part of a reporting flow
         if author_id not in self.reports and not message.content.startswith(Report.START_KEYWORD):
-            print("⚠️ Ignoring message (no active report and not starting one)")
             return
 
         # Always reset report if user says "report"
-        if message.content.strip().lower() == Report.START_KEYWORD:
-            print(f"🔄 Restarting report for {author_id}")
+        if message.content.strip().lower() == Report.START_KEYWORD: 
             self.reports[author_id] = Report(self)
 
         # If no current report, create one
         if author_id not in self.reports:
-            print(f"🆕 Starting new report for {author_id}")
             self.reports[author_id] = Report(self)
 
         # Handle message VIA SENDING TO REPORT.PY
-        print(f"📨 Handling message at state: {self.reports[author_id].state}")
         responses = await self.reports[author_id].handle_message(message)
         for r in responses:
             await message.channel.send(r)
 
-        print(f"📊 New state after message: {self.reports[author_id].state}")
-
-        # ✅ Check if the report is complete
         if self.reports[author_id].state == State.REPORT_COMPLETE:
-            print(f"✅ Report complete for {author_id}. Removing from memory.")
-            self.reports.pop(author_id)
-
+            report = self.reports.pop(author_id)
+            await self._send_report_embed(report)
+            
+    
+    # MANUAL REVIEW LOGIC
 
     async def handle_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel
         if not message.channel.name == f'group-{self.group_num}':
             return
+        
+        mod_channel = self.mod_channels.get(message.guild.id)
+
+        if not mod_channel:
+            print(f"[DEBUG] No mod channel set for guild {message.guild.name}")
+            return
+        
+        
+        #await mod_channel.send(
+        #f"🔎 Message flagged for review:\n"
+        #f"**Author:** {message.author.name}\n"
+        #f"**Content:** {message.content}\n"
+        #)
 
         # Forward the message to the mod channel
         mod_channel = self.mod_channels[message.guild.id]
         await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
         scores = self.eval_text(message.content)
-        await mod_channel.send(self.code_format(scores))
+        if scores > 0:
 
-    
+            embed = discord.Embed(
+                title="⚠️ Auto-Flagged Message",
+                description=f"Suspect score: {scores:.2%}",
+                color=discord.Color.orange()
+            )
+            embed.add_field(name="Author",  value=message.author.mention, inline=True)
+            embed.add_field(name="Channel", value=message.channel.mention,      inline=True)
+            embed.add_field(name="Content", value=message.content[:1024],      inline=False)
+            await mod_channel.send(embed=embed)
+        else:
+            # otherwise just post the raw evaluation
+            await mod_channel.send(self.code_format(scores))
+
     def eval_text(self, message):
         ''''
         TODO: Once you know how you want to evaluate messages in your channel, 
         insert your code here! This will primarily be used in Milestone 3. 
         '''
-        return message
+
+        # Returns 0 or 1 for now for demo
+        return random.getrandbits(1)
 
     
     def code_format(self, text):
@@ -140,7 +178,7 @@ class ModBot(discord.Client):
         evaluated, insert your code here for formatting the string to be 
         shown in the mod channel. 
         '''
-        return "Evaluated: '" + text+ "'"
+        return "Evaluated: '" + str(text)+ "'"
 
 
 client = ModBot()
