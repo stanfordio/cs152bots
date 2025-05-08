@@ -26,6 +26,9 @@ with open(token_path) as f:
     discord_token = tokens['discord']
 
 
+MOD_TODO_START = "TODO"
+
+
 class ModBot(discord.Client):
     def __init__(self): 
         intents = discord.Intents.default()
@@ -89,26 +92,96 @@ class ModBot(discord.Client):
         if author_id not in self.reports:
             self.reports[author_id] = Report(self)
 
-        # Let the report class handle this message; forward all the messages it returns to uss
+        # If we are starting a report
         responses = await self.reports[author_id].handle_message(message)
-        for r in responses:
-            await message.channel.send(r)
+
+        if self.reports[author_id].awaiting_message():
+            reply = responses[0]
+            await message.channel.send(reply)
+        
+        if self.reports[author_id].message_identified():
+            reply = responses[0]
+            reported_name = responses[1]
+            reported_content = responses[2]
+            await message.channel.send(reply)
+
+        if self.reports[author_id].category_identified():
+            reply = responses[0]
+            category = responses[1]
+            await message.channel.send(reply)
+
+        if self.reports[author_id].type_identified():
+            reply = responses[0]
+            type_ = responses[1]
+            await message.channel.send(reply)
+
+        if self.reports[author_id].subtype_identified():
+            reply = responses[0]
+            subtype = responses[1]
+            await message.channel.send(reply)
+
+        if self.reports[author_id].harm_identified():
+            reply = responses[0]
+            harm = responses[1]
+            if harm:
+                # TODO escalate (or simulate it)
+                print("Escalating report")
+            await message.channel.send(reply)
+
+        if self.reports[author_id].block_step():
+            reply = responses[0]
+            block = responses[1]
+            if block:
+                # TODO block user (or simulate it)
+                print("Blocking user")
+            await message.channel.send(reply)
 
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():
             self.reports.pop(author_id)
 
+            # Put the report in the mod channel
+            mod_channel = self.mod_channels[message.guild.id]
+            report_info_msg = MOD_TODO_START + "User " + message.author.name + "reported user" + reported_name + "'s message.\n"
+            report_info_msg += "Here is the content of the post: " + str(reported_content) + ".\n" #not sure if str() protects from code injection?
+            report_info_msg += "Category: " + str(category) + "\n"
+            report_info_msg += "Type: " + str(type_) + "\n"
+            report_info_msg += "Subtype: " + str(subtype) + "\n"    
+            await mod_channel.send(report_info_msg)
+
+            # ------ starter code relevant to MILESTONE 3:  --------------
+            # scores = self.eval_text(message.content)
+            # await mod_channel.send(self.code_format(scores))
+            #-------------------------------------------------
+        
+
     async def handle_channel_message(self, message):
-        # Only handle messages sent in the "group-#" channel
+
         if not message.channel.name == f'group-{self.group_num}':
             return
 
-        # Forward the message to the mod channel
-        mod_channel = self.mod_channels[message.guild.id]
-        await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-        scores = self.eval_text(message.content)
-        await mod_channel.send(self.code_format(scores))
+        # ----- teddy: commented out to reduce clutter for milestone 2 since we are not doing auto flagging ------------
+        # # Forward the message to the mod channel
+        # mod_channel = self.mod_channels[message.guild.id]
+        # await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
+        # scores = self.eval_text(message.content)
+        # await mod_channel.send(self.code_format(scores))
+        #------------------------------------------------------------------------------------------------
+        return
 
+    async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
+        # see https://discordpy.readthedocs.io/en/latest/api.html?highlight=on_reaction_add#discord.RawReactionActionEvent
+        mod_channel = self.mod_channels[message.guild.id]
+
+        message = await mod_channel.fetch_message(payload.message_id)
+
+        # Ignore messages that are not the bot's moderator to-do messages 
+        if message.author.id != self.user.id or (not message.content.startswith(MOD_TODO_START)):
+            return
+        
+        # TODO IMPLEMENT MODERATOR FLOW HERE
+        
+        return
     
     def eval_text(self, message):
         ''''
@@ -124,6 +197,7 @@ class ModBot(discord.Client):
         evaluated, insert your code here for formatting the string to be 
         shown in the mod channel. 
         '''
+        #teddy: not sure if we need this function
         return "Evaluated: '" + text+ "'"
 
 

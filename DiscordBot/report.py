@@ -6,6 +6,13 @@ class State(Enum):
     REPORT_START = auto()
     AWAITING_MESSAGE = auto()
     MESSAGE_IDENTIFIED = auto()
+
+    CATEGORY_IDENTIFIED = auto() #disinformation, nudity, etc
+    TYPE_IDENTIFIED = auto() #political disinfo, health disinfo
+    SUBTYPE_IDENTIFIED = auto() #vaccines, cures and treatments
+    HARM_IDENTIFIED = auto()
+    BLOCK_STEP = auto()
+
     REPORT_COMPLETE = auto()
 
 class Report:
@@ -55,14 +62,45 @@ class Report:
 
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.MESSAGE_IDENTIFIED
-            return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
-                    "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
-        
-        if self.state == State.MESSAGE_IDENTIFIED:
-            return ["<insert rest of reporting flow here>"]
+            return ["I found this message:```" + message.author.name + ": " + message.content + "```\n",
+                    message.author.name,
+                    message.content]
+
+        # TODO fill out the rest of the user reporting flow
+        # seems like readme wants us to use this: https://discordpy.readthedocs.io/en/latest/api.html?highlight=on_reaction_add#discord.on_raw_reaction_add
+        if self.state == State.MESSAGE_IDENTIFIED:           
+            # get value based on reacts
+            self.state = State.CATEGORY_IDENTIFIED
+            return ["[PLACEHOLDER] What category does this content fall under?\n1 = disinformation\n2 = other reporting flow"]
+
+        #etc etc 
+        # return based on expected format outlined in bot.py, 
+        # where 0th element is the appropriate messaage and the rest are data
+
+        if self.state == State.BLOCK_STEP:
+            # if user wants to block then block
+            user_wants_to_block = True
+            return [user_wants_to_block]
 
         return []
-
+    
+    
+    def report_start(self):
+        return self.state == State.REPORT_START
+    def awaiting_message(self):
+        return self.state == State.AWAITING_MESSAGE
+    def message_identified(self):           
+        return self.state == State.MESSAGE_IDENTIFIED
+    def category_identified(self):
+        return self.state == State.CATEGORY_IDENTIFIED
+    def type_identified(self):
+        return self.state == State.TYPE_IDENTIFIED
+    def subtype_identified(self):
+        return self.state == State.SUBTYPE_IDENTIFIED
+    def harm_identified(self):
+        return self.state == State.HARM_IDENTIFIED
+    def block_step(self):
+        return self.state == State.BLOCK_STEP
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
     
