@@ -27,9 +27,9 @@ user_flow_config = {
                    """2. Medium Intensity\n"""
                    """3. High Intensity\n""",
         "choices": [
-            ("1", "thanks_feedback_low"),
-            ("2", "thanks_feeback_low"),
-            ("3", "thanks_feedback_high"),
+            ("1", "remove_post_warn_user"),
+            ("2", "remove_post_warn_user"),
+            ("3", "remove_post_warn_user_high"),
         ]
     },
     "violate_other_policies": {
@@ -43,20 +43,20 @@ user_flow_config = {
         ]
     },
     "violate_what_policies": {
-        "message": """What platform policy does the conent violate?\n"""
+        "message": """What platform policy does the content violate?\n"""
                    """1. Bullying or unwanted contact\n"""
                    """2. Suicide, self-injury, or eating disorders\n"""
-                   """3. Selling or promoting restricted items\n""",
+                   """3. Selling or promoting restricted items\n"""
                    """4. Nudity or sexual activity\n"""
                    """5. Spam, fraud, or scam\n"""
-                   """6. False Information"""
+                   """6. False Information""",
         "choices": [
-            ("1", "thanks_feedback_low"),
-            ("2", "thanks_feedback_low"),
-            ("3", "thanks_feedback_low"),
-            ("4", "thanks_feedback_low"),
-            ("5", "thanks_feedback_low"),
-            ("6", "thanks_feedback_low"),
+            ("1", "remove_post"),
+            ("2", "remove_post"),
+            ("3", "remove_post"),
+            ("4", "remove_post"),
+            ("5", "remove_post"),
+            ("6", "remove_post"),
         ]
     },
     "reported_with_bad_intent": {
@@ -64,20 +64,40 @@ user_flow_config = {
                    """1. Yes\n"""
                    """2. No\n""",
         "choices": [
-            ("1", "thanks_feedback_low"),
-            ("2", "thanks_feedback_high"),
+            ("1", "warn_reporting_user"),
+            ("2", "thanks_feedback_low"),
         ]
     },
-    "thanks_feedback_high": {
+    "warn_reporting_user": {
         "message": """**Thanks for reviewing this post.**\n"""
-                   """This post will be further reviewed by our team of specialists.\n"""
+                   """The reporting user will be sent a warning \n"""
                    """Thanks for helping us keep Instagram a safe and supportive community.""",
     },
     "thanks_feedback_low":{
-        "message": """Thanks for reviewing this post.]\n"""
-                     """We will continue to monitor this account for guideline violations\n"""
+        "message": """Thanks for reviewing this post.\n"""
+                     """We will continue to monitor this account for guideline violations.\n"""
                    """The necessary action will be taken to ensure community safety.\n"""
+    },
+
+    "remove_post_warn_user":{
+        "message": """Thanks for reviewing this post\n"""
+                     """The post will be removed and the user will receive a direct message warning\n"""
+                   
+    },
+
+    "remove_post_warn_user_high":{
+        "message": """Thanks for reviewing this post\n"""
+                     """The post will be removed and the user will receive a direct message warning\n"""
+                     """Additionaly, the account will be reviewed for suspension"""
+                   
+    },
+
+    "remove_post":{
+        "message": """Thanks for reviewing this post\n"""
+                     """The user's post will be removed\n"""
+                   
     }
+
 }
 
 class ReviewFlow:
@@ -106,19 +126,40 @@ class Review:
     def __init__(self, client):
         self.state = State.REVIEW_START
         self.client = client
-        self.target_message = None
+        self.target_report = None
         self.review_flow = ReviewFlow(config=user_flow_config, start_state="initial_review")
     
     async def remove_message(self):
         try:
-            await self.target_message.delete()
-            self.state = State.REPORT_COMPLETE
-            return ["```" + self.target_message.author.name + ": " + self.target_message.content + "```" + " is now removed"]
+            await self.target_report.target_message.delete()
+            self.state = State.REVIEW_COMPLETE
+            return ["```" + self.target_report.target_message.author.name + ": " + self.target_report.target_message.content + "```" + " is now removed"]
         except discord.Forbidden:
             return ["❌ I lack permissions to delete that message."]
+
+    async def warn_user(self, reporting):
+        try:
+            user = None
+            if reporting:
+                user = self.target_report.reporting_user
+            else:
+                user = self.target_report.target_message.author
+            warning_message = (
+                "⚠️ **Warning**\n"
+                "Your recent message has been flagged for review and was found to violate our community guidelines. "
+                "Please adhere to the platform rules to avoid further action."
+            )
+            await user.send(warning_message)
+            self.state = State.REVIEW_COMPLETE
+            return [f"✅ Warning sent to {user.name}."]
+        except discord.Forbidden:
+            return ["❌ Could not send warning DM — the user may have DMs disabled or blocked the bot."]
+        except Exception as e:
+            return [f"❌ Failed to send warning due to an error: {str(e)}"]
+
     
     def pseudo_ban_user(self):
-        return [f"User: {self.target_message.author.name} banned for message {self.target_message.content}."]
+        return [f"User: {self.target_report.target_message.author.name} banned for message {self.target_report.target_message.content}."]
 
     async def handle_message(self, message):
         '''
@@ -126,7 +167,7 @@ class Review:
         prompts to offer at each of those states. You're welcome to change anything you want; this skeleton is just here to
         get you started and give you a model for working with Discord. 
         '''
-
+        
         if message.content == self.CANCEL_KEYWORD:
             self.state = State.REVIEW_COMPLETE
             return ["Review completed."]
@@ -144,12 +185,13 @@ class Review:
             if username not in self.client.name_to_id or self.client.name_to_id[username] not in self.client.reports:
                 return ["I'm sorry, there is no known report for this username. Please try again or say 'cancel' to cancel."]
 
-
+            
             report = self.client.reports[self.client.name_to_id[username]]
             if report.target_message is None:
                 return ["The reported message has not been set yet. Please ensure the user completed the report."]
 
             self.state = State.IN_REVIEW_FLOW
+            self.target_report = report
             return [
                 "I found this message:", "```"
                 + report.target_message.author.name + ": "
@@ -158,7 +200,33 @@ class Review:
                 + self.review_flow.get_current_message()]
         elif self.state == State.IN_REVIEW_FLOW:
             if self.review_flow.transition_state(message.content):
+                if self.review_flow.state == "remove_post_warn_user" or self.review_flow.state == "remove_post_warn_user_high":
+                    self.client.manual_reviews.pop(message.author.id)
+                    self.client.reports.pop(self.target_report.reporting_user.id)
+                    remove_result = await self.remove_message()
+                    warn_result = await self.warn_user(False)
+                    to_return = remove_result + warn_result 
+                    if self.review_flow.state == "remove_post_warn_user":
+                        return to_return
+                    else:
+                        return to_return + ["Additionally, the content will be reviewed by a team of specialists to decide whether the account will be banned."]
+
+                
+                elif self.review_flow.state == "remove_post":
+                    self.client.manual_reviews.pop(message.author.id)
+                    self.client.reports.pop(self.target_report.reporting_user.id)
+                    remove_result = await self.remove_message()
+                    return remove_result
+                
+                elif self.review_flow.state == "warn_reporting_user":
+                    self.client.manual_reviews.pop(message.author.id)
+                    self.client.reports.pop(self.target_report.reporting_user.id)
+                    warn_result = await self.warn_user(True)
+                    return warn_result
+        
                 if self.review_flow.in_terminal_state():
+                    self.client.manual_reviews.pop(message.author.id)
+                    self.client.reports.pop(self.target_report.reporting_user.id)
                     self.state = State.REVIEW_COMPLETE
                 return [
                     self.review_flow.get_current_message()
@@ -171,6 +239,8 @@ class Review:
                     """Type only the number and nothing else.\n"""
                     + self.review_flow.get_current_message()
                 ]
-
+        else:
+            return ["You must finish a review before starting a new one"]
+    
     def review_complete(self):
         return self.state == State.REVIEW_COMPLETE

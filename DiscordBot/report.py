@@ -204,12 +204,12 @@ class Report:
     CANCEL_KEYWORD = "cancel"
     HELP_KEYWORD = "help"
 
-    def __init__(self, client):
+    def __init__(self, client, reporting_user):
         self.state = State.REPORT_START
         self.client = client
         self.target_message = None
         self.reporting_flow = ReportingFlow(config=user_flow_config, start_state="why_report")
-        
+        self.reporting_user = reporting_user
     
     async def remove_message(self):
         try:
@@ -281,6 +281,8 @@ class Report:
                     """Type only the number and nothing else.\n"""
                     + self.reporting_flow.get_current_message()
                 ]
+        else:
+            return ["You must finish a report before starting a new one"]
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
