@@ -6,6 +6,13 @@ class State(Enum):
     REPORT_START = auto()
     AWAITING_MESSAGE = auto()
     MESSAGE_IDENTIFIED = auto()
+
+#     CATEGORY_IDENTIFIED = auto() #disinformation, nudity, etc
+#     TYPE_IDENTIFIED = auto() #political disinfo, health disinfo
+#     SUBTYPE_IDENTIFIED = auto() #vaccines, cures and treatments
+#     HARM_IDENTIFIED = auto()
+#     BLOCK_STEP = auto()
+
     REPORT_COMPLETE = auto()
     AWAITING_REASON = auto()
     AWAITING_DISINFORMATION_TYPE = auto()
@@ -63,8 +70,11 @@ class Report:
 
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.MESSAGE_IDENTIFIED
-            return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
-                    "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
+#             return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
+#                     "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
+              return ["I found this message:```" + message.author.name + ": " + message.content + "```\n",
+                    message.author.name,
+                    message.content]
         
         if self.state == State.MESSAGE_IDENTIFIED:
             # Ask the user to select a reason for reporting the message
@@ -241,6 +251,30 @@ class Report:
             
         return []
 
+#         if self.state == State.BLOCK_STEP:
+#             # if user wants to block then block
+#             user_wants_to_block = True
+#             return [user_wants_to_block]
+
+        return []
+    
+    
+    def report_start(self):
+        return self.state == State.REPORT_START
+    def awaiting_message(self):
+        return self.state == State.AWAITING_MESSAGE
+    def message_identified(self):           
+        return self.state == State.MESSAGE_IDENTIFIED
+    def category_identified(self):
+        return self.state == State.CATEGORY_IDENTIFIED
+    def type_identified(self):
+        return self.state == State.TYPE_IDENTIFIED
+    def subtype_identified(self):
+        return self.state == State.SUBTYPE_IDENTIFIED
+    def harm_identified(self):
+        return self.state == State.HARM_IDENTIFIED
+    def block_step(self):
+        return self.state == State.BLOCK_STEP
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
     
