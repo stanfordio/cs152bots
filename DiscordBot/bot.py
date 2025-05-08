@@ -1,13 +1,10 @@
 # bot.py
 import discord
-from discord.ext import commands
 import os
 import json
 import logging
 import re
-import requests
 from report import Report
-import pdb
 from review import Review
 
 # Set up logging to the console
@@ -35,8 +32,10 @@ class ModBot(discord.Client):
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
+        self.reports_to_review = {} # Stores channel messages in mod channel to review
         self.name_to_id = {} #Map from a user name (written in message in mod channel) to user id (used to get correct report for user)
         self.manual_reviews = {} #Map from moderator id to review
+
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
         for guild in self.guilds:
@@ -98,15 +97,18 @@ class ModBot(discord.Client):
 
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():
-            
             for guild in self.guilds:
                 for channel in guild.text_channels:
                     if channel.name == f'group-{self.group_num}-mod':
-                        await channel.send(f'Message reported by: {message.author.name}\nReported message author: {self.reports[self.name_to_id[message.author.name]].target_message.author.name} \nReported message content: "{self.reports[self.name_to_id[message.author.name]].target_message.content}"')
+                        mod_channel_message = await channel.send(
+                                           f"""Message reported by: {message.author.name}\n"""
+                                           f"""Reported message author: {self.reports[self.name_to_id[message.author.name]].target_message.author.name}\n"""
+                                           f"""Reported message content: "{self.reports[self.name_to_id[message.author.name]].target_message.content}\n"""
+                                           f"""**Report Details**\n{self.reports[self.name_to_id[message.author.name]].formatted_report_details}"""
+                        )
+                        self.reports_to_review[mod_channel_message.id] = self.reports[author_id]
                         await channel.send("Type 'review' to manually review the reported message" )
-            #won't pop report since we need for manual reporting flow
-            #self.reports.pop(author_id)
-
+                        self.reports.pop(author_id)
     async def handle_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel
         if message.channel.name == f'group-{self.group_num}':
@@ -136,7 +138,7 @@ class ModBot(discord.Client):
             if author_id not in self.manual_reviews:
                 self.manual_reviews[author_id] = Review(self)
 
-            # Let the report class handle this message; forward all the messages it returns to uss
+            # Let the review class handle this message; forward all the messages it returns to us
             responses = await self.manual_reviews[author_id].handle_message(message)
             for r in responses:
                 await message.channel.send(r)

@@ -11,7 +11,7 @@ class State(Enum):
     REMOVE_MESSAGE = auto()
     ADDING_INFO = auto()
 
-user_flow_config = {
+review_flow_config = {
     "initial_review": {
         "message": """Does the post violate the platform's guidelines on hate speech?\n"""
                    """1. Yes\n"""
@@ -127,7 +127,7 @@ class Review:
         self.state = State.REVIEW_START
         self.client = client
         self.target_report = None
-        self.review_flow = ReviewFlow(config=user_flow_config, start_state="initial_review")
+        self.review_flow = ReviewFlow(config=review_flow_config, start_state="initial_review")
     
     async def remove_message(self):
         try:
@@ -175,20 +175,29 @@ class Review:
         elif self.state == State.REVIEW_START:
             reply =  "Thank you for starting the review process. "
             reply += "Say `help` at any time for more information.\n\n"
-            reply += "Please copy the exact username of the **reporting** user.\n"
+            reply += "Please copy paste the link to the message from the mod channel you want to review.\n"
+            reply += "You can obtain this link by right-clicking the message and clicking `Copy Message Link`."
             self.state = State.AWAITING_MESSAGE
             return [reply]
         
         elif self.state == State.AWAITING_MESSAGE:
             # Parse out the three ID strings from the message link
-            username = message.content.strip()
-            if username not in self.client.name_to_id or self.client.name_to_id[username] not in self.client.reports:
-                return ["I'm sorry, there is no known report for this username. Please try again or say 'cancel' to cancel."]
-
             
-            report = self.client.reports[self.client.name_to_id[username]]
-            if report.target_message is None:
-                return ["The reported message has not been set yet. Please ensure the user completed the report."]
+            m = re.search('/(\d+)/(\d+)/(\d+)', message.content)
+            
+            if not m:
+                return ["I'm sorry, I couldn't read that link. Please try again or say `cancel` to cancel."]
+            guild = self.client.get_guild(int(m.group(1)))
+            if not guild:
+                return ["I cannot accept reports of messages from guilds that I'm not in. Please have the guild owner add me to the guild and try again."]
+            channel = guild.get_channel(int(m.group(2)))
+            if not channel:
+                return ["It seems this channel was deleted or never existed. Please try again or say `cancel` to cancel."]
+            try:
+                message = await channel.fetch_message(int(m.group(3)))
+            except discord.errors.NotFound:
+                return ["It seems this message was deleted or never existed. Please try again or say `cancel` to cancel."]
+            report = self.client.reports_to_review[int(m.group(3))]
 
             self.state = State.IN_REVIEW_FLOW
             self.target_report = report
@@ -201,8 +210,6 @@ class Review:
         elif self.state == State.IN_REVIEW_FLOW:
             if self.review_flow.transition_state(message.content):
                 if self.review_flow.state == "remove_post_warn_user" or self.review_flow.state == "remove_post_warn_user_high":
-                    self.client.manual_reviews.pop(message.author.id)
-                    self.client.reports.pop(self.target_report.reporting_user.id)
                     remove_result = await self.remove_message()
                     warn_result = await self.warn_user(False)
                     to_return = remove_result + warn_result 
@@ -213,21 +220,18 @@ class Review:
 
                 
                 elif self.review_flow.state == "remove_post":
-                    self.client.manual_reviews.pop(message.author.id)
-                    self.client.reports.pop(self.target_report.reporting_user.id)
                     remove_result = await self.remove_message()
                     return remove_result
                 
                 elif self.review_flow.state == "warn_reporting_user":
-                    self.client.manual_reviews.pop(message.author.id)
-                    self.client.reports.pop(self.target_report.reporting_user.id)
                     warn_result = await self.warn_user(True)
                     return warn_result
         
                 if self.review_flow.in_terminal_state():
-                    self.client.manual_reviews.pop(message.author.id)
-                    self.client.reports.pop(self.target_report.reporting_user.id)
                     self.state = State.REVIEW_COMPLETE
+                    self.client.manual_reviews.pop(message.author.id)
+                    self.client.reports_to_review.pop(message.id)
+                
                 return [
                     self.review_flow.get_current_message()
                 ]

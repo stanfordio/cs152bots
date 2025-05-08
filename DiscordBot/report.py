@@ -30,7 +30,7 @@ user_flow_config = {
             ("5", "what_sold"),
             ("6", "how_nudity"),
             ("7", "which_best_fraud_scam"),
-            ("8", "thanks_for_your_feedback_with_report"),
+            ("8", "ask_pseudo_block"),
         ],
     },
     "thanks_for_your_feedback_no_report": {
@@ -52,7 +52,7 @@ user_flow_config = {
         "choices": [
             ("1", "under_18"),
             ("2", "who_harassed"),
-            ("3", "thanks_for_your_feedback_with_report"),
+            ("3", "ask_pseudo_block"),
         ]
     },
     "how_violence": {
@@ -66,12 +66,12 @@ user_flow_config = {
                    """7. Credible threat to safety\n""",
         "choices": [
             ("1", "what_expoloitation"),
-            ("2", "thanks_for_your_feedback_with_report"),
-            ("3", "thanks_for_your_feedback_with_report"),
-            ("4", "thanks_for_your_feedback_with_report"),
-            ("5", "thanks_for_your_feedback_with_report"),
-            ("6", "thanks_for_your_feedback_with_report"),
-            ("7", "thanks_for_your_feedback_with_report"),
+            ("2", "ask_pseudo_block"),
+            ("3", "ask_pseudo_block"),
+            ("4", "ask_pseudo_block"),
+            ("5", "ask_pseudo_block"),
+            ("6", "ask_pseudo_block"),
+            ("7", "ask_pseudo_block"),
         ]
     },
     "what_sold": {
@@ -81,8 +81,8 @@ user_flow_config = {
                    """3. Animals\n""",
         "choices": [
             ("1", "what_drugs"),
-            ("2", "thanks_for_your_feedback_with_report"),
-            ("3", "thanks_for_your_feedback_with_report"),
+            ("2", "ask_pseudo_block"),
+            ("3", "ask_pseudo_block"),
         ]
     },
     "how_nudity": {
@@ -93,9 +93,9 @@ user_flow_config = {
                    """4. Nudity or sexual activity\n""",
         "choices": [
             ("1", "under_18"),
-            ("2", "thanks_for_your_feedback_with_report"),
+            ("2", "ask_pseudo_block"),
             ("3", "content_involve_someone_under_18"),
-            ("4", "thanks_for_your_feedback_with_report"),
+            ("4", "ask_pseudo_block"),
         ]
     },
     "which_best_fraud_scam": {
@@ -103,8 +103,8 @@ user_flow_config = {
                    """1. Fraud or scam\n"""
                    """2. Spam\n""",
         "choices": [
-            ("1", "thanks_for_your_feedback_with_report"),
-            ("2", "thanks_for_your_feedback_with_report"),
+            ("1", "ask_pseudo_block"),
+            ("2", "ask_pseudo_block"),
         ]
     },
     "under_18": {
@@ -112,8 +112,8 @@ user_flow_config = {
                    """1. Yes\n"""
                    """2. No\n""",
         "choices": [
-            ("1", "thanks_for_your_feedback_with_report"),
-            ("2", "thanks_for_your_feedback_with_report"),
+            ("1", "ask_pseudo_block"),
+            ("2", "ask_pseudo_block"),
         ]
     },
     "who_harassed": {
@@ -132,8 +132,8 @@ user_flow_config = {
                    """1. Suicide or self-injury\n"""
                    """2. Eating disorder\n""",
         "choices": [
-            ("1", "thanks_for_your_feedback_with_report"),
-            ("2", "thanks_for_your_feedback_with_report"),
+            ("1", "ask_pseudo_block"),
+            ("2", "ask_pseudo_block"),
         ]
     },
     "what_exploitation": {
@@ -141,7 +141,7 @@ user_flow_config = {
                    """1. Human trafficking\n"""
                    """2. Seems like sexual exploitation\n""",
         "choices": [
-            ("1", "thanks_for_your_feedback_with_report"),
+            ("1", "ask_pseudo_block"),
             ("2", "content_involve_someone_under_18"),
         ]
     },
@@ -151,9 +151,9 @@ user_flow_config = {
                    """2. Prescription medicine\n"""
                    """3. Other drugs\n""",
         "choices": [
-            ("1", "thanks_for_your_feedback_with_report"),
-            ("2", "thanks_for_your_feedback_with_report"),
-            ("3", "thanks_for_your_feedback_with_report"),
+            ("1", "ask_pseudo_block"),
+            ("2", "ask_pseudo_block"),
+            ("3", "ask_pseudo_block"),
         ]
     },
     "involve_someone_under_18": {
@@ -161,8 +161,8 @@ user_flow_config = {
                    """1. Yes\n"""
                    """2. No\n""",
         "choices": [
-            ("1", "thanks_for_your_feedback_with_report"),
-            ("2", "thanks_for_your_feedback_with_report"),
+            ("1", "ask_pseudo_block"),
+            ("2", "ask_pseudo_block"),
         ]
     },
     "content_involve_someone_under_18": {
@@ -170,13 +170,28 @@ user_flow_config = {
                    """1. Yes\n"""
                    """2. No\n""",
         "choices": [
-            ("1", "thanks_for_your_feedback_with_report"),
-            ("2", "thanks_for_your_feedback_with_report"),
+            ("1", "ask_pseudo_block"),
+            ("2", "ask_pseudo_block"),
         ]
     },
-    "thanks_for_your_feedback_with_report": {
+    "ask_pseudo_block": {
+        "message": """Would you like to block this user?\n"""
+                   """1. Yes\n"""
+                   """2. No\n""",
+        "choices": [
+            ("1", "thanks_for_your_feedback_with_report_pseudo_block"),
+            ("2", "thanks_for_your_feedback_with_report_no_pseudo_block"),
+        ]
+    },
+    "thanks_for_your_feedback_with_report_pseudo_block": {
+        "message": """Ok this user is now blocked and you will no longer see their posts.\n"""
+                   """**Thanks for reporting this post.**\n"""
+                   """You'll get a notification once we've reviewed your report.\n"""
+                   """Thanks for helping us keep Instagram a safe and supportive community."""
+    },
+    "thanks_for_your_feedback_with_report_no_pseudo_block": {
         "message": """**Thanks for reporting this post.**\n"""
-                   """You'll get a notification once we've reviewedyour report.\n"""
+                   """You'll get a notification once we've reviewed your report.\n"""
                    """Thanks for helping us keep Instagram a safe and supportive community."""
     }
 }
@@ -210,7 +225,10 @@ class Report:
         self.target_message = None
         self.reporting_flow = ReportingFlow(config=user_flow_config, start_state="why_report")
         self.reporting_user = reporting_user
-    
+        self.states = ["why_report"]
+        self.choices = []
+        self.formatted_report_details = None
+        self.message_identifier = None
     async def remove_message(self):
         try:
             await self.target_message.delete()
@@ -221,6 +239,9 @@ class Report:
 
     def pseudo_ban_user(self):
         return [f"User: {self.target_message.author.name} banned for message {self.target_message.content}."]
+
+    def pseudo_block_user(self):
+        return [f"User: {self.target_message.author.name} is now blocked for message {self.target_message.content}."]
 
     async def handle_message(self, message):
         '''
@@ -257,7 +278,6 @@ class Report:
                 self.target_message = message
             except discord.errors.NotFound:
                 return ["It seems this message was deleted or never existed. Please try again or say `cancel` to cancel."]
-            
             self.state = State.IN_REPORTING_FLOW
             
             return [
@@ -268,8 +288,12 @@ class Report:
                 + self.reporting_flow.get_current_message()]
         elif self.state == State.IN_REPORTING_FLOW:
             if self.reporting_flow.transition_state(message.content):
+                self.choices.append(message.content)
                 if self.reporting_flow.in_terminal_state():
                     self.state = State.REPORT_COMPLETE
+                    self.formatted_report_details = "\n\n".join([user_flow_config[state]["message"] + choice for state, choice in zip(self.states, self.choices)])
+                else:
+                    self.states.append(self.reporting_flow.state)
                 return [
                     self.reporting_flow.get_current_message()
                 ]
