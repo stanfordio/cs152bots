@@ -7,6 +7,10 @@ class State(Enum):
     AWAITING_MESSAGE = auto()
     MESSAGE_IDENTIFIED = auto()
     REPORT_COMPLETE = auto()
+    AWAITING_REASON = auto()
+    AWAITING_DISINFORMATION_TYPE = auto()
+    AWAITING_POLITICAL_DISINFORMATION_TYPE =auto()
+    AWAITING_FILTER_ACTION = auto()
 
 class Report:
     START_KEYWORD = "report"
@@ -17,6 +21,10 @@ class Report:
         self.state = State.REPORT_START
         self.client = client
         self.message = None
+        self.report_type = None
+        self.disinfo_type = None
+        self.political_disinfo_type = None
+        self.filter = False
     
     async def handle_message(self, message):
         '''
@@ -59,14 +67,184 @@ class Report:
                     "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
         
         if self.state == State.MESSAGE_IDENTIFIED:
-            return ["<insert rest of reporting flow here>"]
+            # Ask the user to select a reason for reporting the message
+            self.state = State.AWAITING_REASON
+            return [
+            "Please select the reason for reporting this message by typing the corresponding number:",
+            "1. Disinformation",
+            "2. Hate Speech",
+            "3. Harassment",
+            "4. Spam"
+            ]
+        
+        if self.state == State.AWAITING_REASON:
+            # Process user's report reason 
 
+            if message.content == "1":
+                # Handling disinformation
+                self.report_type = "Disinformation"
+                self.state = State.AWAITING_DISINFORMATION_TYPE
+                return[
+                    "Please select the type of disinformation by typing the corresponding number:",
+                    "1. Political Disinformation",
+                    "2. Health Disinformation",
+                    "3. Other Disinformation"
+                ]
+            
+            elif message.content == "2" :
+                # Handling hate speech
+                self.report_type = "Hate Speech"
+                self.state = State.REPORT_COMPLETE
+                return [" Thank you for reporting" + self.report_type + " content. Our content moderation team will review the message and take action which may result in content or account removal."]
+            
+            elif message.content == "3" :
+                # Handling Harassment
+                self.report_type = "Harassment"
+                self.state = State.REPORT_COMPLETE
+                return [" Thank you for reporting" + self.report_type + " content. Our content moderation team will review the message and take action which may result in content or account removal."]
+            
+
+            elif message.content == "4" :
+                # Handling Spam
+                self.report_type = "Spam"
+                self.state = State.REPORT_COMPLETE
+                return [" Thank you for reporting" + self.report_type + " content. Our content moderation team will review the message and take action which may result in content or account removal."]
+                        
+            else:
+                # Handling wrong report reason
+                return [ "Kindly enter a valid report reason by selecting the correponding number:",
+                            "1. Disinformation",
+                            "2. Hate Speech",
+                            "3. Harassment",
+                            "4. Spam",
+                            "Please try again or say `cancel` to cancel."
+                        ]
+
+        if self.state == State.AWAITING_DISINFORMATION_TYPE :
+            # Process Disinformation options
+
+            if message.content == "1":
+                # Handle political disinformation
+                self.state = State.AWAITING_POLITICAL_DISINFORMATION_TYPE
+                self.disinfo_type = "Political Disinformation"
+                return [ "Please select the type of political Disinformation by typing the corresponding number:",
+                            "1. Conspiracy Theory",
+                            "2. Distorted Information",
+                            "3. False Claim",
+                            "4. Election/Campaign Misinformation"
+                ]
+            
+            elif message.content == "2" :
+                # Handle Health Disinformation
+                self.state = State.AWAITING_FILTER_ACTION
+                self.disinfo_type = "Health Disinformation"
+                return [ "Would you like to filter content from this account on your feed? Select the correponding number:",
+                            "1. Yes",
+                            "2. No"
+                ]
+
+
+            elif message.content == "3" :
+                # Handle other Disinformation
+                self.state = State.AWAITING_FILTER_ACTION
+                self.disinfo_type = "Other Disinformation"
+                return [ "Would you like to filter content from this account on your feed? Select the correponding number:",
+                            "1. Yes",
+                            "2. No"
+                ]
+            
+            else :
+                # Handling wrong disinformation type
+                return [ "Kindly enter a valid disinformation type by selecting the correponding number:",
+                            "1. Political Disinformation",
+                            "2. Health Disinformation",
+                            "3. Other Disinformation",
+                            "Please try again or say `cancel` to cancel."
+                        ]
+
+        if self.state == State.AWAITING_POLITICAL_DISINFORMATION_TYPE :
+            # Process political disinformation options
+
+            if message.content == "1":
+                # Handling Conspiracy Theory
+                self.political_disinfo_type = "Conspiracy Theory"
+                self.state = State.AWAITING_FILTER_ACTION
+                return [ "Would you like to filter content from this account on your feed? Select the correponding number:",
+                            "1. Yes",
+                            "2. No"
+                ]
+            
+            elif message.content == "2":
+                 # Handling Distorted Information
+                self.political_disinfo_type = "Distorted Information"
+                self.state = State.AWAITING_FILTER_ACTION
+                return [ "Would you like to filter content from this account on your feed? Select the correponding number:",
+                            "1. Yes",
+                            "2. No"
+                ]
+
+            elif message.content == "3":
+                 # Handling False Claim
+                self.political_disinfo_type = "False Claim"
+                self.state = State.AWAITING_FILTER_ACTION
+                return [ "Would you like to filter content from this account on your feed? Select the correponding number:",
+                            "1. Yes",
+                            "2. No"
+                ]
+            
+            elif message.content == "4":
+                 # Handling Election/Campaign Misinformation
+                self.political_disinfo_type = "Election/Campaign Misinformation"
+                self.state = State.AWAITING_FILTER_ACTION
+                return [ "Would you like to filter content from this account on your feed? Select the correponding number:",
+                            "1. Yes",
+                            "2. No"
+                ]
+
+            
+            else :
+                # Handling 
+                return [ "Please select the type of political Disinformation by typing the corresponding number:",
+                            "1. Conspiracy Theory",
+                            "2. Distorted Information",
+                            "3. False Claim",
+                            "4. Election/Campaign Misinformation",
+                            "Please try again or say `cancel` to cancel."
+                        ]
+            
+        if self.state == State.AWAITING_FILTER_ACTION:
+            # Handling responses to filter account content
+
+            if message.content == "1":
+                # Handle content filtering
+                self.filter = True
+                self.state = State.REPORT_COMPLETE
+                return [    "This account’s posts have been restricted from appearing on your feed.",
+                            " Thank you for reporting" + self.report_type + " content. Our content moderation team will review the message and take action which may result in content or account removal."
+                        ]
+            
+            elif message.content == "2":
+                # Handle no content filtering action
+                self.state = State.REPORT_COMPLETE
+                return [    "This account’s posts have been restricted from appearing on your feed.",
+                            " Thank you for reporting" + self.report_type + " content. Our content moderation team will review the message and take action which may result in content or account removal."
+                        ]
+
+            else :
+                # wrong option for account filtering prompt 
+                return [ "Would you like to filter content from this account on your feed? Select the correponding number:",
+                            "1. Yes",
+                            "2. No",
+                            "Please try again or say `cancel` to cancel."
+                ]
+            
+            
         return []
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
     
 
-
+# when self.state == report.coplte what should we do ?
     
 
