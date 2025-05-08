@@ -89,7 +89,7 @@ class ModBot(discord.Client):
 
         # If we don't currently have an active report for this user, add one
         if author_id not in self.reports:
-            self.reports[author_id] = Report(self)
+            self.reports[author_id] = Report(self, message.author)
 
         # Let the report class handle this message; forward all the messages it returns to uss
         responses = await self.reports[author_id].handle_message(message)
@@ -132,7 +132,7 @@ class ModBot(discord.Client):
             if author_id not in self.manual_reviews and not message.content.lower().startswith(Review.START_KEYWORD):
                 return
 
-            # If we don't currently have an active report for this user, add one
+            # If we don't currently have an active review for this moderator, add one
             if author_id not in self.manual_reviews:
                 self.manual_reviews[author_id] = Review(self)
 
