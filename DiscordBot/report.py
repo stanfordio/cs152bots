@@ -20,6 +20,8 @@ class Report:
     CANCEL_KEYWORD = "cancel"
     HELP_KEYWORD = "help"
 
+    report_counts = {}
+
     def __init__(self, client):
         self.state = State.REPORT_START
         self.client = client
@@ -81,9 +83,11 @@ class Report:
 
         if self.state == State.SELECT_REASON:
             reason = message.content.strip().lower()
+            reported_user = self.message.author.name
             if reason in ["spam", "hatespeech", "offensive content"]:
+                self.increment_report_count(reported_user)
                 self.state = State.REPORT_COMPLETE
-                return [f"Thanks for reporting {self.message.author.name}. We have blocked the reported user."]
+                return [f"Thanks for reporting {reported_user}. We have blocked the reported user."]
             elif reason == "fraud/scam":
                 self.state = State.SCAM_TYPE
                 return ["Please select a type of scam: Solicitation, Impersonation, Other"]
@@ -99,8 +103,10 @@ class Report:
                 self.state = State.SOLICITATION_TYPE
                 return ["Please select the type of solicitation: Job Opportunity, Investment Opportunity, Networking Event"]
             elif scam_type == "impersonation":
+                reported_user = self.message.author.name
+                self.increment_report_count(reported_user)
                 self.state = State.REPORT_COMPLETE
-                return [f"Thanks for reporting {self.message.author.name}. We have blocked the reported user."]
+                return [f"Thanks for reporting {self.message.author.name}. We have blocked the reported user and forwarded the report to the moderators."]
             elif scam_type == "other":
                 self.state = State.AWAITING_ALT_REASON
                 return ["Please specify the reason for reporting:"]
@@ -109,9 +115,11 @@ class Report:
 
         if self.state == State.SOLICITATION_TYPE:
             solicitation_type = message.content.strip().lower()
+            reported_user = self.message.author.name
             if solicitation_type in ["job opportunity", "networking event"]:
+                self.increment_report_count(reported_user)
                 self.state = State.REPORT_COMPLETE
-                return [f"Thanks for reporting {self.message.author.name}. We have blocked the reported user."]
+                return [f"Thanks for reporting {self.message.author.name}. We have blocked the reported user and forwarded the report to the moderators."]
             elif solicitation_type == "investment opportunity":
                 self.state = State.INVOLVES_CRYPTO
                 return ["Does this involve cryptocurrency? (Yes/No)"]
@@ -120,16 +128,21 @@ class Report:
 
         if self.state == State.INVOLVES_CRYPTO:
             response = message.content.strip().lower()
+            reported_user = self.message.author.name
             if response == "yes":
+                self.increment_report_count(reported_user)
                 self.state = State.REPORT_COMPLETE
-                return [f"Thanks for notifying us. We have blocked the reported user {self.message.author.name}."]
+                return [f"Thanks for notifying us. We have blocked the reported user {self.message.author.name} and forwarded the report to the moderators."]
             elif response == "no":
+                self.increment_report_count(reported_user)
                 self.state = State.REPORT_COMPLETE
-                return [f"Thanks for reporting {self.message.author.name}. We have blocked the reported user."]
+                return [f"Thanks for reporting {self.message.author.name}. We have blocked the reported user and forwarded the report to the moderators."]
             else:
                 return ["Invalid response, please type 'Yes' or 'No'."]
 
         if self.state == State.AWAITING_ALT_REASON:
+            reported_user = self.message.author.name
+            self.increment_report_count(reported_user)
             self.state = State.REPORT_COMPLETE
             return [f"Thanks for reporting {self.message.author.name}. We have blocked the reported user."]
         
@@ -140,6 +153,17 @@ class Report:
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
+
+    def increment_report_count(self, username):
+        previous_count = Report.report_counts.get(username, 0)
+        new_count = max(previous_count + 1, 1)
+        Report.report_counts[username] = new_count
+        print(f"[MOD INFO] {username} now has {new_count} report(s).")
+
+    @classmethod
+    def reset_all_counts(target_class):
+        target_class.report_counts.clear()
+        print("[MOD INFO] Attention: all stored report data has been reset for testing purposes.")
     
 
 
