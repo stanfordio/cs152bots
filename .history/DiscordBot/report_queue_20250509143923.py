@@ -1,14 +1,13 @@
 from collections import deque
 
 class SubmittedReport:
-    def __init__(self, id, author, content, report_type, disinfo_type, disinfo_subtype, imminent):
+    def __init__(self, id, author, content, report_type, disinfo_type, disinfo_subtype):
         self.author = author
         self.id = id
         self.content = content
         self.report_type = report_type
         self.disinfo_type = disinfo_type
         self.subtype = disinfo_subtype
-        self.imminent = imminent
 
 class PriorityReportQueue:
     def __init__(self, num_levels, queue_names):
@@ -47,28 +46,37 @@ class PriorityReportQueue:
         out += "```"
         return out
     
-    def display_one(self, report, showContent=False):
+    def display_one(self, i=0, showContent=False):
+        output = ""
+        queue = self.queues[i]
+        for idx, report in enumerate(queue, 1):
+            output += (
+                f"  [{idx}] Report ID: {report.id}\n"
+                f"       Author: {report.author}\n"
+                f"       Type: {report.type}\n"
+                f"       Subtype: {report.subtype}\n"
+            )
+        output += "\n"
+        return output
+    
+    def display_one(report):
         output = (
             f"       Report ID: {report.id}\n"
             f"       Author: {report.author}\n"
-            f"       Type: {report.disinfo_type}\n"
+            f"       Type: {report.type}\n"
             f"       Subtype: {report.subtype}\n"
-            f"       Imminent: {report.imminent}\n"
         )
-        if showContent:
-            output += f"       Content: `{report.content}`\n"
         return output
 
-    def display(self, showContent=False):
+    def display(self):
         output = ""
         for i in range(self.num_queues):
             output += f"--- Priority {i}: {self.queue_names[i]} ---\n"
             queue = self.queues[i]
             if not queue:
                 output += "  (No reports)\n"
-            else:
-                for idx, report in enumerate(queue):
-                    output += f"  [{idx+1}]\n"
-                    output += self.display_one(report, showContent)
+            for idx, report in enumerate(queue):
+                output += f"  [{idx}]"
+                output += self.display_one(report)
         return output.strip()
 

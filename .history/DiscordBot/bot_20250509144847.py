@@ -162,7 +162,7 @@ class ModBot(discord.Client):
             imminent = self.reports[author_id].get_imminent()
             priority = self.reports[author_id].get_priority()
             id = self.report_id_counter
-            self.report_id_counter += 1
+            id += 1
 
             for r in responses:
                 await message.channel.send(r)
@@ -170,13 +170,12 @@ class ModBot(discord.Client):
             # Put the report in the mod channel
             mod_channel = self.mod_channels[self.reports[author_id].get_message_guild_id()]
             # todo are we worried about code injection via author name or content? 
-            report_info_msg = "Report ID: " + str(id) + "\n"
-            report_info_msg += " User " + message.author.name + " reported user " + str(reported_author) + "'s message.\n"
-            # report_info_msg += "Here is the message: \n```" + str(reported_content) + "\n```" 
+            report_info_msg = MOD_TODO_START + " User " + message.author.name + " reported user " + str(reported_author) + "'s message.\n"
+            report_info_msg += "Here is the message: \n```" + str(reported_content) + "\n```" 
             report_info_msg += "Category: " + str(report_type) + " > " + str(disinfo_type) + " > " + str(disinfo_subtype) + "\n"
             if imminent:
-                report_info_msg += "Imminent " + imminent + " harm reported."
-            submitted_report = SubmittedReport(id, reported_author, reported_content, report_type, disinfo_type, disinfo_subtype, imminent)
+                report_info_msg += "FLAG: Imminent " + imminent + " harm reported."
+            submitted_report = SubmittedReport(id, reported_author, reported_content, report_type, disinfo_type, disinfo_subtype)
             self.report_queue.enqueue(submitted_report, priority)
 
             await mod_channel.send(report_info_msg)
@@ -207,11 +206,8 @@ class ModBot(discord.Client):
         if message.channel.name == f'group-{self.group_num}-mod':
             if message.content == "report summary":
                 await message.channel.send(self.report_queue.summary())
-            elif message.content.startswith("report display"):
-                if "showcontent" in message.content:
-                    await message.channel.send(self.report_queue.display(showContent=True))
-                else:
-                    await message.channel.send(self.report_queue.display())
+            elif message.content == "report display":
+                await message.channel.send(self.report_queue.display())
 
 
         # ----- teddy: commented out to reduce clutter for milestone 2 since we are not doing auto flagging ------------
