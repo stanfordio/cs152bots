@@ -34,8 +34,8 @@ class State(Enum):
     AWAITING_REPORT_TYPE = auto()
     AWAITING_INFO_TYPE = auto()
     AWAITING_THREAT_DETAILS = auto()
+    AWAITING_DOXXING_DETAILS = auto()
     AWAITING_VICTIM_NAME = auto()
-    AWAITING_REPORTER_EMAIL = auto()
     AWAITING_SIGNATURE = auto()
     AWAITING_CONFIRMATION = auto()
     REPORT_COMPLETE = auto()
@@ -51,11 +51,12 @@ class Report:
         self.message = None
         self.report_type = None
         self.info_types = []  # Changed from info_type to info_types list
-        self.threat = None
+        self.threat = False
         self.victim_name = None
         self.reporter_email = None
         self.signature = None
         self.severity = 0
+        self.details = None
         self.reporter_id = None
         self.timestamp = None
         
@@ -136,13 +137,10 @@ class Report:
                         return [response]
                     else:
                         # For other report types, jump to severity
-                        self.state = State.AWAITING_SEVERITY
+                        self.state = State.AWAITING_SIGNATURE
                         response = f"You selected: {self.report_type.value}\n\n"
-                        response += "Please rate the severity of this situation:\n\n"
-                        response += "1. Low - Minor concern\n"
-                        response += "2. Medium - Moderate concern\n"
-                        response += "3. High - Serious concern\n"
-                        response += "4. Urgent - Immediate attention needed"
+                        response += "Please provide your signature to confirm the authenticity of this report.\n"
+                        response += "(Type your full name or Discord username)"
                         return [response]
                 else:
                     return ["Please enter a valid number between 1 and 6."]
@@ -189,7 +187,18 @@ class Report:
                 pass
             else:
                 return ["Please enter a 1 for 'Yes' or a 2 for 'No'"]
-            # self.details = message.content
+            
+            self.state = State.AWAITING_DOXXING_DETAILS
+
+            # Format the selected info types for display
+            selected_types = ", ".join([info_type.value for info_type in self.info_types])
+            response = f"You selected: {selected_types}\n\n"
+            response += "Please provide additional details about what specific information was shared."
+            return [response]
+
+        if self.state == State.AWAITING_DOXXING_DETAILS:
+            # Store the details provided by the user
+            self.details = message.content
             
             self.state = State.AWAITING_VICTIM_NAME
             response = "Thank you for the details.\n\n"
@@ -201,27 +210,11 @@ class Report:
             # Store the victim name
             self.victim_name = message.content
             
-            self.state = State.AWAITING_REPORTER_EMAIL
+            self.state = State.AWAITING_SIGNATURE
             response = "Thank you.\n\n"
-            response += "Please provide your email address for follow-up communication.\n"
-            response += "(This will only be used by moderators for updates about this report)\n"
-            response += "(If you would not like to provide an email, please type 'anonymous')"
+            response += "Please provide your signature to confirm the authenticity of this report.\n"
+            response += "(Type your full name or Discord username)"
             return [response]
-        
-        if self.state == State.AWAITING_REPORTER_EMAIL:
-            # Basic email validation
-            email_regex = r"[^@]+@[^@]+\.[^@]+"
-            if re.match(email_regex, message.content) or message.content.lower() == "anonymous":
-                # Store the email
-                self.reporter_email = message.content
-
-                self.state = State.AWAITING_SIGNATURE
-                response = "Thank you.\n\n"
-                response += "Please provide your signature to confirm the authenticity of this report.\n"
-                response += "(Type your full name or Discord username)"
-                return [response]
-            else:
-                return ["Please enter a valid email address or 'anonymous' if you prefer not to provide one."]
         
         if self.state == State.AWAITING_SIGNATURE:
             # Store the signature
@@ -236,9 +229,11 @@ class Report:
             if self.info_types:
                 info_types_str = ", ".join([info_type.value for info_type in self.info_types])
                 summary += f"**Information Types:** {info_types_str}\n"
-                
-            summary += f"**Severity:** {self.severity}\n"
+            
             summary += f"**Victim:** {self.victim_name}\n"
+            if self.threat:
+                summary += f"**Threat:** Yes\n"
+            summary += f"**Details:** {self.details}\n"
             summary += f"**Contact Email:** {self.reporter_email}\n"
             summary += f"**Message Author:** {self.message.author.name}\n"
             summary += f"**Message Content:** ```{self.message.content}```\n"
@@ -260,7 +255,6 @@ class Report:
                 self.state = State.REPORT_COMPLETE
                 response = "Thank you for submitting your report. It has been forwarded to our moderation team.\n\n"
                 response += "Our moderators will review your report as soon as possible.\n"
-                response += f"The severity of your report has been marked as {self.severity.value}, which will help moderators prioritize their response.\n\n"
                 response += "If you need to submit another report, type `report` again."
                 return [response]
             elif message.content.lower() == "no":
@@ -296,7 +290,6 @@ class Report:
         embed.add_field(name="Reported Message", value=self.message.content[:1024], inline=False)
         embed.add_field(name="Message Author", value=f"{self.message.author.name} (ID: {self.message.author.id})", inline=True)
         embed.add_field(name="Reporter", value=f"<@{self.reporter_id}>", inline=True)
-        # embed.add_field(name="Severity", value=self.severity.value, inline=True)
         
         if self.info_types:
             info_types_str = ", ".join([info_type.value for info_type in self.info_types])
@@ -308,8 +301,11 @@ class Report:
         if self.reporter_email:
             embed.add_field(name="Contact Email", value=self.reporter_email, inline=True)
             
+        if self.threat:
+            embed.add_field(name="Threat?", value=self.threat, inline=False)
+
         if self.details:
-            embed.add_field(name="Threat?", value=self.threat[:1024], inline=False)
+            embed.add_field(name="Details:", value=self.details[:1024], inline=False)
             
         if self.signature:
             embed.add_field(name="Signature", value=self.signature, inline=True)
@@ -371,11 +367,6 @@ class Report:
             help_msg += "Please provide the name of the person whose information was shared.\n"
             help_msg += "This helps moderators track and address the issue more effectively.\n"
             help_msg += "You can type 'anonymous' if you prefer not to disclose this information."
-        
-        elif self.state == State.AWAITING_REPORTER_EMAIL:
-            help_msg += "Please provide your email address for follow-up communication.\n"
-            help_msg += "This will only be used by moderators for updates about your report.\n"
-            help_msg += "You can type 'anonymous' if you prefer not to provide an email."
         
         elif self.state == State.AWAITING_SIGNATURE:
             help_msg += "Please provide your signature to confirm the authenticity of this report.\n"
