@@ -210,7 +210,7 @@ class ModBot(discord.Client):
             review.reported_author_metadata = f"User: {next_report.author}"
             review.reported_content_metadata = f"Msg: \"{next_report.content}\""
             self.moderations[author_id] = review
-            preview = self.report_queue.display_one(next_report, showContent=False)
+            preview = self.report_queue.display_one(next_report, showContent=True)
             if preview:
                 await message.channel.send(f"```{preview}```")
         review = self.moderations[author_id]
