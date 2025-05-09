@@ -9,6 +9,7 @@ class State(Enum):
     AWAITING_REASON = auto()
     AWAITING_DISINFORMATION_TYPE = auto()
     AWAITING_POLITICAL_DISINFORMATION_TYPE =auto()
+    AWAITING_HEALTHL_DISINFORMATION_TYPE =auto()
     AWAITING_FILTER_ACTION = auto()
 
     REPORT_COMPLETE = auto()
@@ -80,9 +81,7 @@ class Report:
             reply = "I found this message:```" + message.author.name + ": " + message.content + "```\n"
             reply += "Please select the reason for reporting this message by typing the corresponding number:\n"
             reply += "1. Disinformation\n"
-            reply += "2. Hate Speech\n"
-            reply += "3. Harassment\n"
-            reply += "4. Spam\n"
+            reply += "2. Other\n"
             return [reply]
         
         if self.state == State.AWAITING_REASON:
@@ -101,46 +100,47 @@ class Report:
                 return [reply]
             
             elif message.content == "2" :
-                # Handling hate speech
-                self.report_type = "Hate Speech"
-                self.disinfo_type = "[out of scope of project]"
-                self.disinfo_subtype = "[out of scope of project]"
+                # Handling Other Abuse types
+                self.report_type = "Other"
+                # self.disinfo_type = "[out of scope of project]"
+                # self.disinfo_subtype = "[out of scope of project]"
                 self.state = State.REPORT_COMPLETE
-                return [
-                        "Thank you for reporting " + self.report_type + " content.",
-                        "Our content moderation team will review the message and take action which may result in content or account removal."
-                        ]
+                # return [
+                #         "Thank you for reporting " + self.report_type + " content.",
+                #         "Our content moderation team will review the message and take action which may result in content or account removal."
+                #         ]
+                reply = "Thank you for reporting " + self.report_type + " content.\n"
+                reply += "Our content moderation team will review the message and take action which may result in content or account removal.\n"
+                return [reply]
             
-            elif message.content == "3" :
-                # Handling Harassment
-                self.report_type = "Harassment"
-                self.disinfo_type = "[out of scope of project]"
-                self.disinfo_subtype = "[out of scope of project]"
-                self.state = State.REPORT_COMPLETE
-                return [
-                        "Thank you for reporting " + self.report_type + " content.",
-                        "Our content moderation team will review the message and take action which may result in content or account removal."
-                        ]
+            # elif message.content == "3" :
+            #     # Handling Harassment
+            #     self.report_type = "Harassment"
+            #     self.disinfo_type = "[out of scope of project]"
+            #     self.disinfo_subtype = "[out of scope of project]"
+            #     self.state = State.REPORT_COMPLETE
+            #     return [
+            #             "Thank you for reporting " + self.report_type + " content.",
+            #             "Our content moderation team will review the message and take action which may result in content or account removal."
+            #             ]
             
 
-            elif message.content == "4" :
-                # Handling Spam
-                self.report_type = "Spam"
-                self.disinfo_type = "[out of scope of project]"
-                self.disinfo_subtype = "[out of scope of project]"
-                self.state = State.REPORT_COMPLETE
-                return [
-                        "Thank you for reporting " + self.report_type + " content", 
-                        "Our content moderation team will review the message and take action which may result in content or account removal."
-                        ]
+            # elif message.content == "4" :
+            #     # Handling Spam
+            #     self.report_type = "Spam"
+            #     self.disinfo_type = "[out of scope of project]"
+            #     self.disinfo_subtype = "[out of scope of project]"
+            #     self.state = State.REPORT_COMPLETE
+            #     return [
+            #             "Thank you for reporting " + self.report_type + " content", 
+            #             "Our content moderation team will review the message and take action which may result in content or account removal."
+            #             ]
                         
             else:
                 # Handling wrong report reason
                 reply = "Kindly enter a valid report reason by selecting the correponding number:\n"
                 reply += "1. Disinformation\n"
-                reply += "2. Hate Speech\n"
-                reply += "3. Harassment\n"
-                reply += "4. Spam\n"
+                reply += "2. Other\n"
                 reply += "Please try again or say `cancel` to cancel.\n"
                 return [reply]
 
