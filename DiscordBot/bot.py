@@ -9,6 +9,7 @@ import requests
 from report import Report
 from report_queue import SubmittedReport, PriorityReportQueue
 import pdb
+from moderate import ModeratorReview
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -39,6 +40,7 @@ class ModBot(discord.Client):
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
+        self.moderations = {}
         self.report_id_counter = 0
         # should equal the number of distinct priorities defined in Report.get_priority
         self.report_queue = PriorityReportQueue(3, ["Imminent physical/mental harm", "Imminent financial/property harm", "Non-imminent"])
@@ -190,14 +192,33 @@ class ModBot(discord.Client):
             #-------------------------------------------------
     
     async def handle_moderation(self, message):
-
         author_id = message.author.id
-        responses = []
-
-        
-
-
-
+        if author_id not in self.moderations and self.report_queue.is_empty():
+            await message.channel.send("No pending reports.")
+            return
+        if author_id not in self.moderations:
+            try:
+                next_report = self.report_queue.dequeue()
+            except IndexError:
+                await message.channel.send("No pending reports.")
+                return
+            review = ModeratorReview()
+            review.report_type = next_report.report_type
+            review.disinfo_type = next_report.disinfo_type
+            review.disinfo_subtype = next_report.subtype
+            review.imminent = next_report.imminent
+            review.reported_author_metadata = f"User: {next_report.author}"
+            review.reported_content_metadata = f"Msg: \"{next_report.content}\""
+            self.moderations[author_id] = review
+            preview = self.report_queue.display_one(next_report, showContent=False)
+            if preview:
+                await message.channel.send(f"```{preview}```")
+        review = self.moderations[author_id]
+        responses = await review.handle_message(message)
+        for r in responses:
+            await message.channel.send(r)
+        if review.is_review_complete():
+            self.moderations.pop(author_id, None)
 
     async def handle_channel_message(self, message):
         if not message.channel.name in [f'group-{self.group_num}', f'group-{self.group_num}-mod']:
