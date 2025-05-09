@@ -26,7 +26,7 @@ with open(token_path) as f:
     discord_token = tokens['discord']
 
 
-MOD_TODO_START = "TODO"
+MOD_TODO_START = "---------------------------\nTODO"
 
 
 class ModBot(discord.Client):
@@ -95,59 +95,76 @@ class ModBot(discord.Client):
         # If we are starting a report
         responses = await self.reports[author_id].handle_message(message)
 
-        if self.reports[author_id].awaiting_message():
-            reply = responses[0]
-            await message.channel.send(reply)
+        ## report.py updates state, and below, we route our response based on that state
+
+        if self.reports[author_id].is_awaiting_message():
+            for r in responses:
+                await message.channel.send(r)
+
+        if self.reports[author_id].is_awaiting_reason():
+            for r in responses:
+                await message.channel.send(r)
+
+        if self.reports[author_id].is_awaiting_disinformation_type():
+            for r in responses:
+                await message.channel.send(r)
+
+        if self.reports[author_id].is_awaiting_political_disinformation_type():
+            for r in responses:
+                await message.channel.send(r)
         
-        if self.reports[author_id].message_identified():
-            reply = responses[0]
-            reported_name = responses[1]
-            reported_content = responses[2]
-            await message.channel.send(reply)
+        if self.reports[author_id].is_awaiting_healthl_disinformation_type():
+            for r in responses:
+                await message.channel.send(r)
 
-        if self.reports[author_id].category_identified():
-            reply = responses[0]
-            category = responses[1]
-            await message.channel.send(reply)
+        if self.reports[author_id].is_awaiting_harmful_content_status():
+            for r in responses:
+                await message.channel.send(r)
 
-        if self.reports[author_id].type_identified():
-            reply = responses[0]
-            type_ = responses[1]
-            await message.channel.send(reply)
+        if self.reports[author_id].is_awaiting_filter_action():
+            for r in responses:
+                await message.channel.send(r)
 
-        if self.reports[author_id].subtype_identified():
-            reply = responses[0]
-            subtype = responses[1]
-            await message.channel.send(reply)
+        # if self.reports[author_id].harm_identified():
+        #     reply = responses[0]
+        #     harm = responses[1]
+        #     if harm:
+        #         # TODO escalate (or simulate it)
+        #         print("Escalating report")
+        #     await message.channel.send(reply)
 
-        if self.reports[author_id].harm_identified():
-            reply = responses[0]
-            harm = responses[1]
-            if harm:
-                # TODO escalate (or simulate it)
-                print("Escalating report")
-            await message.channel.send(reply)
-
-        if self.reports[author_id].block_step():
-            reply = responses[0]
-            block = responses[1]
-            if block:
-                # TODO block user (or simulate it)
-                print("Blocking user")
-            await message.channel.send(reply)
+        # if self.reports[author_id].block_step():
+        #     reply = responses[0]
+        #     block = responses[1]
+        #     if block:
+        #         # TODO block user (or simulate it)
+        #         print("Blocking user")
+        #     await message.channel.send(reply)
 
         # If the report is complete or cancelled, remove it from our map
-        if self.reports[author_id].report_complete():
-            self.reports.pop(author_id)
+        if self.reports[author_id].is_report_complete():
+
+            reported_author = self.reports[author_id].get_reported_author()
+            reported_content = self.reports[author_id].get_reported_content() 
+            report_type = self.reports[author_id].get_report_type() 
+            disinfo_type = self.reports[author_id].get_disinfo_type()
+            disinfo_subtype = self.reports[author_id].get_disinfo_subtype()
+
+            for r in responses:
+                await message.channel.send(r)
 
             # Put the report in the mod channel
-            mod_channel = self.mod_channels[message.guild.id]
-            report_info_msg = MOD_TODO_START + "User " + message.author.name + "reported user" + reported_name + "'s message.\n"
-            report_info_msg += "Here is the content of the post: " + str(reported_content) + ".\n" #not sure if str() protects from code injection?
-            report_info_msg += "Category: " + str(category) + "\n"
-            report_info_msg += "Type: " + str(type_) + "\n"
-            report_info_msg += "Subtype: " + str(subtype) + "\n"    
+            mod_channel = self.mod_channels[self.reports[author_id].get_message_guild_id()]
+            # todo are we worried about code injection via author name or content? 
+            report_info_msg = MOD_TODO_START + " User " + message.author.name + " reported user " + str(reported_author) + "'s message.\n"
+            report_info_msg += "Here is the message: \n```" + str(reported_content) + "\n```" 
+            report_info_msg += "Category: " + str(report_type) + " > " + str(disinfo_type) + " > " + str(disinfo_subtype) + "\n"
+            report_info_msg += "react to this message in order to moderate it\n"
+
             await mod_channel.send(report_info_msg)
+
+            # remove
+            self.reports.pop(author_id)
 
             # ------ starter code relevant to MILESTONE 3:  --------------
             # scores = self.eval_text(message.content)
@@ -199,6 +216,19 @@ class ModBot(discord.Client):
         '''
         #teddy: not sure if we need this function
         return "Evaluated: '" + text+ "'"
+    
+    # def process_response(self, responses):
+
+    #     reply = responses["reply"]
+    #     if not isinstance(reply, str): # just in case i forget brackets in report.py
+    #         reply = [reply]
+    #     del responses["reply"]
+
+    #     for key, value in responses.items(): # go through data (not including reply)
+    #         if key not in self.current_report: # don't allow overwriting
+    #             self.current_report[key] = value
+
+    #     return reply
 
 
 client = ModBot()
