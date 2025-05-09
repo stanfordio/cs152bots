@@ -1,14 +1,14 @@
 # bot.py
 import discord
-from discord.ext import commands
+#from discord.ext import commands
 import os
 import json
 import logging
 import re
 import requests
 import random
-
-from report import Report, State
+from review import Review, ReviewState 
+from report import Report, State 
 
 import pdb
 
@@ -35,6 +35,10 @@ class ModBot(discord.Client):
         intents.message_content = True
         super().__init__(command_prefix='.', intents=intents)
         self.group_num = None
+
+        # self.strikes = {} will implement this in later Milestone 3 probably
+        self.flagged = {}
+        self.reviews = {}
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
 
@@ -73,9 +77,23 @@ class ModBot(discord.Client):
         else:
             await self.handle_dm(message)
 
+    # Helper function for sending reports as embed links to the mod channel. Used ChatGPT to help me write the embed code.
     async def _send_report_embed(self, report):
         msg    = report.message
         mod_ch = self.mod_channels.get(report.guild_id)
+        jump_url = None
+        guild_id   = msg.guild.id
+        channel_id = msg.channel.id
+        message_id = msg.id
+        jump_url = f"https://discord.com/channels/{guild_id}/{channel_id}/{message_id}"
+ 
+        embed.add_field("Flagged Message",f"{msg.author.name}: {msg.content}",inline=False)
+        # add the jump link
+        embed.add_field(
+            "Jump to Message",
+            f"[Click here to view original message]({jump_url})",
+            inline=False
+        )
         if not mod_ch:
             return
         embed = discord.Embed(
@@ -89,7 +107,12 @@ class ModBot(discord.Client):
             embed.add_field("Flagged Message", f"{msg.author.name}: {msg.content}", inline=False)
         embed.add_field("AI Suspected?", report.q1_response or "N/A", inline=True)
         embed.add_field("User Blocked?",  report.block_response or "N/A", inline=True)
-        await mod_ch.send(embed=embed)
+        embed.set_footer(text=f"Report ID: {mod_msg.id}")
+        self.flagged[mod_msg.id] = report
+        mod_msg = await mod_ch.send(embed=embed)
+        
+
+        
 
     async def handle_dm(self, message):
         if message.content == Report.HELP_KEYWORD:
@@ -118,56 +141,115 @@ class ModBot(discord.Client):
         for r in responses:
             await message.channel.send(r)
 
+        # ****** Once a user submits their report, it's submitted as an embed to the mod channel ******
         if self.reports[author_id].state == State.REPORT_COMPLETE:
             report = self.reports.pop(author_id)
             await self._send_report_embed(report)
             
     
-    # MANUAL REVIEW LOGIC
+    # MOD CHANNEL CODE
+            
+    # Used ChatGPT to help me debug 
 
     async def handle_channel_message(self, message):
-        # Only handle messages sent in the "group-#" channel
-        if not message.channel.name == f'group-{self.group_num}':
-            return
-        
+        group_name = f'group-{self.group_num}'
+        mod_name   = f'{group_name}-mod'
+        channel_name = message.channel.name
         mod_channel = self.mod_channels.get(message.guild.id)
 
-        if not mod_channel:
-            print(f"[DEBUG] No mod channel set for guild {message.guild.name}")
-            return
-        
-        
-        #await mod_channel.send(
-        #f"🔎 Message flagged for review:\n"
-        #f"**Author:** {message.author.name}\n"
-        #f"**Content:** {message.content}\n"
-        #)
+        if channel_name == mod_name:
+            author = message.author.id
+            text   = message.content.strip().lower()
+            # help
+            if text == Review.HELP_KEYWORD:
+                reply  = "Use the `review <report_message_url>` command to begin the manual review process.\n"
+                reply += "Use the `cancel` command to cancel the review process.\n"
+                return await mod_channel.send(reply)
 
-        # Forward the message to the mod channel
-        mod_channel = self.mod_channels[message.guild.id]
-        await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-        scores = self.eval_text(message.content)
-        if scores > 0:
+            if text.startswith("review"):
+                parts = text.split(maxsplit=1)
+                if len(parts) != 2:
+                    return await mod_channel.send("❌ Usage: `review <embed_id|url>`")
+                
+                # ➁ pull the trailing digits
+                m = re.search(r'(\d+)$', parts[1].strip())
+                if not m:
+                    return await mod_channel.send("❌ Couldn't find an ID in that input.")
+                embed_id = int(m.group(1))
 
-            embed = discord.Embed(
-                title="⚠️ Auto-Flagged Message",
-                description=f"Suspect score: {scores:.2%}",
-                color=discord.Color.orange()
-            )
-            embed.add_field(name="Author",  value=message.author.mention, inline=True)
-            embed.add_field(name="Channel", value=message.channel.mention,      inline=True)
-            embed.add_field(name="Content", value=message.content[:1024],      inline=False)
-            await mod_channel.send(embed=embed)
-        else:
-            # otherwise just post the raw evaluation
-            await mod_channel.send(self.code_format(scores))
+                # ➂ lookup
+                report_obj = self.flagged.get(embed_id)
+                if not report_obj:
+                    return await mod_channel.send(f"❌ No report found with ID `{embed_id}`.")
+
+                # ➃ instantiate & stash
+                rev = Review(self, report=report_obj)
+                self.reviews[message.author.id] = rev
+
+                # ➄ fire off first prompt via handle_message
+                responses = await rev.handle_message(message)
+                for line in responses:
+                    await mod_channel.send(line)
+                return
+
+            # ongoing review flow
+            if author in self.reviews:
+                resp = await self.reviews[author].handle_message(message)
+                for line in resp:
+                    await mod_channel.send(line)
+                if self.reviews[author].state == ReviewState.REVIEW_COMPLETE:
+                    if self.reviews[author].q1_response == "yes":
+                        await self.reviews[author].message.delete()
+                        await mod_channel.send("Deleted user's message.")
+                    if self.reviews[author].q2_response == "yes":
+                        await mod_channel.send("Removed user from the server")
+                    del self.reviews[author]
+                return
+            return 
+
+        # AUTO FLAGGING CODE
+        elif channel_name == group_name:
+        # forward raw text to mods
+            await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
+            scores = self.eval_text(message.content)
+
+            if scores > 0:
+                # build jump link
+                jump_url = f"https://discord.com/channels/{message.guild.id}/{message.channel.id}/{message.id}"
+                auto_report = Report(self)
+                auto_report.message         = message
+                auto_report.type_selected   = "automated"
+                auto_report.subtype_selected = "suspect_content"
+                auto_report.author_id       = message.author.id
+                auto_report.guild_id        = message.guild.id
+
+                embed = discord.Embed(
+                    title="Auto-Flagged Message",
+                    description=f"Suspect score: {scores:.2%}",
+                    color=discord.Color.orange()
+                )
+                embed.add_field(name="Author",  value=message.author.mention, inline=True)
+                embed.add_field(name="Channel", value=message.channel.mention,      inline=True)
+                embed.add_field(name="Content", value=message.content[:1024],      inline=False)
+                embed.add_field(
+                    name="Jump to Message",
+                    value=f"[Click here to view original message]({jump_url})",
+                    inline=False
+                )
+                embed.add_field(
+                        name="Message Link",
+                        # inline code span prevents auto-linking
+                        value=f"`{jump_url}`",
+                        inline=True
+                    )
+                
+                mod_msg = await mod_channel.send(embed=embed)
+                self.flagged[mod_msg.id] = auto_report
+
+            else:
+                await mod_channel.send(self.code_format(scores))
 
     def eval_text(self, message):
-        ''''
-        TODO: Once you know how you want to evaluate messages in your channel, 
-        insert your code here! This will primarily be used in Milestone 3. 
-        '''
-
         # Returns 0 or 1 for now for demo
         return random.getrandbits(1)
 

@@ -78,7 +78,6 @@ class Report:
                 print(self.reported_message)
                 print(type(self.reported_message))
                
-
             except discord.errors.NotFound:
                 return ["It seems this message was deleted or never existed. Please try again or say `cancel` to cancel."]
 
@@ -167,16 +166,4 @@ class Report:
 
     def report_complete(self, response):
         self.state = State.REPORT_COMPLETE
-        #asyncio.create_task(self.send_to_mod_channel())
         return [response]
-    '''
-    async def send_to_mod_channel(self):
-        
-        mod_channel = self.client.mod_channels.get(self.message.guild.id)
-        embed = discord.Embed(
-            title="🛠️ Test Embed",
-            description="This is a simple test embed for manual-review.",
-            color=discord.Color.blue()
-        )
-        await mod_channel.send(embed=embed)
-    '''
