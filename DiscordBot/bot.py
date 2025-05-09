@@ -112,6 +112,14 @@ class ModBot(discord.Client):
         if self.reports[author_id].is_awaiting_political_disinformation_type():
             for r in responses:
                 await message.channel.send(r)
+        
+        if self.reports[author_id].is_awaiting_healthl_disinformation_type():
+            for r in responses:
+                await message.channel.send(r)
+
+        if self.reports[author_id].is_awaiting_harmful_content_status():
+            for r in responses:
+                await message.channel.send(r)
 
         if self.reports[author_id].is_awaiting_filter_action():
             for r in responses:

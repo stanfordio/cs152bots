@@ -189,10 +189,10 @@ class Report:
             
             else :
                 # Handling wrong disinformation type
-                reply = "Kindly enter a valid disinformation type by selecting the correponding number:",
-                reply += "1. Political Disinformation\n",
-                reply += "2. Health Disinformation\n",
-                reply += "3. Other Disinformation\n",
+                reply = "Kindly enter a valid disinformation type by selecting the correponding number:\n"
+                reply += "1. Political Disinformation\n"
+                reply += "2. Health Disinformation\n"
+                reply += "3. Other Disinformation\n"
                 reply += "Please try again or say `cancel` to cancel.\n"
                 return [reply]
 
@@ -203,7 +203,7 @@ class Report:
                 # Handling Election/Campaign Misinformation
                 self.disinfo_subtype = "Election/Campaign Misinformation"
                 self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
-                reply = "You have selected " + self.disinfo_type + ".\n"
+                reply = "You have selected " + self.disinfo_subtype + ".\n"
                 reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
                 reply += "1. No.\n"
                 reply += "2. Yes, physical harm.\n"  
@@ -215,7 +215,7 @@ class Report:
                  # Handling Government/Civic Services
                 self.disinfo_subtype = "Government/Civic Services"
                 self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
-                reply = "You have selected " + self.disinfo_type + ".\n"
+                reply = "You have selected " + self.disinfo_subtype + ".\n"
                 reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
                 reply += "1. No.\n"
                 reply += "2. Yes, physical harm.\n"  
@@ -227,7 +227,7 @@ class Report:
                  # Handling Manipulated Photos/Video
                 self.disinfo_subtype = "Manipulated Photos/Video"
                 self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
-                reply = "You have selected " + self.disinfo_type + ".\n"
+                reply = "You have selected " + self.disinfo_subtype + ".\n"
                 reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
                 reply += "1. No.\n"
                 reply += "2. Yes, physical harm.\n"  
@@ -239,7 +239,7 @@ class Report:
                  # Handling Other
                 self.disinfo_subtype = "Other"
                 self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
-                reply = "You have selected " + self.disinfo_type + ".\n"
+                reply = "You have selected " + self.disinfo_subtype + ".\n"
                 reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
                 reply += "1. No.\n"
                 reply += "2. Yes, physical harm.\n"  
@@ -264,7 +264,7 @@ class Report:
                 # Handling Vaccines
                 self.disinfo_subtype = "Vaccines"
                 self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
-                reply = "You have selected " + self.disinfo_type + ".\n"
+                reply = "You have selected " + self.disinfo_subtype + ".\n"
                 reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
                 reply += "1. No.\n"
                 reply += "2. Yes, physical harm.\n"  
@@ -276,7 +276,7 @@ class Report:
                  # Handling Cures and Treatments
                 self.disinfo_subtype = "Cures and Treatments"
                 self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
-                reply = "You have selected " + self.disinfo_type + ".\n"
+                reply = "You have selected " + self.disinfo_subtype + ".\n"
                 reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
                 reply += "1. No.\n"
                 reply += "2. Yes, physical harm.\n"  
@@ -288,7 +288,7 @@ class Report:
                  # Handling Mental Health
                 self.disinfo_subtype = "Mental Health"
                 self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
-                reply = "You have selected " + self.disinfo_type + ".\n"
+                reply = "You have selected " + self.disinfo_subtype + ".\n"
                 reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
                 reply += "1. No.\n"
                 reply += "2. Yes, physical harm.\n"  
@@ -300,7 +300,7 @@ class Report:
                  # Handling Other
                 self.disinfo_subtype = "Other"
                 self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
-                reply = "You have selected " + self.disinfo_type + ".\n"
+                reply = "You have selected " + self.disinfo_subtype + ".\n"
                 reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
                 reply += "1. No.\n"
                 reply += "2. Yes, physical harm.\n"  
@@ -323,7 +323,7 @@ class Report:
 
             if message.content == "1" :
                 # No harmful content 
-                self.state == State.AWAITING_FILTER_ACTION
+                self.state = State.AWAITING_FILTER_ACTION
                 reply = "Please indicate if you would like to block content from this account on your feed. Select the correponding number:\n"
                 reply += "1. No \n"
                 reply += "2. Yes \n"
@@ -332,11 +332,12 @@ class Report:
             elif message.content in ["2", "3", "4"] :
                 # Harmful content
                 self.harmful = True
-                self.state == State.AWAITING_FILTER_ACTION
+                self.state = State.AWAITING_FILTER_ACTION
                 reply = "Thank you. Our team has been notified.\n"
                 reply += "Please indicate if you would like to block content from this account on your feed. Select the correponding number:\n"
                 reply += "1. No \n"
                 reply += "2. Yes \n"
+                return [reply]
 
             else:
                 # Handle wrong response to harmful prompt 
@@ -345,6 +346,7 @@ class Report:
                 reply += "2. Yes, physical harm.\n"  
                 reply += "3. Yes, mental harm.\n"  
                 reply += "4. Yes, financial or property harm.\n"  
+                reply += "Please try again or say `cancel` to cancel."
                 return [reply]
 
 
@@ -407,6 +409,10 @@ class Report:
         return self.state == State.AWAITING_DISINFORMATION_TYPE
     def is_awaiting_political_disinformation_type(self):
         return self.state == State.AWAITING_POLITICAL_DISINFORMATION_TYPE
+    def is_awaiting_healthl_disinformation_type(self):
+        return self.state == State.AWAITING_HEALTHL_DISINFORMATION_TYPE
+    def is_awaiting_harmful_content_status(self):
+        return self.state == State.AWAITING_HARMFUL_CONTENT_STATUS
     def is_awaiting_filter_action(self):
         return self.state == State.AWAITING_FILTER_ACTION
     # def block_step(self):
