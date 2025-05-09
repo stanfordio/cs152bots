@@ -199,52 +199,60 @@ class Report:
             # Process political disinformation options
 
             if message.content == "1":
-                # Handling Conspiracy Theory
-                self.disinfo_subtype = "Conspiracy Theory"
-                self.state = State.AWAITING_FILTER_ACTION
-                reply = "You have selected " + self.disinfo_subtype + ".\n"
-                reply += "Would you like to filter content from this account on your feed? Select the correponding number:\n"
-                reply += "1. Yes\n"
-                reply += "2. No\n"                
+                # Handling Election/Campaign Misinformation
+                self.disinfo_subtype = "Election/Campaign Misinformation"
+                self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
+                reply = "You have selected " + self.disinfo_type + ".\n"
+                reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
+                reply += "1. No.\n"
+                reply += "2. Yes, physical harm.\n"  
+                reply += "3. Yes, mental harm.\n"  
+                reply += "4. Yes, financial or property harm.\n"  
                 return [reply]
             
             elif message.content == "2":
-                 # Handling Distorted Information
-                self.disinfo_subtype = "Distorted Information"
-                self.state = State.AWAITING_FILTER_ACTION
-                reply = "You have selected " + self.disinfo_subtype + ".\n"
-                reply += "Would you like to filter content from this account on your feed? Select the correponding number:\n"
-                reply += "1. Yes\n"
-                reply += "2. No\n"                
+                 # Handling Government/Civic Services
+                self.disinfo_subtype = "Government/Civic Services"
+                self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
+                reply = "You have selected " + self.disinfo_type + ".\n"
+                reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
+                reply += "1. No.\n"
+                reply += "2. Yes, physical harm.\n"  
+                reply += "3. Yes, mental harm.\n"  
+                reply += "4. Yes, financial or property harm.\n"  
                 return [reply]
 
             elif message.content == "3":
-                 # Handling False Claim
-                self.disinfo_subtype = "False Claim"
-                self.state = State.AWAITING_FILTER_ACTION
-                reply = "You have selected " + self.disinfo_subtype + ".\n"
-                reply += "Would you like to filter content from this account on your feed? Select the correponding number:\n"
-                reply += "1. Yes\n"
-                reply += "2. No\n"                
+                 # Handling Manipulated Photos/Video
+                self.disinfo_subtype = "Manipulated Photos/Video"
+                self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
+                reply = "You have selected " + self.disinfo_type + ".\n"
+                reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
+                reply += "1. No.\n"
+                reply += "2. Yes, physical harm.\n"  
+                reply += "3. Yes, mental harm.\n"  
+                reply += "4. Yes, financial or property harm.\n"  
                 return [reply]
             
             elif message.content == "4":
-                 # Handling Election/Campaign Misinformation
-                self.disinfo_subtype = "Election/Campaign Misinformation"
-                self.state = State.AWAITING_FILTER_ACTION
-                reply = "You have selected " + self.disinfo_subtype + ".\n"
-                reply += "Would you like to filter content from this account on your feed? Select the correponding number:\n"
-                reply += "1. Yes\n"
-                reply += "2. No\n"                
+                 # Handling Other
+                self.disinfo_subtype = "Other"
+                self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
+                reply = "You have selected " + self.disinfo_type + ".\n"
+                reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
+                reply += "1. No.\n"
+                reply += "2. Yes, physical harm.\n"  
+                reply += "3. Yes, mental harm.\n"  
+                reply += "4. Yes, financial or property harm.\n"  
                 return [reply]
 
             else :
-                # Handling 
+                # Handling wrong political disinformation type
                 reply = "Please select the type of political Disinformation by typing the corresponding number:\n"
-                reply += "1. Conspiracy Theory\n"
-                reply += "2. Distorted Information\n"
-                reply += "3. False Claim\n"
-                reply += "4. Election/Campaign Misinformation\n"
+                reply += "1. Election/Campaign Misinformation\n"
+                reply += "2. Government/Civic Services\n"
+                reply += "3. Manipulated Photos/Video\n"
+                reply += "4. Other\n"
                 reply += "Please try again or say `cancel` to cancel."
                 return [reply]
             
