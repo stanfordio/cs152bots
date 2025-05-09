@@ -11,6 +11,7 @@ class State(Enum):
     AWAITING_POLITICAL_DISINFORMATION_TYPE =auto()
     AWAITING_HEALTHL_DISINFORMATION_TYPE =auto()
     AWAITING_FILTER_ACTION = auto()
+    AWAITING_HARMFUL_CONTENT_STATUS = auto()
 
     REPORT_COMPLETE = auto()
 
@@ -153,42 +154,45 @@ class Report:
                 self.disinfo_type = "Political Disinformation"
                 reply = "You have selected " + self.disinfo_type + ".\n"
                 reply += "Please select the type of political Disinformation by typing the corresponding number:\n"
-                reply += "1. Conspiracy Theory\n"
-                reply += "2. Distorted Information\n"
-                reply += "3. False Claim\n"
-                reply += "4. Election/Campaign Misinformation"
+                reply += "1. Election/Campaign Misinformation\n"
+                reply += "2. Government/Civic Services\n"
+                reply += "3. Manipulated Photos/Video\n"
+                reply += "4. Other\n"
                 return [reply]
             
             elif message.content == "2" :
                 # Handle Health Disinformation
-                self.state = State.AWAITING_FILTER_ACTION
+                self.state = State.AWAITING_HEALTHL_DISINFORMATION_TYPE
                 self.disinfo_type = "Health Disinformation"
-                self.disinfo_subtype = "[out of scope of project]"
                 reply = "You have selected " + self.disinfo_type + ".\n"
-                reply += "Would you like to filter content from this account on your feed? Select the correponding number:\n"
-                reply += "1. Yes\n"
-                reply += "2. No\n"
+                reply += "Please select the type of health disinformation by typing the corresponding number:\n"
+                reply += "1. Vaccines\n"
+                reply += "2. Cures and Treatments\n"
+                reply += "3. Mental Health\n"
+                reply += "4. Other\n"
                 return [reply]
 
 
             elif message.content == "3" :
                 # Handle other Disinformation
-                self.state = State.AWAITING_FILTER_ACTION
+                self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
                 self.disinfo_type = "Other Disinformation"
                 self.disinfo_subtype = "[out of scope of project]"
                 reply = "You have selected " + self.disinfo_type + ".\n"
-                reply += "Would you like to filter content from this account on your feed? Select the correponding number:\n"
-                reply += "1. Yes\n"
-                reply += "2. No\n"                
+                reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
+                reply += "1. No.\n"
+                reply += "2. Yes, physical harm.\n"  
+                reply += "3. Yes, mental harm.\n"  
+                reply += "4. Yes, financial or property harm.\n"  
                 return [reply]
             
             else :
                 # Handling wrong disinformation type
                 reply = "Kindly enter a valid disinformation type by selecting the correponding number:",
-                reply += "1. Political Disinformation",
-                reply += "2. Health Disinformation",
-                reply += "3. Other Disinformation",
-                reply += "Please try again or say `cancel` to cancel."
+                reply += "1. Political Disinformation\n",
+                reply += "2. Health Disinformation\n",
+                reply += "3. Other Disinformation\n",
+                reply += "Please try again or say `cancel` to cancel.\n"
                 return [reply]
 
         if self.state == State.AWAITING_POLITICAL_DISINFORMATION_TYPE :
