@@ -255,7 +255,68 @@ class Report:
                 reply += "4. Other\n"
                 reply += "Please try again or say `cancel` to cancel."
                 return [reply]
+        
+        if self.state == State.AWAITING_HEALTHL_DISINFORMATION_TYPE:
+            # Process health disinformation options
+
+            if message.content == "1":
+                # Handling Vaccines
+                self.disinfo_subtype = "Vaccines"
+                self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
+                reply = "You have selected " + self.disinfo_type + ".\n"
+                reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
+                reply += "1. No.\n"
+                reply += "2. Yes, physical harm.\n"  
+                reply += "3. Yes, mental harm.\n"  
+                reply += "4. Yes, financial or property harm.\n"  
+                return [reply]
             
+            elif message.content == "2":
+                 # Handling Cures and Treatments
+                self.disinfo_subtype = "Cures and Treatments"
+                self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
+                reply = "You have selected " + self.disinfo_type + ".\n"
+                reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
+                reply += "1. No.\n"
+                reply += "2. Yes, physical harm.\n"  
+                reply += "3. Yes, mental harm.\n"  
+                reply += "4. Yes, financial or property harm.\n"  
+                return [reply]
+
+            elif message.content == "3":
+                 # Handling Mental Health
+                self.disinfo_subtype = "Mental Health"
+                self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
+                reply = "You have selected " + self.disinfo_type + ".\n"
+                reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
+                reply += "1. No.\n"
+                reply += "2. Yes, physical harm.\n"  
+                reply += "3. Yes, mental harm.\n"  
+                reply += "4. Yes, financial or property harm.\n"  
+                return [reply]
+            
+            elif message.content == "4":
+                 # Handling Other
+                self.disinfo_subtype = "Other"
+                self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
+                reply = "You have selected " + self.disinfo_type + ".\n"
+                reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
+                reply += "1. No.\n"
+                reply += "2. Yes, physical harm.\n"  
+                reply += "3. Yes, mental harm.\n"  
+                reply += "4. Yes, financial or property harm.\n"  
+                return [reply]
+            
+            else :
+                # Handling wrong health disinformation type
+                reply = "Please select the type of health Disinformation by typing the corresponding number:\n"
+                reply += "1. Vaccines\n"
+                reply += "2. Cures and Treatments\n"
+                reply += "3. Mental Health\n"
+                reply += "4. Other\n"
+                reply += "Please try again or say `cancel` to cancel."
+                return [reply]
+
         if self.state == State.AWAITING_FILTER_ACTION:
             # Handling responses to filter account content
 
