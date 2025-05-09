@@ -315,7 +315,7 @@ class Report:
         return []
 
     def report_complete(self):
-        return self.state == State.REPORT_COMPLETE
+        return self.state in (State.REPORT_COMPLETE, State.APPEAL_COMPLETE)
 
     def generate_report_id(self):
         Report.report_id_counter += 1
