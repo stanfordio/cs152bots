@@ -338,27 +338,33 @@ class Report:
                 reply += "1. No \n"
                 reply += "2. Yes \n"
 
+            else:
+                # Handle wrong response to harmful prompt 
+                reply = "Kindly indicate if this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
+                reply += "1. No.\n"
+                reply += "2. Yes, physical harm.\n"  
+                reply += "3. Yes, mental harm.\n"  
+                reply += "4. Yes, financial or property harm.\n"  
+                return [reply]
+
+
         if self.state == State.AWAITING_FILTER_ACTION:
             # Handling responses to filter account content
 
             if message.content == "1":
-                # Handle content filtering
-                self.filter = True
-                self.state = State.REPORT_COMPLETE
-                return [
-                        "This account’s posts have been restricted from appearing on your feed.",
-                        "Thank you for reporting" + self.report_type + " content.",
-                        "Our content moderation team will review the message and take action which may result in content or account removal."
-                        ]
-            
-            elif message.content == "2":
                 # Handle no content filtering action
                 self.state = State.REPORT_COMPLETE
-                return [
-                        "This account’s posts have been restricted from appearing on your feed.",
-                        " Thank you for reporting" + self.report_type + " content.",
-                        "Our content moderation team will review the message and take action which may result in content or account removal."
-                        ]
+                reply = "Thank you for reporting " + self.report_type + " content.\n"
+                reply += "Our content moderation team will review the message and take action which may result in content or account removal.\n"
+                return [reply]
+            
+            elif message.content == "2":
+                # Handle content filtering action
+                self.filter = True
+                self.state = State.REPORT_COMPLETE
+                reply = "Thank you for reporting " + self.report_type + " content.\n"
+                reply += "Our content moderation team will review the message and take action which may result in content or account removal.\n"
+                return [reply]
 
             else:
                 # wrong option for account filtering prompt 
