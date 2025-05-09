@@ -32,6 +32,7 @@ class Report:
         self.disinfo_type = None
         self.disinfo_subtype = None
         self.filter = False
+        self.harmful = False
     
     async def handle_message(self, message):
         '''
@@ -316,6 +317,26 @@ class Report:
                 reply += "4. Other\n"
                 reply += "Please try again or say `cancel` to cancel."
                 return [reply]
+
+        if self.state == State.AWAITING_HARMFUL_CONTENT_STATUS:
+            # Handle decision making on whether content is harmful
+
+            if message.content == "1" :
+                # No harmful content 
+                self.state == State.AWAITING_FILTER_ACTION
+                reply = "Please indicate if you would like to block content from this account on your feed. Select the correponding number:\n"
+                reply += "1. No \n"
+                reply += "2. Yes \n"
+                return [reply]
+            
+            elif message.content in ["2", "3", "4"] :
+                # Harmful content
+                self.harmful = True
+                self.state == State.AWAITING_FILTER_ACTION
+                reply = "Thank you. Our team has been notified.\n"
+                reply += "Please indicate if you would like to block content from this account on your feed. Select the correponding number:\n"
+                reply += "1. No \n"
+                reply += "2. Yes \n"
 
         if self.state == State.AWAITING_FILTER_ACTION:
             # Handling responses to filter account content
