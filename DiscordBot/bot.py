@@ -7,6 +7,7 @@ import logging
 import re
 import requests
 from report import Report
+from review import Review
 import pdb
 
 # Set up logging to the console
@@ -34,6 +35,8 @@ class ModBot(discord.Client):
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
+        self.reviews = {}
+
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -71,6 +74,7 @@ class ModBot(discord.Client):
             await self.handle_dm(message)
 
     async def handle_dm(self, message):
+        print("DM")
         # Handle a help message
         if message.content == Report.HELP_KEYWORD:
             reply =  "Use the `report` command to begin the reporting process.\n"
@@ -78,8 +82,30 @@ class ModBot(discord.Client):
             await message.channel.send(reply)
             return
 
+        # if message.content.startswith(Review.START_KEYWORD):
+        if message.content == Review.HELP_KEYWORD:
+            reply =  "Type in the moderator password to begin the reviewing process.\n"
+            await message.channel.send(reply)
+
         author_id = message.author.id
         responses = []
+
+        # If the report is complete or cancelled, remove it from our map
+        if author_id in self.reports and self.reports[author_id].report_complete():
+            self.reports.pop(author_id)
+
+        if author_id in self.reviews and self.reviews[author_id].review_complete():
+            self.reviews.pop(author_id)
+
+        if message.content.startswith(Review.PASSWORD):
+            self.reviews[author_id] = Review(self)
+
+        if author_id in self.reviews:
+            # Let the report class handle this message; forward all the messages it returns to uss
+            responses = await self.reviews[author_id].handle_message(message)
+            for r in responses:
+                await message.channel.send(r)
+            return
 
         # Only respond to messages if they're part of a reporting flow
         if author_id not in self.reports and not message.content.startswith(Report.START_KEYWORD):
@@ -93,13 +119,25 @@ class ModBot(discord.Client):
         responses = await self.reports[author_id].handle_message(message)
         for r in responses:
             await message.channel.send(r)
-
-        # If the report is complete or cancelled, remove it from our map
-        if self.reports[author_id].report_complete():
-            self.reports.pop(author_id)
+    
 
     async def handle_channel_message(self, message):
-        # Only handle messages sent in the "group-#" channel
+        # Only handle messages sent in the "group-#" channel or "group-#-mod" channel
+        if message.channel.name == f'group-{self.group_num}-mod':
+            if message.content == Review.HELP_KEYWORD:
+                reply =  "Use the `review` command to begin the reviewing process.\n"
+                await message.channel.send(reply)
+                return
+
+            # Only respond to messages if they're part of a reviewing flow
+            if not message.content.startswith(Review.START_KEYWORD):
+                return
+
+            # Let the review class handle this message; forward all the messages it returns to uss
+            responses = await Review(self).handle_message(message)
+            for r in responses:
+                await message.channel.send(r)
+
         if not message.channel.name == f'group-{self.group_num}':
             return
 
