@@ -112,16 +112,26 @@ class Report:
             if abuse_type in SUICIDE_VARIANTS:
                 self.abuse_type = AbuseType.SUICIDE
                 mod_channel = self.client.mod_channels[self.message.guild.id]
-                await mod_channel.send(f"🔴 URGENT - SUICIDE/SELF-HARM REPORT:\n{self.message.author.name}: {self.message.content}")
+                await mod_channel.send(f"SUICIDE/SELF-HARM REPORT:\n{self.message.author.name}: {self.message.content}")
+                await self.client.start_moderation_flow(
+                    report_type="SUICIDE/SELF-HARM",
+                    report_content=self.message.content,
+                    message_author=self.message.author.name
+                )
                 self.state = State.REPORT_COMPLETE
-                return ["Thank you for reporting. This has been escalated to our moderation team for immediate review."]
+                return ["Thank you for reporting. This has been sent to our moderation team for review."]
 
             if abuse_type in EXPLICIT_VARIANTS:
                 self.abuse_type = AbuseType.EXPLICIT
                 mod_channel = self.client.mod_channels[self.message.guild.id]
-                await mod_channel.send(f"🔴 URGENT - EXPLICIT CONTENT REPORT:\n{self.message.author.name}: {self.message.content}")
+                await mod_channel.send(f"EXPLICIT CONTENT REPORT:\n{self.message.author.name}: {self.message.content}")
+                await self.client.start_moderation_flow(
+                    report_type="EXPLICIT CONTENT",
+                    report_content=self.message.content,
+                    message_author=self.message.author.name
+                )
                 self.state = State.REPORT_COMPLETE
-                return ["Thank you for reporting. This has been escalated to our moderation team for immediate review."]
+                return ["Thank you for reporting. This has been sent to our moderation team for review."]
 
             for type in AbuseType:
                 if abuse_type == type.value:
@@ -131,8 +141,12 @@ class Report:
                         return ["Please select the misinformation category:\n• HEALTH\n• ADVERTISEMENT\n• NEWS"]
                     else:
                         mod_channel = self.client.mod_channels[self.message.guild.id]
-                        priority = "🔴" if type in [AbuseType.HATE, AbuseType.DANGER] else "🟡"
-                        await mod_channel.send(f"{priority} New report - {type.value.upper()}:\n{self.message.author.name}: {self.message.content}")
+                        await mod_channel.send(f"New report - {type.value.upper()}:\n{self.message.author.name}: {self.message.content}")
+                        await self.client.start_moderation_flow(
+                            report_type=type.value.upper(),
+                            report_content=self.message.content,
+                            message_author=self.message.author.name
+                        )
                         self.state = State.REPORT_COMPLETE
                         return ["Thank you for reporting, it has been sent to our moderation team."]
             return ["Please select a valid abuse type from the list above."]
@@ -150,7 +164,12 @@ class Report:
                         return ["Please specify the news category:\n• HISTORICAL\n• POLITICAL\n• SCIENCE"]
                     else:  # Advertisement
                         self.state = State.REPORT_COMPLETE
-                        await self.client.mod_channels[self.message.guild.id].send(f"🟡 ADVERTISING MISINFO:\n{self.message.author.name}: {self.message.content}")
+                        await self.client.mod_channels[self.message.guild.id].send(f"ADVERTISING MISINFO:\n{self.message.author.name}: {self.message.content}")
+                        await self.client.start_moderation_flow(
+                            report_type="ADVERTISING MISINFO",
+                            report_content=self.message.content,
+                            message_author=self.message.author.name
+                        )
                         return ["This has been reported to our ad team."]
             return ["Please select a valid misinformation category from the list above."]
 
@@ -161,16 +180,13 @@ class Report:
                     self.specific_category = cat
                     self.state = State.REPORT_COMPLETE
                     mod_channel = self.client.mod_channels[self.message.guild.id]
-                    
-                    if cat == HealthCategory.EMERGENCY:
-                        await mod_channel.send(f"🔴 HEALTH MISINFO:\n{self.message.author.name}: {self.message.content}")
-                        return ["We will prioritize this and send it for review."]
-                    elif cat in [HealthCategory.MEDICAL_RESEARCH, HealthCategory.REPRODUCTIVE]:
-                        await mod_channel.send(f"🟡 HEALTH MISINFO:\n{self.message.author.name}: {self.message.content}")
-                        return ["This has been sent to moderators."]
-                    else: 
-                        await mod_channel.send(f"🟢 HEALTH MISINFO:\n{self.message.author.name}: {self.message.content}")
-                        return ["This has been sent to our team. Review if necessary, marked with non-scientific flag."]
+                    await mod_channel.send(f"HEALTH MISINFO - {cat.value.upper()}:\n{self.message.author.name}: {self.message.content}")
+                    await self.client.start_moderation_flow(
+                        report_type=f"HEALTH MISINFO - {cat.value.upper()}",
+                        report_content=self.message.content,
+                        message_author=self.message.author.name
+                    )
+                    return ["This has been sent to our moderation team."]
             return ["Please select a valid health category from the list above."]
 
         if self.state == State.AWAITING_NEWS_CATEGORY:
@@ -180,11 +196,12 @@ class Report:
                     self.specific_category = cat
                     self.state = State.REPORT_COMPLETE
                     mod_channel = self.client.mod_channels[self.message.guild.id]
-                    
-                    if cat == NewsCategory.POLITICAL:
-                        await mod_channel.send(f"🟡 NEWS MISINFO:\n{self.message.author.name}: {self.message.content}")
-                    else:
-                        await mod_channel.send(f"🟢 NEWS MISINFO:\n{self.message.author.name}: {self.message.content}")
+                    await mod_channel.send(f"NEWS MISINFO - {cat.value.upper()}:\n{self.message.author.name}: {self.message.content}")
+                    await self.client.start_moderation_flow(
+                        report_type=f"NEWS MISINFO - {cat.value.upper()}",
+                        report_content=self.message.content,
+                        message_author=self.message.author.name
+                    )
                     return ["This has been sent to our team."]
             return ["Please select a valid news category from the list above."]
 
