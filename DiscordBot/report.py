@@ -6,7 +6,57 @@ class State(Enum):
     REPORT_START = auto()
     AWAITING_MESSAGE = auto()
     MESSAGE_IDENTIFIED = auto()
+    AWAITING_ABUSE_TYPE = auto()
+    AWAITING_MISINFO_CATEGORY = auto()
+    AWAITING_HEALTH_CATEGORY = auto()
+    AWAITING_NEWS_CATEGORY = auto()
     REPORT_COMPLETE = auto()
+    AWAITING_APPEAL = auto()
+    APPEAL_REVIEW = auto()
+
+class AbuseType(Enum):
+    BULLYING = "bullying"
+    SUICIDE = "suicide/self-harm" 
+    EXPLICIT = "sexually explicit/nudity"
+    MISINFORMATION = "misinformation"
+    HATE = "hate speech"
+    DANGER = "danger"
+
+SUICIDE_VARIANTS = {
+    "suicide", 
+    "self harm", 
+    "self-harm",
+    "selfharm",
+    "suicide/self harm",
+    "suicide/selfharm",
+    "suicide/self-harm",
+}
+
+EXPLICIT_VARIANTS = {
+    "explicit",
+    "sexually explicit",
+    "sexual",
+    "nudity",
+    "nude",
+    "sexually explicit/nudity",
+}
+
+class MisinfoCategory(Enum):
+    HEALTH = "health"
+    ADVERTISEMENT = "advertisement"
+    NEWS = "news"
+
+class HealthCategory(Enum):
+    EMERGENCY = "emergency"
+    MEDICAL_RESEARCH = "medical research"
+    REPRODUCTIVE = "reproductive healthcare"
+    TREATMENTS = "treatments"
+    ALTERNATIVE = "alternative medicine"
+
+class NewsCategory(Enum):
+    HISTORICAL = "historical"
+    POLITICAL = "political"
+    SCIENCE = "science"
 
 class Report:
     START_KEYWORD = "report"
@@ -17,28 +67,24 @@ class Report:
         self.state = State.REPORT_START
         self.client = client
         self.message = None
-    
-    async def handle_message(self, message):
-        '''
-        This function makes up the meat of the user-side reporting flow. It defines how we transition between states and what 
-        prompts to offer at each of those states. You're welcome to change anything you want; this skeleton is just here to
-        get you started and give you a model for working with Discord. 
-        '''
+        self.abuse_type = None
+        self.misinfo_category = None
+        self.specific_category = None
 
-        if message.content == self.CANCEL_KEYWORD:
+    async def handle_message(self, message):
+        if message.content.lower() == self.CANCEL_KEYWORD:
             self.state = State.REPORT_COMPLETE
             return ["Report cancelled."]
-        
+
         if self.state == State.REPORT_START:
-            reply =  "Thank you for starting the reporting process. "
+            reply = "Thank you for starting the reporting process. "
             reply += "Say `help` at any time for more information.\n\n"
             reply += "Please copy paste the link to the message you want to report.\n"
             reply += "You can obtain this link by right-clicking the message and clicking `Copy Message Link`."
             self.state = State.AWAITING_MESSAGE
             return [reply]
-        
+
         if self.state == State.AWAITING_MESSAGE:
-            # Parse out the three ID strings from the message link
             m = re.search('/(\d+)/(\d+)/(\d+)', message.content)
             if not m:
                 return ["I'm sorry, I couldn't read that link. Please try again or say `cancel` to cancel."]
@@ -49,24 +95,135 @@ class Report:
             if not channel:
                 return ["It seems this channel was deleted or never existed. Please try again or say `cancel` to cancel."]
             try:
-                message = await channel.fetch_message(int(m.group(3)))
+                self.message = await channel.fetch_message(int(m.group(3)))
             except discord.errors.NotFound:
                 return ["It seems this message was deleted or never existed. Please try again or say `cancel` to cancel."]
+            
+            self.state = State.AWAITING_ABUSE_TYPE
+            reply = "What type of abuse would you like to report?\n"
+            reply += "• BULLYING\n"
+            reply += "• SUICIDE/SELF-HARM\n"
+            reply += "• SEXUALLY EXPLICIT/NUDITY\n"
+            reply += "• MISINFORMATION\n"
+            reply += "• HATE SPEECH\n"
+            reply += "• DANGER"
+            return ["I found this message:", "```" + self.message.author.name + ": " + self.message.content + "```", reply]
 
-            # Here we've found the message - it's up to you to decide what to do next!
-            self.state = State.MESSAGE_IDENTIFIED
-            return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
-                    "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
-        
-        if self.state == State.MESSAGE_IDENTIFIED:
-            return ["<insert rest of reporting flow here>"]
+        if self.state == State.AWAITING_ABUSE_TYPE:
+            abuse_type = message.content.lower()
+            if abuse_type in SUICIDE_VARIANTS:
+                self.abuse_type = AbuseType.SUICIDE
+                mod_channel = self.client.mod_channels[self.message.guild.id]
+                await mod_channel.send(f"SUICIDE/SELF-HARM REPORT:\n{self.message.author.name}: {self.message.content}")
+                await self.client.start_moderation_flow(
+                    report_type="SUICIDE/SELF-HARM",
+                    report_content=self.message.content,
+                    message_author=self.message.author.name
+                )
+                self.state = State.REPORT_COMPLETE
+                return ["Thank you for reporting. This has been sent to our moderation team for review."]
+
+            if abuse_type in EXPLICIT_VARIANTS:
+                self.abuse_type = AbuseType.EXPLICIT
+                mod_channel = self.client.mod_channels[self.message.guild.id]
+                await mod_channel.send(f"EXPLICIT CONTENT REPORT:\n{self.message.author.name}: {self.message.content}")
+                await self.client.start_moderation_flow(
+                    report_type="EXPLICIT CONTENT",
+                    report_content=self.message.content,
+                    message_author=self.message.author.name
+                )
+                self.state = State.REPORT_COMPLETE
+                return ["Thank you for reporting. This has been sent to our moderation team for review."]
+
+            for type in AbuseType:
+                if abuse_type == type.value:
+                    self.abuse_type = type
+                    if type == AbuseType.MISINFORMATION:
+                        self.state = State.AWAITING_MISINFO_CATEGORY
+                        return ["Please select the misinformation category:\n• HEALTH\n• ADVERTISEMENT\n• NEWS"]
+                    else:
+                        mod_channel = self.client.mod_channels[self.message.guild.id]
+                        await mod_channel.send(f"New report - {type.value.upper()}:\n{self.message.author.name}: {self.message.content}")
+                        await self.client.start_moderation_flow(
+                            report_type=type.value.upper(),
+                            report_content=self.message.content,
+                            message_author=self.message.author.name
+                        )
+                        self.state = State.REPORT_COMPLETE
+                        return ["Thank you for reporting, it has been sent to our moderation team."]
+            return ["Please select a valid abuse type from the list above."]
+
+        if self.state == State.AWAITING_MISINFO_CATEGORY:
+            category = message.content.lower()
+            for cat in MisinfoCategory:
+                if category == cat.value:
+                    self.misinfo_category = cat
+                    if cat == MisinfoCategory.HEALTH:
+                        self.state = State.AWAITING_HEALTH_CATEGORY
+                        return ["Please specify the health misinformation category:\n• EMERGENCY\n• MEDICAL RESEARCH\n• REPRODUCTIVE HEALTHCARE\n• TREATMENTS\n• ALTERNATIVE MEDICINE"]
+                    elif cat == MisinfoCategory.NEWS:
+                        self.state = State.AWAITING_NEWS_CATEGORY
+                        return ["Please specify the news category:\n• HISTORICAL\n• POLITICAL\n• SCIENCE"]
+                    else:  # Advertisement
+                        self.state = State.REPORT_COMPLETE
+                        await self.client.mod_channels[self.message.guild.id].send(f"ADVERTISING MISINFO:\n{self.message.author.name}: {self.message.content}")
+                        await self.client.start_moderation_flow(
+                            report_type="ADVERTISING MISINFO",
+                            report_content=self.message.content,
+                            message_author=self.message.author.name
+                        )
+                        return ["This has been reported to our ad team."]
+            return ["Please select a valid misinformation category from the list above."]
+
+        if self.state == State.AWAITING_HEALTH_CATEGORY:
+            health_cat = message.content.lower()
+            for cat in HealthCategory:
+                if health_cat == cat.value:
+                    self.specific_category = cat
+                    self.state = State.REPORT_COMPLETE
+                    mod_channel = self.client.mod_channels[self.message.guild.id]
+                    await mod_channel.send(f"HEALTH MISINFO - {cat.value.upper()}:\n{self.message.author.name}: {self.message.content}")
+                    await self.client.start_moderation_flow(
+                        report_type=f"HEALTH MISINFO - {cat.value.upper()}",
+                        report_content=self.message.content,
+                        message_author=self.message.author.name
+                    )
+                    return ["This has been sent to our moderation team."]
+            return ["Please select a valid health category from the list above."]
+
+        if self.state == State.AWAITING_NEWS_CATEGORY:
+            news_cat = message.content.lower()
+            for cat in NewsCategory:
+                if news_cat == cat.value:
+                    self.specific_category = cat
+                    self.state = State.REPORT_COMPLETE
+                    mod_channel = self.client.mod_channels[self.message.guild.id]
+                    await mod_channel.send(f"NEWS MISINFO - {cat.value.upper()}:\n{self.message.author.name}: {self.message.content}")
+                    await self.client.start_moderation_flow(
+                        report_type=f"NEWS MISINFO - {cat.value.upper()}",
+                        report_content=self.message.content,
+                        message_author=self.message.author.name
+                    )
+                    return ["This has been sent to our team."]
+            return ["Please select a valid news category from the list above."]
 
         return []
 
+    async def notify_reported_user(self, user_name, guild, outcome, explanation=None):
+        # Find the user object by name in the guild
+        user = discord.utils.get(guild.members, name=user_name)
+        if user:
+            try:
+                msg = f"Your message was reviewed by moderators. Outcome: {outcome}."
+                if explanation:
+                    msg += f"\nReason: {explanation}"
+                msg += "\nIf you believe this was a mistake, you may reply to this message to appeal."
+                await user.send(msg)
+                if outcome == "Post removed.":
+                    await self.notify_user_of_appeal_option(user_name, guild, explanation)
+            except Exception as e:
+                print(f"Failed to DM user {user_name}: {e}")
+
     def report_complete(self):
+        """Returns whether the current report is in a completed state"""
         return self.state == State.REPORT_COMPLETE
-    
-
-
-    
-
