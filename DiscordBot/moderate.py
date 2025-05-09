@@ -4,7 +4,7 @@ class ModState(Enum):
     MOD_START = auto()
     AWAITING_DECISION = auto()
     AWAITING_SKIP_REASON = auto()
-    REVIEWING_REPORT = auto()
+    AWAITING_SUMMARY_CONFIRM = auto()
     AWAITING_ACTION = auto()
     REVIEW_COMPLETE = auto()
 
@@ -20,8 +20,7 @@ class ModeratorReview:
 
         self.reported_author_metadata = None
         self.reported_content_metadata = None
-        self.relevant_primer = None
-        
+
         self.skip_reason = None
         self.action_taken = None
 
@@ -36,8 +35,17 @@ class ModeratorReview:
 
         if self.state == ModState.AWAITING_DECISION:
             if message.content.lower() == "yes":
-                self.state = ModState.REVIEWING_REPORT
-                return self.get_report_summary()
+                self.state = ModState.AWAITING_SUMMARY_CONFIRM
+                reply = "This content was reported as " + self.report_type + ".\n"
+                reply += "Disinfo category: " + str(self.disinfo_type) + " - " + str(self.disinfo_subtype) + "\n"
+                if self.imminent:
+                    reply += "Potential imminent harm: " + self.imminent + "\n"
+                if self.filter:
+                    reply += "User requested filtering/blocking.\n"
+                reply += "Author metadata: " + str(self.reported_author_metadata) + "\n"
+                reply += "Content metadata: " + str(self.reported_content_metadata) + "\n\n"
+                reply += "Type any key to continue."
+                return [reply]
 
             elif message.content.lower() == "skip":
                 self.state = ModState.AWAITING_SKIP_REASON
@@ -45,7 +53,7 @@ class ModeratorReview:
                     "Please select a reason for skipping:",
                     "1. Personal mental health",
                     "2. Conflict of interest (recusal)",
-                    "3. Uncertainty (request second opinion)"
+                    "3. Uncertainty"
                 ]
             else:
                 return ["Invalid response. Type `yes` or `skip`."]
@@ -63,7 +71,7 @@ class ModeratorReview:
             else:
                 return ["Please choose a valid skip reason: 1, 2, or 3."]
 
-        if self.state == ModState.REVIEWING_REPORT:
+        if self.state == ModState.AWAITING_SUMMARY_CONFIRM:
             self.state = ModState.AWAITING_ACTION
             return [
                 "What action would you like to take on this content?",
@@ -85,20 +93,35 @@ class ModeratorReview:
 
         return []
 
-    def get_report_summary(self):
-        summary = ["Beginning review:"]
-        summary.append(f"Reported type: {self.report_type}")
-        summary.append(f"Disinfo category: {self.disinfo_type} - {self.disinfo_subtype}")
-        if self.imminent:
-            summary.append(f"Potential imminent harm: {self.imminent}")
-        if self.filter:
-            summary.append("User requested filtering/blocking.")
-        summary.append("\nMetadata:")
-        summary.append(f"Author info: {self.reported_author_metadata}")
-        summary.append(f"Post info: {self.reported_content_metadata}")
-        summary.append(f"Primer: {self.relevant_primer}")
-        summary.append("Type any key to continue.")
-        return summary
+    def get_report_type(self):
+        return self.report_type
+
+    def get_disinfo_type(self):
+        return self.disinfo_type
+
+    def get_disinfo_subtype(self):
+        return self.disinfo_subtype
+
+    def get_imminent(self):
+        return self.imminent
+
+    def get_filter(self):
+        return self.filter
+
+    def get_reported_author_metadata(self):
+        return self.reported_author_metadata
+
+    def get_reported_content_metadata(self):
+        return self.reported_content_metadata
+
+    def get_skip_reason(self):
+        return self.skip_reason
+
+    def get_action_taken(self):
+        return self.action_taken
+
+    def get_state(self):
+        return self.state
 
     def set_report_info(self, report):
         self.report_type = report.get_report_type()
@@ -107,14 +130,32 @@ class ModeratorReview:
         self.imminent = report.get_imminent()
         self.filter = report.get_filter()
 
-    def set_metadata(self, author_meta, content_meta, primer):
+    def set_metadata(self, author_meta, content_meta, primer=None):
         self.reported_author_metadata = author_meta
         self.reported_content_metadata = content_meta
-        self.relevant_primer = primer
 
-    def get_final_decision(self):
-        return self.action_taken
-    def get_skip_reason(self):
-        return self.skip_reason
+    def get_priority(self):
+        if self.imminent in ["physical", "mental"]:
+            return 0
+        elif self.imminent == "financial":
+            return 1
+        else:
+            return 2
+
     def is_review_complete(self):
         return self.state == ModState.REVIEW_COMPLETE
+
+    def is_mod_start(self):
+        return self.state == ModState.MOD_START
+
+    def is_awaiting_decision(self):
+        return self.state == ModState.AWAITING_DECISION
+
+    def is_awaiting_skip_reason(self):
+        return self.state == ModState.AWAITING_SKIP_REASON
+
+    def is_awaiting_summary_confirm(self):
+        return self.state == ModState.AWAITING_SUMMARY_CONFIRM
+
+    def is_awaiting_action(self):
+        return self.state == ModState.AWAITING_ACTION
