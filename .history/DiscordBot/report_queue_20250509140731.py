@@ -1,13 +1,12 @@
 from collections import deque
 
 class SubmittedReport:
-    def __init__(self, id, author, content, report_type, disinfo_type, disinfo_subtype):
+    def __init__(self, id, author, content, type, subtype):
         self.author = author
         self.id = id
         self.content = content
-        self.report_type = report_type
-        self.disinfo_type = disinfo_type
-        self.subtype = disinfo_subtype
+        self.type = type
+        self.subtype = subtype
 
 class PriorityReportQueue:
     def __init__(self, num_levels, queue_names):
@@ -45,26 +44,22 @@ class PriorityReportQueue:
         out += f"Total pending reports: {total}\n"
         out += "```"
         return out
-    
-    def display_one(self, i=0, showContent=False):
-        output = ""
-        queue = self.queues[i]
-        output += f"--- Priority {i}: {self.queue_names[i]} ---\n"
-        if not queue:
-            output += "  (No reports)\n"
-        else:
-            for idx, report in enumerate(queue, 1):
-                output += (
-                    f"  [{idx}] Report ID: {report.id}\n"
-                    f"       Author: {report.author}\n"
-                    f"       Type: {report.type}\n"
-                    f"       Subtype: {report.subtype}\n"
-                )
-            output += "\n"
 
     def display(self):
-        output = ""
+        out = ""
         for i in range(self.num_queues):
-            self.display_one(i=i)
-        return output.strip()
+            queue = self.queues[i]
+            out += f"--- Priority {i}: {self.queue_names[i]} ---\n"
+            if not queue:
+                out += "  (No reports)\n"
+            else:
+                for idx, report in enumerate(queue, 1):
+                    out += (
+                        f"  [{idx}] Report ID: {report.id}\n"
+                        f"       Author: {report.author}\n"
+                        f"       Type: {report.type}\n"
+                        f"       Subtype: {report.subtype}\n"
+                    )
+                out += "\n"
+        return out.strip()
 

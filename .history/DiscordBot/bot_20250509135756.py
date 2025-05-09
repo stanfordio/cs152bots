@@ -28,7 +28,6 @@ with open(token_path) as f:
 
 
 MOD_TODO_START = "---------------------------\nTODO"
-MODERATE_KEYWORD = "moderate"
 
 
 class ModBot(discord.Client):
@@ -78,22 +77,13 @@ class ModBot(discord.Client):
         else:
             await self.handle_dm(message)
 
-
     async def handle_dm(self, message):
         # Handle a help message
         if message.content == Report.HELP_KEYWORD:
             reply =  "Use the `report` command to begin the reporting process.\n"
             reply += "Use the `cancel` command to cancel the report process.\n"
-            reply += "Use the `moderate` command to begin the moderation process.\n"
             await message.channel.send(reply)
             return
-
-        if message.content.startswith(Report.START_KEYWORD):
-            self.handle_report(message)
-        elif message.content.startswith(MODERATE_KEYWORD):
-            self.handle_moderation(message)
-
-    async def handle_report(self, message):
 
         author_id = message.author.id
         responses = []
@@ -191,16 +181,7 @@ class ModBot(discord.Client):
             # scores = self.eval_text(message.content)
             # await mod_channel.send(self.code_format(scores))
             #-------------------------------------------------
-    
-    async def handle_moderation(self, message):
-
-        author_id = message.author.id
-        responses = []
-
         
-
-
-
 
     async def handle_channel_message(self, message):
         if not message.channel.name in [f'group-{self.group_num}', f'group-{self.group_num}-mod']:
