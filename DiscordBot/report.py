@@ -11,6 +11,8 @@ class State(Enum):
     AWAITING_HEALTH_CATEGORY = auto()
     AWAITING_NEWS_CATEGORY = auto()
     REPORT_COMPLETE = auto()
+    AWAITING_APPEAL = auto()
+    APPEAL_REVIEW = auto()
 
 class AbuseType(Enum):
     BULLYING = "bullying"
@@ -206,6 +208,21 @@ class Report:
             return ["Please select a valid news category from the list above."]
 
         return []
+
+    async def notify_reported_user(self, user_name, guild, outcome, explanation=None):
+        # Find the user object by name in the guild
+        user = discord.utils.get(guild.members, name=user_name)
+        if user:
+            try:
+                msg = f"Your message was reviewed by moderators. Outcome: {outcome}."
+                if explanation:
+                    msg += f"\nReason: {explanation}"
+                msg += "\nIf you believe this was a mistake, you may reply to this message to appeal."
+                await user.send(msg)
+                if outcome == "Post removed.":
+                    await self.notify_user_of_appeal_option(user_name, guild, explanation)
+            except Exception as e:
+                print(f"Failed to DM user {user_name}: {e}")
 
     def report_complete(self):
         """Returns whether the current report is in a completed state"""
