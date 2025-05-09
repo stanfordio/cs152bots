@@ -7,6 +7,7 @@ import logging
 import re
 import requests
 from report import Report
+from report_queue import SubmittedReport, PriorityReportQueue
 import pdb
 
 # Set up logging to the console
@@ -37,6 +38,9 @@ class ModBot(discord.Client):
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
+        self.report_id_counter = 0
+        # should equal the number of distinct priorities defined in Report.get_priority
+        self.report_queue = PriorityReportQueue(3, ["Imminent physical/mental harm", "Imminent financial/property harm", "Non-imminent"])
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -149,6 +153,10 @@ class ModBot(discord.Client):
             report_type = self.reports[author_id].get_report_type() 
             disinfo_type = self.reports[author_id].get_disinfo_type()
             disinfo_subtype = self.reports[author_id].get_disinfo_subtype()
+            imminent = self.reports[author_id].get_imminent()
+            priority = self.reports[author_id].get_priority()
+            id = self.report_id_counter
+            id += 1
 
             for r in responses:
                 await message.channel.send(r)
@@ -159,7 +167,10 @@ class ModBot(discord.Client):
             report_info_msg = MOD_TODO_START + " User " + message.author.name + " reported user " + str(reported_author) + "'s message.\n"
             report_info_msg += "Here is the message: \n```" + str(reported_content) + "\n```" 
             report_info_msg += "Category: " + str(report_type) + " > " + str(disinfo_type) + " > " + str(disinfo_subtype) + "\n"
-            report_info_msg += "react to this message in order to moderate it\n"
+            if imminent:
+                report_info_msg += "FLAG: Imminent " + imminent + " harm reported."
+            submitted_report = SubmittedReport(id, reported_author, reported_content, report_type, disinfo_type, disinfo_subtype)
+            self.report_queue.enqueue(submitted_report, priority)
 
             await mod_channel.send(report_info_msg)
 
@@ -176,6 +187,14 @@ class ModBot(discord.Client):
 
         if not message.channel.name == f'group-{self.group_num}':
             return
+
+        # moderator commands
+        if message.channel.name == f'group-{self.group_num}-mod':
+            if message.content == "report summary":
+                message.channel.send(self.report_queue.summary())
+            elif message.content == "report display":
+                message.channel.send(self.report_queue.display())
+
 
         # ----- teddy: commented out to reduce clutter for milestone 2 since we are not doing auto flagging ------------
         # # Forward the message to the mod channel

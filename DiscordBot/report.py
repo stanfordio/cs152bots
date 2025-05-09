@@ -32,7 +32,7 @@ class Report:
         self.disinfo_type = None
         self.disinfo_subtype = None
         self.filter = False
-        self.harmful = False
+        self.imminent = None
     
     async def handle_message(self, message):
         '''
@@ -54,7 +54,8 @@ class Report:
             return [reply]
         else:
             if message.content == self.START_KEYWORD:
-                reply = "You currently have an active report open, the state is " + self.state.name + "."
+                reply = "You currently have an active report open, the status is " + self.state.name + ". "
+                reply += "Please continue this report or say `cancel` to cancel.\n"
                 return [reply]
         
         if self.state == State.AWAITING_MESSAGE:
@@ -335,7 +336,12 @@ class Report:
             
             elif message.content in ["2", "3", "4"] :
                 # Harmful content
-                self.harmful = True
+                harm_dict = {
+                    "2": "physical",
+                    "3": "mental",
+                    "4": "financial"
+                }
+                self.imminent = harm_dict[message.content]
                 self.state = State.AWAITING_FILTER_ACTION
                 reply = "Thank you. Our team has been notified.\n"
                 reply += "Please indicate if you would like to block content from this account on your feed. Select the correponding number:\n"
@@ -400,6 +406,15 @@ class Report:
         return self.disinfo_type
     def get_disinfo_subtype(self):
         return self.disinfo_subtype
+    def get_imminent(self):
+        return self.imminent
+    def get_priority(self): # defining priorities, can be changed
+        if self.imminent in ["physical", "mental"]:
+            return 0
+        elif self.imminent == "financial":
+            return 1
+        else:
+            return 2
     def get_filter(self):
         return self.filter
     
