@@ -52,6 +52,10 @@ class Report:
             reply += "You can obtain this link by right-clicking the message and clicking `Copy Message Link`."
             self.state = State.AWAITING_MESSAGE
             return [reply]
+        else:
+            if message.content == self.START_KEYWORD:
+                reply = "You currently have an active report open, the state is " + self.state.name + "."
+                return [reply]
         
         if self.state == State.AWAITING_MESSAGE:
             # Parse out the three ID strings from the message link
