@@ -90,7 +90,7 @@ class ModBot(discord.Client):
 
         if message.content.startswith(Report.START_KEYWORD) or message.author.id in self.reports:
             await self.handle_report(message)
-        elif message.content.startswith(MODERATE_KEYWORD):
+        elif message.content.startswith(MODERATE_KEYWORD): # need to add state to route continuing mod flow
             await self.handle_moderation(message)
 
     async def handle_report(self, message):
@@ -171,11 +171,11 @@ class ModBot(discord.Client):
             mod_channel = self.mod_channels[self.reports[author_id].get_message_guild_id()]
             # todo are we worried about code injection via author name or content? 
             report_info_msg = "Report ID: " + str(id) + "\n"
-            report_info_msg += " User " + message.author.name + " reported user " + str(reported_author) + "'s message.\n"
+            report_info_msg += "User " + message.author.name + " reported user " + str(reported_author) + "'s message.\n"
             # report_info_msg += "Here is the message: \n```" + str(reported_content) + "\n```" 
             report_info_msg += "Category: " + str(report_type) + " > " + str(disinfo_type) + " > " + str(disinfo_subtype) + "\n"
             if imminent:
-                report_info_msg += "Imminent " + imminent + " harm reported."
+                report_info_msg += "URGENT: Imminent " + imminent + " harm reported."
             submitted_report = SubmittedReport(id, reported_author, reported_content, report_type, disinfo_type, disinfo_subtype, imminent)
             self.report_queue.enqueue(submitted_report, priority)
 
