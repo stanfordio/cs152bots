@@ -6,6 +6,13 @@ class State(Enum):
     REPORT_START = auto()
     AWAITING_MESSAGE = auto()
     MESSAGE_IDENTIFIED = auto()
+
+    SELECT_REASON = auto()
+    SCAM_TYPE = auto()
+    SOLICITATION_TYPE = auto()
+    INVOLVES_CRYPTO = auto()
+    AWAITING_ALT_REASON = auto()
+    
     REPORT_COMPLETE = auto()
 
 class Report:
@@ -13,10 +20,17 @@ class Report:
     CANCEL_KEYWORD = "cancel"
     HELP_KEYWORD = "help"
 
+    report_counts = {}
+
     def __init__(self, client):
         self.state = State.REPORT_START
         self.client = client
         self.message = None
+
+        # self.selected_reason = None
+        # self.selected_scam_type = None
+        # self.selected_solicitation_type = None
+        # self.selected_involves_crypto = None
     
     async def handle_message(self, message):
         '''
@@ -50,21 +64,106 @@ class Report:
                 return ["It seems this channel was deleted or never existed. Please try again or say `cancel` to cancel."]
             try:
                 message = await channel.fetch_message(int(m.group(3)))
+                self.message = message
             except discord.errors.NotFound:
                 return ["It seems this message was deleted or never existed. Please try again or say `cancel` to cancel."]
 
             # Here we've found the message - it's up to you to decide what to do next!
-            self.state = State.MESSAGE_IDENTIFIED
-            return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
-                    "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
+            # self.state = State.MESSAGE_IDENTIFIED
+            # return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
+            #         "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
+
+            self.state = State.SELECT_REASON
+            return [
+                "I found this message:",
+                f"```{self.message.author.name}: {self.message.content}```",
+                "Please select the reason for reporting this user.",
+                "Options: Spam, Hatespeech, Fraud/Scam, Offensive Content, Other"
+            ]
+
+        if self.state == State.SELECT_REASON:
+            reason = message.content.strip().lower()
+            reported_user = self.message.author.name
+            if reason in ["spam", "hatespeech", "offensive content"]:
+                self.update_report_info(reported_user)
+                self.state = State.REPORT_COMPLETE
+                return [f"Thanks for reporting {reported_user}. We have blocked the reported user."]
+            elif reason == "fraud/scam":
+                self.state = State.SCAM_TYPE
+                return ["Please select a type of scam: Solicitation, Impersonation, Other"]
+            elif reason == "other":
+                self.state = State.AWAITING_ALT_REASON
+                return ["Please specify the reason for reporting:"]
+            else:
+                return ["Invalid option, please select a reason for reporting from: Spam, Hatespeech, Fraud/Scam, Offensive Content, Other"]
+
+        if self.state == State.SCAM_TYPE:
+            scam_type = message.content.strip().lower()
+            if scam_type == "solicitation":
+                self.state = State.SOLICITATION_TYPE
+                return ["Please select the type of solicitation: Job Opportunity, Investment Opportunity, Networking Event"]
+            elif scam_type == "impersonation":
+                reported_user = self.message.author.name
+                self.update_report_info(reported_user)
+                self.state = State.REPORT_COMPLETE
+                return [f"Thanks for reporting {self.message.author.name}. We have blocked the reported user and forwarded the report to the moderators."]
+            elif scam_type == "other":
+                self.state = State.AWAITING_ALT_REASON
+                return ["Please specify the reason for reporting:"]
+            else:
+                return ["Invalid option, please select a type of scam from: Solicitation, Impersonation, Other"]
+
+        if self.state == State.SOLICITATION_TYPE:
+            solicitation_type = message.content.strip().lower()
+            reported_user = self.message.author.name
+            if solicitation_type in ["job opportunity", "networking event"]:
+                self.update_report_info(reported_user)
+                self.state = State.REPORT_COMPLETE
+                return [f"Thanks for reporting {self.message.author.name}. We have blocked the reported user and forwarded the report to the moderators."]
+            elif solicitation_type == "investment opportunity":
+                self.state = State.INVOLVES_CRYPTO
+                return ["Does this involve cryptocurrency? (Yes/No)"]
+            else:
+                return ["Invalid option, please select a type of solicitation from: Job opportunity, Investment opportunity, Networking event"]
+
+        if self.state == State.INVOLVES_CRYPTO:
+            response = message.content.strip().lower()
+            reported_user = self.message.author.name
+            if response == "yes":
+                self.update_report_info(reported_user)
+                self.state = State.REPORT_COMPLETE
+                return [f"Thanks for notifying us. We have blocked the reported user {self.message.author.name} and forwarded the report to the moderators."]
+            elif response == "no":
+                self.update_report_info(reported_user)
+                self.state = State.REPORT_COMPLETE
+                return [f"Thanks for reporting {self.message.author.name}. We have blocked the reported user and forwarded the report to the moderators."]
+            else:
+                return ["Invalid response, please type 'Yes' or 'No'."]
+
+        if self.state == State.AWAITING_ALT_REASON:
+            reported_user = self.message.author.name
+            self.update_report_info(reported_user)
+            self.state = State.REPORT_COMPLETE
+            return [f"Thanks for reporting {self.message.author.name}. We have blocked the reported user."]
         
-        if self.state == State.MESSAGE_IDENTIFIED:
-            return ["<insert rest of reporting flow here>"]
+        # if self.state == State.MESSAGE_IDENTIFIED:
+        #     return ["<insert rest of reporting flow here>"]
 
         return []
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
+
+    def update_report_info(self, username):
+        previous_count = Report.report_counts.get(username, 0)
+        new_count = max(previous_count + 1, 1)
+        Report.report_counts[username] = new_count
+        print(f"[MOD INFO] {username} now has {new_count} report(s).")
+
+    @classmethod
+    def reset(target_class):
+        target_class.report_counts.clear()
+        print("[MOD INFO] Attention: all stored report data has been reset for testing purposes.")
     
 
 

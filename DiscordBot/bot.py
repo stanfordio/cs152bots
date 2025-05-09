@@ -30,10 +30,13 @@ class ModBot(discord.Client):
     def __init__(self): 
         intents = discord.Intents.default()
         intents.message_content = True
-        super().__init__(command_prefix='.', intents=intents)
+        # super().__init__(command_prefix='.', intents=intents)
+        super().__init__(intents=intents)
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
+        self.report_status = {}
+        self.report_data = {}
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -66,7 +69,14 @@ class ModBot(discord.Client):
 
         # Check if this message was sent in a server ("guild") or if it's a DM
         if message.guild:
-            await self.handle_channel_message(message)
+            if message.channel.name == f'group-{self.group_num}':
+                if message.content.strip().lower() == "reset":
+                    Report.reset()
+                    await message.channel.send("All stored report data has been reset.")
+                    return
+                await self.handle_channel_message(message)
+            elif message.channel.name == f'group-{self.group_num}-mod':
+                await self.handle_mod_channel(message)
         else:
             await self.handle_dm(message)
 
@@ -106,10 +116,57 @@ class ModBot(discord.Client):
         # Forward the message to the mod channel
         mod_channel = self.mod_channels[message.guild.id]
         await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-        scores = self.eval_text(message.content)
-        await mod_channel.send(self.code_format(scores))
+        # scores = self.eval_text(message.content)
+        # await mod_channel.send(self.code_format(scores))
 
+    async def handle_mod_channel(self, message):
+        content = message.content.strip().lower()
+        if content.startswith("review"):
+            strings = content.split()
+            if len(strings) != 2:
+                await message.channel.send("Moderator command: review <username>")
+                return
+            username = strings[1]
+            self.report_status[username] = 'select_likelihood'
+            self.report_data[username] = {}
+            await message.channel.send("Select likelihood of potential scam (Low/Moderate/High):")
+            return
+
+        for username, status in self.report_status.items():
+            if status == 'select_likelihood':
+                if content in ['low', 'moderate', 'high']:
+                    self.report_data[username]['likelihood'] = content
+                    self.report_status[username] = 'select_severity'
+                    await message.channel.send("Select severity of potential scam (Low/Moderate/High):")
+                    return
+                else:
+                    await message.channel.send("Invalid option, please type 'Low', 'Moderate', or 'High'.")
+                    return
+            elif status == 'select_severity':
+                if content in ['low', 'moderate', 'high']:
+                    self.report_data[username]['severity'] = content
+                    likelihood = self.report_data[username]['likelihood']
+                    severity = content
+                    # del self.report_status[username]
+                    # del self.report_data[username]
+
+                    report_count = Report.report_counts.get(username, 0)
+                    if likelihood == 'low' and severity == 'low' and report_count <= 1:
+                        await message.channel.send(f"No harm found for {username}.")
+                    elif (likelihood != 'low' and severity != 'low') or report_count >= 3:
+                        Report.report_counts[username] = max(report_count, 3)
+                        await message.channel.send(f"{username} has been banned.")
+                    else:
+                        Report.report_counts[username] = max(report_count, 2)
+                        await message.channel.send(f"{username} has been warned.")
+
+                    print(f"[MOD INFO] {username} now has {Report.report_counts[username]} report(s).")
+                    return
+                else:
+                    await message.channel.send("Invalid option, please type 'Low', 'Moderate', or 'High'.")
+                    return
     
+
     def eval_text(self, message):
         ''''
         TODO: Once you know how you want to evaluate messages in your channel, 
