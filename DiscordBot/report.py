@@ -23,16 +23,18 @@ class Report:
     def __init__(self, client):
         self.state = State.REPORT_START
         self.client = client
-        self.message = None
+        self.reported_message = None
+
+        self.cancelled = False
 
         self.message_guild_id = None
         self.reported_author = None
         self.reported_content = None
         self.report_type = None
-        self.disinfo_type = None
-        self.disinfo_subtype = None
+        self.misinfo_type = None
+        self.misinfo_subtype = None
         self.filter = False
-        self.harmful = False
+        self.imminent = None
     
     async def handle_message(self, message):
         '''
@@ -43,7 +45,10 @@ class Report:
 
         if message.content == self.CANCEL_KEYWORD:
             self.state = State.REPORT_COMPLETE
+            self.cancelled = True
             return ["Report cancelled."]
+        else:
+            self.cancelled = False
         
         if self.state == State.REPORT_START:
             reply =  "Thank you for starting the reporting process. "
@@ -54,7 +59,8 @@ class Report:
             return [reply]
         else:
             if message.content == self.START_KEYWORD:
-                reply = "You currently have an active report open, the state is " + self.state.name + "."
+                reply = "You currently have an active report open, the status is " + self.state.name + ". "
+                reply += "Please continue this report or say `cancel` to cancel.\n"
                 return [reply]
         
         if self.state == State.AWAITING_MESSAGE:
@@ -73,6 +79,7 @@ class Report:
                         
             try:
                 message = await channel.fetch_message(int(m.group(3)))
+                self.reported_message = message
             except discord.errors.NotFound:
                 return ["It seems this message was deleted or never existed. Please try again or say `cancel` to cancel."]
 
@@ -86,7 +93,7 @@ class Report:
 
             reply = "I found this message:```" + message.author.name + ": " + message.content + "```\n"
             reply += "Please select the reason for reporting this message by typing the corresponding number:\n"
-            reply += "1. Disinformation\n"
+            reply += "1. Misinformation\n"
             reply += "2. Other\n"
             return [reply]
         
@@ -94,22 +101,22 @@ class Report:
             # Process user's report reason 
 
             if message.content == "1":
-                # Handling disinformation
-                self.report_type = "Disinformation"
+                # Handling misinformation
+                self.report_type = "Misinformation"
                 self.state = State.AWAITING_DISINFORMATION_TYPE
 
                 reply = "You have selected " + self.report_type + ".\n"
-                reply += "Please select the type of disinformation by typing the corresponding number:\n"
-                reply += "1. Political Disinformation\n"
-                reply += "2. Health Disinformation\n"
-                reply += "3. Other Disinformation\n"
+                reply += "Please select the type of misinformation by typing the corresponding number:\n"
+                reply += "1. Political Misinformation\n"
+                reply += "2. Health Misinformation\n"
+                reply += "3. Other Misinformation\n"
                 return [reply]
             
             elif message.content == "2" :
                 # Handling Other Abuse types
                 self.report_type = "Other"
-                # self.disinfo_type = "[out of scope of project]"
-                # self.disinfo_subtype = "[out of scope of project]"
+                # self.misinfo_type = "[out of scope of project]"
+                # self.misinfo_subtype = "[out of scope of project]"
                 self.state = State.REPORT_COMPLETE
                 # return [
                 #         "Thank you for reporting " + self.report_type + " content.",
@@ -122,8 +129,8 @@ class Report:
             # elif message.content == "3" :
             #     # Handling Harassment
             #     self.report_type = "Harassment"
-            #     self.disinfo_type = "[out of scope of project]"
-            #     self.disinfo_subtype = "[out of scope of project]"
+            #     self.misinfo_type = "[out of scope of project]"
+            #     self.misinfo_subtype = "[out of scope of project]"
             #     self.state = State.REPORT_COMPLETE
             #     return [
             #             "Thank you for reporting " + self.report_type + " content.",
@@ -134,8 +141,8 @@ class Report:
             # elif message.content == "4" :
             #     # Handling Spam
             #     self.report_type = "Spam"
-            #     self.disinfo_type = "[out of scope of project]"
-            #     self.disinfo_subtype = "[out of scope of project]"
+            #     self.misinfo_type = "[out of scope of project]"
+            #     self.misinfo_subtype = "[out of scope of project]"
             #     self.state = State.REPORT_COMPLETE
             #     return [
             #             "Thank you for reporting " + self.report_type + " content", 
@@ -145,20 +152,20 @@ class Report:
             else:
                 # Handling wrong report reason
                 reply = "Kindly enter a valid report reason by selecting the correponding number:\n"
-                reply += "1. Disinformation\n"
+                reply += "1. Misinformation\n"
                 reply += "2. Other\n"
                 reply += "Please try again or say `cancel` to cancel.\n"
                 return [reply]
 
         if self.state == State.AWAITING_DISINFORMATION_TYPE :
-            # Process Disinformation options
+            # Process Misinformation options
 
             if message.content == "1":
-                # Handle political disinformation
+                # Handle political misinformation
                 self.state = State.AWAITING_POLITICAL_DISINFORMATION_TYPE
-                self.disinfo_type = "Political Disinformation"
-                reply = "You have selected " + self.disinfo_type + ".\n"
-                reply += "Please select the type of political Disinformation by typing the corresponding number:\n"
+                self.misinfo_type = "Political Misinformation"
+                reply = "You have selected " + self.misinfo_type + ".\n"
+                reply += "Please select the type of political Misinformation by typing the corresponding number:\n"
                 reply += "1. Election/Campaign Misinformation\n"
                 reply += "2. Government/Civic Services\n"
                 reply += "3. Manipulated Photos/Video\n"
@@ -166,11 +173,11 @@ class Report:
                 return [reply]
             
             elif message.content == "2" :
-                # Handle Health Disinformation
+                # Handle Health Misinformation
                 self.state = State.AWAITING_HEALTHL_DISINFORMATION_TYPE
-                self.disinfo_type = "Health Disinformation"
-                reply = "You have selected " + self.disinfo_type + ".\n"
-                reply += "Please select the type of health disinformation by typing the corresponding number:\n"
+                self.misinfo_type = "Health Misinformation"
+                reply = "You have selected " + self.misinfo_type + ".\n"
+                reply += "Please select the type of health misinformation by typing the corresponding number:\n"
                 reply += "1. Vaccines\n"
                 reply += "2. Cures and Treatments\n"
                 reply += "3. Mental Health\n"
@@ -179,11 +186,11 @@ class Report:
 
 
             elif message.content == "3" :
-                # Handle other Disinformation
+                # Handle other Misinformation
                 self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
-                self.disinfo_type = "Other Disinformation"
-                self.disinfo_subtype = "[out of scope of project]"
-                reply = "You have selected " + self.disinfo_type + ".\n"
+                self.misinfo_type = "Other Misinformation"
+                self.misinfo_subtype = "[out of scope of project]"
+                reply = "You have selected " + self.misinfo_type + ".\n"
                 reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
                 reply += "1. No.\n"
                 reply += "2. Yes, physical harm.\n"  
@@ -192,22 +199,22 @@ class Report:
                 return [reply]
             
             else :
-                # Handling wrong disinformation type
-                reply = "Kindly enter a valid disinformation type by selecting the correponding number:\n"
-                reply += "1. Political Disinformation\n"
-                reply += "2. Health Disinformation\n"
-                reply += "3. Other Disinformation\n"
+                # Handling wrong misinformation type
+                reply = "Kindly enter a valid misinformation type by selecting the correponding number:\n"
+                reply += "1. Political Misinformation\n"
+                reply += "2. Health Misinformation\n"
+                reply += "3. Other Misinformation\n"
                 reply += "Please try again or say `cancel` to cancel.\n"
                 return [reply]
 
         if self.state == State.AWAITING_POLITICAL_DISINFORMATION_TYPE :
-            # Process political disinformation options
+            # Process political misinformation options
 
             if message.content == "1":
                 # Handling Election/Campaign Misinformation
-                self.disinfo_subtype = "Election/Campaign Misinformation"
+                self.misinfo_subtype = "Election/Campaign Misinformation"
                 self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
-                reply = "You have selected " + self.disinfo_subtype + ".\n"
+                reply = "You have selected " + self.misinfo_subtype + ".\n"
                 reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
                 reply += "1. No.\n"
                 reply += "2. Yes, physical harm.\n"  
@@ -217,9 +224,9 @@ class Report:
             
             elif message.content == "2":
                  # Handling Government/Civic Services
-                self.disinfo_subtype = "Government/Civic Services"
+                self.misinfo_subtype = "Government/Civic Services"
                 self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
-                reply = "You have selected " + self.disinfo_subtype + ".\n"
+                reply = "You have selected " + self.misinfo_subtype + ".\n"
                 reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
                 reply += "1. No.\n"
                 reply += "2. Yes, physical harm.\n"  
@@ -229,9 +236,9 @@ class Report:
 
             elif message.content == "3":
                  # Handling Manipulated Photos/Video
-                self.disinfo_subtype = "Manipulated Photos/Video"
+                self.misinfo_subtype = "Manipulated Photos/Video"
                 self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
-                reply = "You have selected " + self.disinfo_subtype + ".\n"
+                reply = "You have selected " + self.misinfo_subtype + ".\n"
                 reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
                 reply += "1. No.\n"
                 reply += "2. Yes, physical harm.\n"  
@@ -241,9 +248,9 @@ class Report:
             
             elif message.content == "4":
                  # Handling Other
-                self.disinfo_subtype = "Other"
+                self.misinfo_subtype = "Other"
                 self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
-                reply = "You have selected " + self.disinfo_subtype + ".\n"
+                reply = "You have selected " + self.misinfo_subtype + ".\n"
                 reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
                 reply += "1. No.\n"
                 reply += "2. Yes, physical harm.\n"  
@@ -252,8 +259,8 @@ class Report:
                 return [reply]
 
             else :
-                # Handling wrong political disinformation type
-                reply = "Please select the type of political Disinformation by typing the corresponding number:\n"
+                # Handling wrong political misinformation type
+                reply = "Please select the type of political Misinformation by typing the corresponding number:\n"
                 reply += "1. Election/Campaign Misinformation\n"
                 reply += "2. Government/Civic Services\n"
                 reply += "3. Manipulated Photos/Video\n"
@@ -262,13 +269,13 @@ class Report:
                 return [reply]
         
         if self.state == State.AWAITING_HEALTHL_DISINFORMATION_TYPE:
-            # Process health disinformation options
+            # Process health misinformation options
 
             if message.content == "1":
                 # Handling Vaccines
-                self.disinfo_subtype = "Vaccines"
+                self.misinfo_subtype = "Vaccines"
                 self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
-                reply = "You have selected " + self.disinfo_subtype + ".\n"
+                reply = "You have selected " + self.misinfo_subtype + ".\n"
                 reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
                 reply += "1. No.\n"
                 reply += "2. Yes, physical harm.\n"  
@@ -278,9 +285,9 @@ class Report:
             
             elif message.content == "2":
                  # Handling Cures and Treatments
-                self.disinfo_subtype = "Cures and Treatments"
+                self.misinfo_subtype = "Cures and Treatments"
                 self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
-                reply = "You have selected " + self.disinfo_subtype + ".\n"
+                reply = "You have selected " + self.misinfo_subtype + ".\n"
                 reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
                 reply += "1. No.\n"
                 reply += "2. Yes, physical harm.\n"  
@@ -290,9 +297,9 @@ class Report:
 
             elif message.content == "3":
                  # Handling Mental Health
-                self.disinfo_subtype = "Mental Health"
+                self.misinfo_subtype = "Mental Health"
                 self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
-                reply = "You have selected " + self.disinfo_subtype + ".\n"
+                reply = "You have selected " + self.misinfo_subtype + ".\n"
                 reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
                 reply += "1. No.\n"
                 reply += "2. Yes, physical harm.\n"  
@@ -302,9 +309,9 @@ class Report:
             
             elif message.content == "4":
                  # Handling Other
-                self.disinfo_subtype = "Other"
+                self.misinfo_subtype = "Other"
                 self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
-                reply = "You have selected " + self.disinfo_subtype + ".\n"
+                reply = "You have selected " + self.misinfo_subtype + ".\n"
                 reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
                 reply += "1. No.\n"
                 reply += "2. Yes, physical harm.\n"  
@@ -313,8 +320,8 @@ class Report:
                 return [reply]
             
             else :
-                # Handling wrong health disinformation type
-                reply = "Please select the type of health Disinformation by typing the corresponding number:\n"
+                # Handling wrong health misinformation type
+                reply = "Please select the type of health Misinformation by typing the corresponding number:\n"
                 reply += "1. Vaccines\n"
                 reply += "2. Cures and Treatments\n"
                 reply += "3. Mental Health\n"
@@ -335,7 +342,12 @@ class Report:
             
             elif message.content in ["2", "3", "4"] :
                 # Harmful content
-                self.harmful = True
+                harm_dict = {
+                    "2": "physical",
+                    "3": "mental",
+                    "4": "financial"
+                }
+                self.imminent = harm_dict[message.content]
                 self.state = State.AWAITING_FILTER_ACTION
                 reply = "Thank you. Our team has been notified.\n"
                 reply += "Please indicate if you would like to block content from this account on your feed. Select the correponding number:\n"
@@ -396,12 +408,23 @@ class Report:
         return self.reported_content
     def get_report_type(self):
         return self.report_type
-    def get_disinfo_type(self):
-        return self.disinfo_type
-    def get_disinfo_subtype(self):
-        return self.disinfo_subtype
+    def get_misinfo_type(self):
+        return self.misinfo_type
+    def get_misinfo_subtype(self):
+        return self.misinfo_subtype
+    def get_imminent(self):
+        return self.imminent
+    def get_priority(self): # defining priorities, can be changed
+        if self.imminent in ["physical", "mental"]:
+            return 0
+        elif self.imminent == "financial":
+            return 1
+        else:
+            return 2
     def get_filter(self):
         return self.filter
+    def get_reported_message(self):
+        return self.reported_message
     
     def is_report_start(self):
         return self.state == State.REPORT_START
@@ -409,11 +432,11 @@ class Report:
         return self.state == State.AWAITING_MESSAGE
     def is_awaiting_reason(self):
         return self.state == State.AWAITING_REASON
-    def is_awaiting_disinformation_type(self):
+    def is_awaiting_misinformation_type(self):
         return self.state == State.AWAITING_DISINFORMATION_TYPE
-    def is_awaiting_political_disinformation_type(self):
+    def is_awaiting_political_misinformation_type(self):
         return self.state == State.AWAITING_POLITICAL_DISINFORMATION_TYPE
-    def is_awaiting_healthl_disinformation_type(self):
+    def is_awaiting_healthl_misinformation_type(self):
         return self.state == State.AWAITING_HEALTHL_DISINFORMATION_TYPE
     def is_awaiting_harmful_content_status(self):
         return self.state == State.AWAITING_HARMFUL_CONTENT_STATUS
@@ -424,3 +447,5 @@ class Report:
     def is_report_complete(self):
         return self.state == State.REPORT_COMPLETE    
 
+    def is_cancelled(self):
+        return self.cancelled
