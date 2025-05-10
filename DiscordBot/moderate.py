@@ -16,6 +16,8 @@ class ModeratorReview:
 
         self.original_report = None
 
+        self.original_priority = None
+
         self.report_type = None
         self.disinfo_type = None
         self.disinfo_subtype = None
