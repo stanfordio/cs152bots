@@ -45,6 +45,7 @@ class ModeratorReview:
                 self.state = ModState.AWAITING_SUMMARY_CONFIRM
                 reply = "This content was reported as " + self.report_type + ".\n"
                 reply += "Misinfo category: " + str(self.misinfo_type) + " - " + str(self.misinfo_subtype) + "\n"
+                reply += "Here is the relevant wikipedia article: https://en.wikipedia.org/wiki/Misinformation"
                 if self.imminent:
                     reply += "Potential imminent harm: " + self.imminent + "\n"
                 if self.filter:
