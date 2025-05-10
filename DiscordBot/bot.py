@@ -6,8 +6,8 @@ import json
 import logging
 import re
 import requests
-from report import Report
-from review import Review
+from report_v2 import Report
+from review_v2 import Review
 import pdb
 
 # Set up logging to the console
@@ -74,7 +74,6 @@ class ModBot(discord.Client):
             await self.handle_dm(message)
 
     async def handle_dm(self, message):
-        print("DM")
         # Handle a help message
         if message.content == Report.HELP_KEYWORD:
             reply =  "Use the `report` command to begin the reporting process.\n"
