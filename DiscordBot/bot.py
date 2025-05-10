@@ -244,7 +244,7 @@ class ModBot(discord.Client):
 
         if review.is_review_complete():
 
-            if not self.moderations[author_id].action_taken == "Skipped":
+            if self.moderations[author_id].action_taken not in ["Skipped", "Escalated"]:
                 # Put the verdict in the mod channel
                 mod_channel = self.mod_channels[self.moderations[author_id].message_guild_id]
                 # todo are we worried about code injection via author name or content? 
