@@ -34,6 +34,7 @@ class State(Enum):
     AWAITING_INTENTION = auto()
     CONFIRMING_REVIEW = auto()
     REVIEW_COMPLETE = auto()
+    AWAITING_FAITH_INDICATOR = auto()
 
 class Review:
     PASSWORD = "AG8Q2XJa39"
@@ -81,7 +82,7 @@ class Review:
         if self.state == State.REVIEW_START:
             self.timestamp = datetime.now()
             reply = "Thank you for starting the reviewing process. "
-            reply += "Say `help` at any time for more information.\n\n"
+            reply += "Say `review help` at any time for more information.\n\n"
             reply += "Please copy paste the link to the report you want to review.\n"
             reply += "You can obtain this link by right-clicking the report and clicking `Copy Message Link`."
             self.state = State.AWAITING_MESSAGE
@@ -230,10 +231,39 @@ class Review:
         
         elif self.state == State.AWAITING_CONTENT_CHECK:
             if message.content == "1":
-                self.other_problematic_content_identified = True
+                self.state = State.AWAITING_FAITH_INDICATOR
+                response = "Was this post:\n"
+                response += "- Shared by either the potentially targeted individual and/or someone who knows them AND exhibits clear good faith\n"
+                response += "- Shared to publicize a business or organization\n"
+                response += "(Note: if you cannot tell intention and the information belongs to an INDIVIDUAL (as opposed to a business), select “no” here. If you are unsure, click on the message link to view the message in context.)\n"
+                response += "1. Yes\n"
+                response += "2. No"
+                return [response]
             elif message.content == "2":
                 self.other_problematic_content_identified = False
             else:
+                return ["Invalid input. Please type 1 for Yes or 2 for No."]
+            
+            self.state = State.CONFIRMING_REVIEW
+            if self.threat_identified_by_reviewer:
+                 self.state = State.CONFIRMING_REVIEW
+                 reply = ("Threat identified. Policy: Message removal & 1-day user suspension.\n\n" 
+                          "Confirm review and actions?\n1. Yes (Proceed)\n2. No (Cancel Review)")
+            else: 
+                 reply = ("Review assessment (no direct threat ID'd by you):\n")
+                 if self.disallowed_info_identified or self.other_problematic_content_identified:
+                     reply += "- Problematic content (Disallowed Info or Other) was identified.\n"
+                     reply += "- This will be logged. Manual moderator follow-up may be appropriate.\n"
+                 else: 
+                     reply += "- No direct threat or other significant problematic content was flagged by you.\n"
+                 reply += "No suspension will occur (policy requires reviewer to ID direct threat).\n\n"
+                 reply += "Finalize and log assessment?\n1. Yes (Finalize)\n2. No (Cancel Review)"
+            return [reply]
+
+        elif self.state == State.AWAITING_FAITH_INDICATOR:
+            if message.content == "2":
+                self.other_problematic_content_identified = True
+            elif message.content != "1":
                 return ["Invalid input. Please type 1 for Yes or 2 for No."]
             self.state = State.CONFIRMING_REVIEW
             if self.threat_identified_by_reviewer:

@@ -33,6 +33,7 @@ class State(Enum):
     AWAITING_INAPPROPRIATE_CONTENT_DETAILS = auto()
     AWAITING_HARASSMENT_DETAILS = auto()
     AWAITING_PRIVACY_DETAILS = auto()
+    AWAITING_THREAT = auto()
     AWAITING_INFO_TYPE = auto()
     AWAITING_SIGNATURE = auto()
     AWAITING_CONFIRMATION = auto()
@@ -117,7 +118,6 @@ class Report:
                 report_types_enum_list = list(ReportType) # Gets [ReportType.FRAUD, ReportType.INAPPROPRIATE_CONTENT, ...]
                 if 1 <= selection <= len(report_types_enum_list):
                     self.report_type = report_types_enum_list[selection-1]
-
                     if self.report_type == ReportType.FRAUD:
                         self.state = State.AWAITING_FRAUD_DETAILS
                         response = f"You selected: {self.report_type.value}\n\n"
@@ -148,7 +148,6 @@ class Report:
             except ValueError:
                 # User did not enter a number for main report type selection
                 return ["Please enter a number to select a report type."]
-
         # State: AWAITING_FRAUD_DETAILS - User selects a specific fraud reason
         elif self.state == State.AWAITING_FRAUD_DETAILS:
             try:
@@ -226,14 +225,9 @@ class Report:
                     self.report_sub_type, self.severity = privacy_reasons_map[selection]
                     
                     if self.report_sub_type == "Doxxing":
-                        self.state = State.AWAITING_INFO_TYPE
-                        response = f"You selected Privacy Reason: Doxxing.\n\n"
-                        response += "What type(s) of confidential information was shared? Please select one or more of the following by typing the number(s), separated by commas (e.g., 1,3,5):\n\n"
-                        response += "1. Contact Information\n"
-                        response += "2. Location Information\n"
-                        response += "3. Financial Information\n"
-                        response += "4. ID Information\n"
-                        response += "5. Explicit Content\n"
+                        self.state = State.AWAITING_THREAT
+                        response = "Does this message contain a threat of violence?\n"
+                        response += "1. Yes\n2. No"
                         return [response]
                     else: 
                         self.state = State.AWAITING_SIGNATURE
@@ -244,7 +238,22 @@ class Report:
                     return [f"Please enter a valid number between 1 and {len(privacy_reasons_map)} for the privacy reason."]
             except ValueError:
                 return ["Please enter a number for the reason."]
+        elif self.state == State.AWAITING_THREAT:
+            if message.content == "1":
+                self.threat = True
+            elif message.content != "2":
+                response = "Please enter 1 for 'yes' or 2 for 'no'."
+                return [response]
 
+            self.state = State.AWAITING_INFO_TYPE
+            response = f"You selected Privacy Reason: Doxxing.\n\n"
+            response += "What type(s) of confidential information was shared? Please select one or more of the following by typing the number(s), separated by commas (e.g., 1,3,5):\n\n"
+            response += "1. Contact Information\n"
+            response += "2. Location Information\n"
+            response += "3. Financial Information\n"
+            response += "4. ID Information\n"
+            response += "5. Explicit Content\n"
+            return [response]
         # State: AWAITING_INFO_TYPE - User specifies types of doxxed info- this state is reached only if Doxxing was selected under Privacy
         elif self.state == State.AWAITING_INFO_TYPE:
             try:
@@ -402,7 +411,6 @@ class Report:
             help_msg += "2. Inappropriate Content (Self-Harm, Graphic Violence, Terrorism)\n"
             help_msg += "3. Harassment (Credible Threats, Bullying, Hate Speech)\n"
             help_msg += "4. Privacy (Hacking, Impersonation, Doxxing)"
-
         # Help for the new sub-reason states
         elif self.state == State.AWAITING_FRAUD_DETAILS:
             help_msg += "You are reporting Fraud. Please select the specific reason by typing the number:\n\n"
@@ -424,6 +432,11 @@ class Report:
             help_msg += "1. Hacking\n"
             help_msg += "2. Identity Impersonation\n"
             help_msg += "3. Doxxing (will ask for more details)"
+
+        elif self.state == State.AWAITING_THREAT:
+            help_msg += "Please indicate if the message you would like to report contains a threat of violence:\n\n"
+            help_msg += "1. Yes\n"
+            help_msg += "2. No"
         
         elif self.state == State.AWAITING_INFO_TYPE:
             help_msg += "You are reporting Doxxing. Please specify the type(s) of confidential information shared.\n"
