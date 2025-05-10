@@ -118,7 +118,6 @@ class Report:
                 report_types_enum_list = list(ReportType) # Gets [ReportType.FRAUD, ReportType.INAPPROPRIATE_CONTENT, ...]
                 if 1 <= selection <= len(report_types_enum_list):
                     self.report_type = report_types_enum_list[selection-1]
-
                     if self.report_type == ReportType.FRAUD:
                         self.state = State.AWAITING_FRAUD_DETAILS
                         response = f"You selected: {self.report_type.value}\n\n"
@@ -149,7 +148,6 @@ class Report:
             except ValueError:
                 # User did not enter a number for main report type selection
                 return ["Please enter a number to select a report type."]
-
         # State: AWAITING_FRAUD_DETAILS - User selects a specific fraud reason
         elif self.state == State.AWAITING_FRAUD_DETAILS:
             try:
@@ -240,7 +238,6 @@ class Report:
                     return [f"Please enter a valid number between 1 and {len(privacy_reasons_map)} for the privacy reason."]
             except ValueError:
                 return ["Please enter a number for the reason."]
-
         elif self.state == State.AWAITING_THREAT:
             if message.content == "1":
                 self.threat = True
@@ -257,7 +254,6 @@ class Report:
             response += "4. ID Information\n"
             response += "5. Explicit Content\n"
             return [response]
-
         # State: AWAITING_INFO_TYPE - User specifies types of doxxed info- this state is reached only if Doxxing was selected under Privacy
         elif self.state == State.AWAITING_INFO_TYPE:
             try:
@@ -415,7 +411,6 @@ class Report:
             help_msg += "2. Inappropriate Content (Self-Harm, Graphic Violence, Terrorism)\n"
             help_msg += "3. Harassment (Credible Threats, Bullying, Hate Speech)\n"
             help_msg += "4. Privacy (Hacking, Impersonation, Doxxing)"
-
         # Help for the new sub-reason states
         elif self.state == State.AWAITING_FRAUD_DETAILS:
             help_msg += "You are reporting Fraud. Please select the specific reason by typing the number:\n\n"

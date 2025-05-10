@@ -265,7 +265,6 @@ class Review:
                 self.other_problematic_content_identified = True
             elif message.content != "1":
                 return ["Invalid input. Please type 1 for Yes or 2 for No."]
-
             self.state = State.CONFIRMING_REVIEW
             if self.threat_identified_by_reviewer:
                  self.state = State.CONFIRMING_REVIEW
