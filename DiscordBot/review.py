@@ -5,7 +5,7 @@ import asyncio
 
 
 '''
-This code implements a moderator review flow, mirroring the design in report.py
+This code implements a moderator review flow, mirroring the high level design in report.py.
 '''
 
 class ReviewState(Enum):
@@ -41,9 +41,8 @@ class Review:
 
     async def handle_message(self, message):
         '''
-        This function makes up the meat of the user-side reporting flow. It defines how we transition between states and what 
-        prompts to offer at each of those states. You're welcome to change anything you want; this skeleton is just here to
-        get you started and give you a model for working with Discord. 
+        This function makes up the meat of the moderator review flow. It defines how we transition between states and what 
+        prompts to offer at each of those states. Used the skeleton of the handle_message function from report.py to write this!
         '''
 
         if message.content == self.CANCEL_KEYWORD:

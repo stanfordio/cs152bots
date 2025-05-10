@@ -1,6 +1,5 @@
 # bot.py
 import discord
-#from discord.ext import commands
 import os
 import json
 import logging
@@ -77,8 +76,8 @@ class ModBot(discord.Client):
         else:
             await self.handle_dm(message)
 
-    # Helper function for sending reports as embed links to the mod channel. Used ChatGPT to help me write the embed code.
-    async def _send_report_embed(self, report):
+    # Helper function for sending reports as embed links to the mod channel. 
+    async def send_report_embed(self, report):
         msg    = report.message
         mod_ch = self.mod_channels.get(report.guild_id)
         jump_url = None
@@ -112,9 +111,12 @@ class ModBot(discord.Client):
         mod_msg = await mod_ch.send(embed=embed)
         
 
-        
-
+    # 
     async def handle_dm(self, message):
+        '''
+        This function is called whenever a message is sent in the DMs 
+        Users start the reporitngp process with the 'report' keyword, which is sent to the moderator channel.
+        '''
         if message.content == Report.HELP_KEYWORD:
             reply = "Use the `report` command to begin the reporting process.\n"
             reply += "Use the `cancel` command to cancel the report process.\n"
@@ -144,14 +146,15 @@ class ModBot(discord.Client):
         # ****** Once a user submits their report, it's submitted as an embed to the mod channel ******
         if self.reports[author_id].state == State.REPORT_COMPLETE:
             report = self.reports.pop(author_id)
-            await self._send_report_embed(report)
+            await self.send_report_embed(report)
             
-    
-    # MOD CHANNEL CODE
             
-    # Used ChatGPT to help me debug 
-
     async def handle_channel_message(self, message):
+        '''
+        This function is called for handling user reports as well as automatically flagged posts. Includes automatic flagging, which is currently
+        a 50% chance right now for the demo. Moderators can initiate the review process, which calls on review.py, to review posts that have been
+        either auto-flagged or user-reported. Deletes the message of the user if the moderator decides that is the correct decision and simulates banning.
+        '''
         group_name = f'group-{self.group_num}'
         mod_name   = f'{group_name}-mod'
         channel_name = message.channel.name
@@ -171,22 +174,22 @@ class ModBot(discord.Client):
                 if len(parts) != 2:
                     return await mod_channel.send("❌ Usage: `review <embed_id|url>`")
                 
-                # ➁ pull the trailing digits
+                # pull the trailing digits
                 m = re.search(r'(\d+)$', parts[1].strip())
                 if not m:
                     return await mod_channel.send("❌ Couldn't find an ID in that input.")
                 embed_id = int(m.group(1))
 
-                # ➂ lookup
+                # lookup
                 report_obj = self.flagged.get(embed_id)
                 if not report_obj:
                     return await mod_channel.send(f"❌ No report found with ID `{embed_id}`.")
 
-                # ➃ instantiate & stash
+                # instantiate & stash
                 rev = Review(self, report=report_obj)
                 self.reviews[message.author.id] = rev
 
-                # ➄ fire off first prompt via handle_message
+                # fire off first prompt via handle_message
                 responses = await rev.handle_message(message)
                 for line in responses:
                     await mod_channel.send(line)
