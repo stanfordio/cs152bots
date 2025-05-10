@@ -1,14 +1,14 @@
 from collections import deque
 
 class SubmittedReport:
-    def __init__(self, id, reported_message, author, content, report_type, disinfo_type, disinfo_subtype, imminent, message_guild_id, priority):
+    def __init__(self, id, reported_message, author, content, report_type, misinfo_type, misinfo_subtype, imminent, message_guild_id, priority):
         self.author = author
         self.id = id
         self.reported_message = reported_message
         self.content = content
         self.report_type = report_type
-        self.disinfo_type = disinfo_type
-        self.subtype = disinfo_subtype
+        self.misinfo_type = misinfo_type
+        self.subtype = misinfo_subtype
         self.imminent = imminent
         self.message_guild_id = message_guild_id
         self.priority = priority
@@ -54,7 +54,7 @@ class PriorityReportQueue:
         output = (
             f"       Report ID: {report.id}\n"
             f"       Author: {report.author}\n"
-            f"       Type: {report.disinfo_type}\n"
+            f"       Type: {report.misinfo_type}\n"
             f"       Subtype: {report.subtype}\n"
             f"       Imminent: {report.imminent}\n"
         )

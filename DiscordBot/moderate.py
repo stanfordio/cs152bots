@@ -19,8 +19,8 @@ class ModeratorReview:
         self.original_priority = None
 
         self.report_type = None
-        self.disinfo_type = None
-        self.disinfo_subtype = None
+        self.misinfo_type = None
+        self.misinfo_subtype = None
         self.imminent = None
         self.filter = False
 
@@ -44,7 +44,7 @@ class ModeratorReview:
             if message.content.lower() == "yes":
                 self.state = ModState.AWAITING_SUMMARY_CONFIRM
                 reply = "This content was reported as " + self.report_type + ".\n"
-                reply += "Disinfo category: " + str(self.disinfo_type) + " - " + str(self.disinfo_subtype) + "\n"
+                reply += "Misinfo category: " + str(self.misinfo_type) + " - " + str(self.misinfo_subtype) + "\n"
                 if self.imminent:
                     reply += "Potential imminent harm: " + self.imminent + "\n"
                 if self.filter:
@@ -113,11 +113,11 @@ class ModeratorReview:
     def get_report_type(self):
         return self.report_type
 
-    def get_disinfo_type(self):
-        return self.disinfo_type
+    def get_misinfo_type(self):
+        return self.misinfo_type
 
-    def get_disinfo_subtype(self):
-        return self.disinfo_subtype
+    def get_misinfo_subtype(self):
+        return self.misinfo_subtype
 
     def get_imminent(self):
         return self.imminent
@@ -142,8 +142,8 @@ class ModeratorReview:
 
     def set_report_info(self, report):
         self.report_type = report.get_report_type()
-        self.disinfo_type = report.get_disinfo_type()
-        self.disinfo_subtype = report.get_disinfo_subtype()
+        self.misinfo_type = report.get_misinfo_type()
+        self.misinfo_subtype = report.get_misinfo_subtype()
         self.imminent = report.get_imminent()
         self.filter = report.get_filter()
 

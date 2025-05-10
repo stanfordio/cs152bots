@@ -31,8 +31,8 @@ class Report:
         self.reported_author = None
         self.reported_content = None
         self.report_type = None
-        self.disinfo_type = None
-        self.disinfo_subtype = None
+        self.misinfo_type = None
+        self.misinfo_subtype = None
         self.filter = False
         self.imminent = None
     
@@ -115,8 +115,8 @@ class Report:
             elif message.content == "2" :
                 # Handling Other Abuse types
                 self.report_type = "Other"
-                # self.disinfo_type = "[out of scope of project]"
-                # self.disinfo_subtype = "[out of scope of project]"
+                # self.misinfo_type = "[out of scope of project]"
+                # self.misinfo_subtype = "[out of scope of project]"
                 self.state = State.REPORT_COMPLETE
                 # return [
                 #         "Thank you for reporting " + self.report_type + " content.",
@@ -129,8 +129,8 @@ class Report:
             # elif message.content == "3" :
             #     # Handling Harassment
             #     self.report_type = "Harassment"
-            #     self.disinfo_type = "[out of scope of project]"
-            #     self.disinfo_subtype = "[out of scope of project]"
+            #     self.misinfo_type = "[out of scope of project]"
+            #     self.misinfo_subtype = "[out of scope of project]"
             #     self.state = State.REPORT_COMPLETE
             #     return [
             #             "Thank you for reporting " + self.report_type + " content.",
@@ -141,8 +141,8 @@ class Report:
             # elif message.content == "4" :
             #     # Handling Spam
             #     self.report_type = "Spam"
-            #     self.disinfo_type = "[out of scope of project]"
-            #     self.disinfo_subtype = "[out of scope of project]"
+            #     self.misinfo_type = "[out of scope of project]"
+            #     self.misinfo_subtype = "[out of scope of project]"
             #     self.state = State.REPORT_COMPLETE
             #     return [
             #             "Thank you for reporting " + self.report_type + " content", 
@@ -163,8 +163,8 @@ class Report:
             if message.content == "1":
                 # Handle political misinformation
                 self.state = State.AWAITING_POLITICAL_DISINFORMATION_TYPE
-                self.disinfo_type = "Political Misinformation"
-                reply = "You have selected " + self.disinfo_type + ".\n"
+                self.misinfo_type = "Political Misinformation"
+                reply = "You have selected " + self.misinfo_type + ".\n"
                 reply += "Please select the type of political Misinformation by typing the corresponding number:\n"
                 reply += "1. Election/Campaign Misinformation\n"
                 reply += "2. Government/Civic Services\n"
@@ -175,8 +175,8 @@ class Report:
             elif message.content == "2" :
                 # Handle Health Misinformation
                 self.state = State.AWAITING_HEALTHL_DISINFORMATION_TYPE
-                self.disinfo_type = "Health Misinformation"
-                reply = "You have selected " + self.disinfo_type + ".\n"
+                self.misinfo_type = "Health Misinformation"
+                reply = "You have selected " + self.misinfo_type + ".\n"
                 reply += "Please select the type of health misinformation by typing the corresponding number:\n"
                 reply += "1. Vaccines\n"
                 reply += "2. Cures and Treatments\n"
@@ -188,9 +188,9 @@ class Report:
             elif message.content == "3" :
                 # Handle other Misinformation
                 self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
-                self.disinfo_type = "Other Misinformation"
-                self.disinfo_subtype = "[out of scope of project]"
-                reply = "You have selected " + self.disinfo_type + ".\n"
+                self.misinfo_type = "Other Misinformation"
+                self.misinfo_subtype = "[out of scope of project]"
+                reply = "You have selected " + self.misinfo_type + ".\n"
                 reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
                 reply += "1. No.\n"
                 reply += "2. Yes, physical harm.\n"  
@@ -212,9 +212,9 @@ class Report:
 
             if message.content == "1":
                 # Handling Election/Campaign Misinformation
-                self.disinfo_subtype = "Election/Campaign Misinformation"
+                self.misinfo_subtype = "Election/Campaign Misinformation"
                 self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
-                reply = "You have selected " + self.disinfo_subtype + ".\n"
+                reply = "You have selected " + self.misinfo_subtype + ".\n"
                 reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
                 reply += "1. No.\n"
                 reply += "2. Yes, physical harm.\n"  
@@ -224,9 +224,9 @@ class Report:
             
             elif message.content == "2":
                  # Handling Government/Civic Services
-                self.disinfo_subtype = "Government/Civic Services"
+                self.misinfo_subtype = "Government/Civic Services"
                 self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
-                reply = "You have selected " + self.disinfo_subtype + ".\n"
+                reply = "You have selected " + self.misinfo_subtype + ".\n"
                 reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
                 reply += "1. No.\n"
                 reply += "2. Yes, physical harm.\n"  
@@ -236,9 +236,9 @@ class Report:
 
             elif message.content == "3":
                  # Handling Manipulated Photos/Video
-                self.disinfo_subtype = "Manipulated Photos/Video"
+                self.misinfo_subtype = "Manipulated Photos/Video"
                 self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
-                reply = "You have selected " + self.disinfo_subtype + ".\n"
+                reply = "You have selected " + self.misinfo_subtype + ".\n"
                 reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
                 reply += "1. No.\n"
                 reply += "2. Yes, physical harm.\n"  
@@ -248,9 +248,9 @@ class Report:
             
             elif message.content == "4":
                  # Handling Other
-                self.disinfo_subtype = "Other"
+                self.misinfo_subtype = "Other"
                 self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
-                reply = "You have selected " + self.disinfo_subtype + ".\n"
+                reply = "You have selected " + self.misinfo_subtype + ".\n"
                 reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
                 reply += "1. No.\n"
                 reply += "2. Yes, physical harm.\n"  
@@ -273,9 +273,9 @@ class Report:
 
             if message.content == "1":
                 # Handling Vaccines
-                self.disinfo_subtype = "Vaccines"
+                self.misinfo_subtype = "Vaccines"
                 self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
-                reply = "You have selected " + self.disinfo_subtype + ".\n"
+                reply = "You have selected " + self.misinfo_subtype + ".\n"
                 reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
                 reply += "1. No.\n"
                 reply += "2. Yes, physical harm.\n"  
@@ -285,9 +285,9 @@ class Report:
             
             elif message.content == "2":
                  # Handling Cures and Treatments
-                self.disinfo_subtype = "Cures and Treatments"
+                self.misinfo_subtype = "Cures and Treatments"
                 self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
-                reply = "You have selected " + self.disinfo_subtype + ".\n"
+                reply = "You have selected " + self.misinfo_subtype + ".\n"
                 reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
                 reply += "1. No.\n"
                 reply += "2. Yes, physical harm.\n"  
@@ -297,9 +297,9 @@ class Report:
 
             elif message.content == "3":
                  # Handling Mental Health
-                self.disinfo_subtype = "Mental Health"
+                self.misinfo_subtype = "Mental Health"
                 self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
-                reply = "You have selected " + self.disinfo_subtype + ".\n"
+                reply = "You have selected " + self.misinfo_subtype + ".\n"
                 reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
                 reply += "1. No.\n"
                 reply += "2. Yes, physical harm.\n"  
@@ -309,9 +309,9 @@ class Report:
             
             elif message.content == "4":
                  # Handling Other
-                self.disinfo_subtype = "Other"
+                self.misinfo_subtype = "Other"
                 self.state = State.AWAITING_HARMFUL_CONTENT_STATUS
-                reply = "You have selected " + self.disinfo_subtype + ".\n"
+                reply = "You have selected " + self.misinfo_subtype + ".\n"
                 reply += "Could this content likely cause imminent harm to people or public safety? Select the correponding number:\n"
                 reply += "1. No.\n"
                 reply += "2. Yes, physical harm.\n"  
@@ -408,10 +408,10 @@ class Report:
         return self.reported_content
     def get_report_type(self):
         return self.report_type
-    def get_disinfo_type(self):
-        return self.disinfo_type
-    def get_disinfo_subtype(self):
-        return self.disinfo_subtype
+    def get_misinfo_type(self):
+        return self.misinfo_type
+    def get_misinfo_subtype(self):
+        return self.misinfo_subtype
     def get_imminent(self):
         return self.imminent
     def get_priority(self): # defining priorities, can be changed

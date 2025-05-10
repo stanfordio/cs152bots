@@ -176,8 +176,8 @@ class ModBot(discord.Client):
                 reported_author = self.reports[author_id].get_reported_author()
                 reported_content = self.reports[author_id].get_reported_content() 
                 report_type = self.reports[author_id].get_report_type() 
-                disinfo_type = self.reports[author_id].get_disinfo_type()
-                disinfo_subtype = self.reports[author_id].get_disinfo_subtype()
+                misinfo_type = self.reports[author_id].get_misinfo_type()
+                misinfo_subtype = self.reports[author_id].get_misinfo_subtype()
                 imminent = self.reports[author_id].get_imminent()
                 priority = self.reports[author_id].get_priority()
                 id = self.report_id_counter
@@ -191,10 +191,10 @@ class ModBot(discord.Client):
                 report_info_msg = "Report ID: " + str(id) + "\n"
                 report_info_msg += "User " + message.author.name + " reported user " + str(reported_author) + "'s message.\n"
                 # report_info_msg += "Here is the message: \n```" + str(reported_content) + "\n```" 
-                report_info_msg += "Category: " + str(report_type) + " > " + str(disinfo_type) + " > " + str(disinfo_subtype) + "\n"
+                report_info_msg += "Category: " + str(report_type) + " > " + str(misinfo_type) + " > " + str(misinfo_subtype) + "\n"
                 if imminent:
                     report_info_msg += "URGENT: Imminent " + imminent + " harm reported."
-                submitted_report = SubmittedReport(id, reported_message, reported_author, reported_content, report_type, disinfo_type, disinfo_subtype, imminent, message_guild_id, priority)
+                submitted_report = SubmittedReport(id, reported_message, reported_author, reported_content, report_type, misinfo_type, misinfo_subtype, imminent, message_guild_id, priority)
                 self.report_queue.enqueue(submitted_report)
 
                 await mod_channel.send(report_info_msg)
@@ -228,8 +228,8 @@ class ModBot(discord.Client):
             review.original_report = next_report
             review.original_priority = next_report.priority
             review.report_type = next_report.report_type
-            review.disinfo_type = next_report.disinfo_type
-            review.disinfo_subtype = next_report.subtype
+            review.misinfo_type = next_report.misinfo_type
+            review.misinfo_subtype = next_report.subtype
             review.imminent = next_report.imminent
             review.reported_author_metadata = f"User: {next_report.author}"
             review.reported_content_metadata = f"Msg: \"{next_report.content}\""
