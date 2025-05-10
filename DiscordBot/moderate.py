@@ -16,6 +16,8 @@ class ModeratorReview:
 
         self.original_report = None
 
+        self.original_priority = None
+
         self.report_type = None
         self.disinfo_type = None
         self.disinfo_subtype = None
@@ -56,18 +58,18 @@ class ModeratorReview:
                 self.state = ModState.AWAITING_SKIP_REASON
                 return [
                     "Please select a reason for skipping:",
-                    "1. Personal mental health",
-                    "2. Conflict of interest (recusal)",
-                    "3. Uncertainty"
+                    "1. Personal reasons",
+                    "2. Bias/Conflict of interest (recusal)",
+                    "3. Requires escalation"
                 ]
             else:
                 return ["Invalid response. Type `yes` or `skip`."]
 
         if self.state == ModState.AWAITING_SKIP_REASON:
             reasons = {
-                "1": "Personal mental health",
-                "2": "Conflict of interest",
-                "3": "Uncertainty"
+                "1": "Personal reasons",
+                "2": "Bias/Conflict of interest (recusal)",
+                "3": "Requires escalation"
             }
             if message.content in reasons:
                 self.skip_reason = reasons[message.content]
@@ -82,7 +84,8 @@ class ModeratorReview:
             return [
                 "What action would you like to take on this content?",
                 "1. Remove content",
-                "2. Allow content"
+                "2. Allow content",
+                "3. Uncertain (someone else will review)"
             ]
 
         if self.state == ModState.AWAITING_ACTION:
@@ -95,8 +98,12 @@ class ModeratorReview:
                 self.action_taken = "Allowed"
                 self.state = ModState.REVIEW_COMPLETE
                 return ["Content has been allowed. Review complete."]
+            elif message.content == "3":
+                self.action_taken = "Escalated"
+                self.state = ModState.REVIEW_COMPLETE
+                return [f"You skipped this review due to uncertainty.", "Returning to queue."]
             else:
-                return ["Invalid action. Type 1 to Remove or 2 to Allow."]
+                return ["Invalid action. Type 1 to Remove, 2 to Allow, or 3 to Escalate."]
 
         return []
     
