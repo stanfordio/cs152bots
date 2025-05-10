@@ -81,7 +81,7 @@ class Review:
         if self.state == State.REVIEW_START:
             self.timestamp = datetime.now()
             reply = "Thank you for starting the reviewing process. "
-            reply += "Say `help` at any time for more information.\n\n"
+            reply += "Say `review help` at any time for more information.\n\n"
             reply += "Please copy paste the link to the report you want to review.\n"
             reply += "You can obtain this link by right-clicking the report and clicking `Copy Message Link`."
             self.state = State.AWAITING_MESSAGE
