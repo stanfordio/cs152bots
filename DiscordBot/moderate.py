@@ -12,6 +12,10 @@ class ModeratorReview:
     def __init__(self):
         self.state = ModState.MOD_START
 
+        self.message_guild_id = None
+
+        self.original_report = None
+
         self.report_type = None
         self.disinfo_type = None
         self.disinfo_subtype = None
@@ -67,6 +71,7 @@ class ModeratorReview:
             if message.content in reasons:
                 self.skip_reason = reasons[message.content]
                 self.state = ModState.REVIEW_COMPLETE
+                self.action_taken = "Skipped"
                 return [f"You skipped this review due to: {self.skip_reason}.", "Returning to queue."]
             else:
                 return ["Please choose a valid skip reason: 1, 2, or 3."]
@@ -82,6 +87,7 @@ class ModeratorReview:
         if self.state == ModState.AWAITING_ACTION:
             if message.content == "1":
                 self.action_taken = "Removed"
+                print("TODO ACTUALLY REMOVE MESSAGE")
                 self.state = ModState.REVIEW_COMPLETE
                 return ["Content has been removed. Review complete."]
             elif message.content == "2":
@@ -92,6 +98,9 @@ class ModeratorReview:
                 return ["Invalid action. Type 1 to Remove or 2 to Allow."]
 
         return []
+    
+    def get_message_guild_id(self):
+        return self.message_guild_id
 
     def get_report_type(self):
         return self.report_type
