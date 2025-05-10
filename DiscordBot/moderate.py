@@ -85,7 +85,7 @@ class ModeratorReview:
                 "What action would you like to take on this content?",
                 "1. Remove content",
                 "2. Allow content",
-                "3. Uncertain (someone else will review)"
+                "3. Uncertain (Escalate)"
             ]
 
         if self.state == ModState.AWAITING_ACTION:
@@ -101,7 +101,7 @@ class ModeratorReview:
             elif message.content == "3":
                 self.action_taken = "Escalated"
                 self.state = ModState.REVIEW_COMPLETE
-                return [f"You skipped this review due to uncertainty.", "Returning to queue."]
+                return [f"You escalated this review due to uncertainty.", "Returning to queue."]
             else:
                 return ["Invalid action. Type 1 to Remove, 2 to Allow, or 3 to Escalate."]
 
