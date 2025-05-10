@@ -1,10 +1,10 @@
 from collections import deque
 
 class SubmittedReport:
-    def __init__(self, id, message, author, content, report_type, disinfo_type, disinfo_subtype, imminent, message_guild_id, priority):
+    def __init__(self, id, reported_message, author, content, report_type, disinfo_type, disinfo_subtype, imminent, message_guild_id, priority):
         self.author = author
         self.id = id
-        self.message = message
+        self.reported_message = reported_message
         self.content = content
         self.report_type = report_type
         self.disinfo_type = disinfo_type

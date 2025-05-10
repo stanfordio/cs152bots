@@ -23,7 +23,7 @@ class Report:
     def __init__(self, client):
         self.state = State.REPORT_START
         self.client = client
-        self.message = None
+        self.reported_message = None
 
         self.message_guild_id = None
         self.reported_author = None
@@ -33,7 +33,6 @@ class Report:
         self.disinfo_subtype = None
         self.filter = False
         self.imminent = None
-        self.message_url
     
     async def handle_message(self, message):
         '''
@@ -61,7 +60,6 @@ class Report:
         
         if self.state == State.AWAITING_MESSAGE:
             # Parse out the three ID strings from the message link
-            self.message = message
             m = re.search('/(\d+)/(\d+)/(\d+)', message.content)
             if not m:
                 return ["I'm sorry, I couldn't read that link. Please try again or say `cancel` to cancel."]
@@ -76,6 +74,7 @@ class Report:
                         
             try:
                 message = await channel.fetch_message(int(m.group(3)))
+                self.reported_message = message
             except discord.errors.NotFound:
                 return ["It seems this message was deleted or never existed. Please try again or say `cancel` to cancel."]
 
@@ -419,8 +418,8 @@ class Report:
             return 2
     def get_filter(self):
         return self.filter
-    def get_message(self):
-        return self.message
+    def get_reported_message(self):
+        return self.reported_message
     
     def is_report_start(self):
         return self.state == State.REPORT_START

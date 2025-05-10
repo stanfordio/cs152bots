@@ -177,7 +177,7 @@ class ModBot(discord.Client):
             priority = self.reports[author_id].get_priority()
             id = self.report_id_counter
             self.report_id_counter += 1
-            message = self.reports[author_id].get_message()
+            reported_message = self.reports[author_id].get_reported_message()
 
             for r in responses:
                 await message.channel.send(r)
@@ -192,7 +192,7 @@ class ModBot(discord.Client):
             report_info_msg += "Category: " + str(report_type) + " > " + str(disinfo_type) + " > " + str(disinfo_subtype) + "\n"
             if imminent:
                 report_info_msg += "URGENT: Imminent " + imminent + " harm reported."
-            submitted_report = SubmittedReport(id, message_url, reported_author, reported_content, report_type, disinfo_type, disinfo_subtype, imminent, message_guild_id, priority)
+            submitted_report = SubmittedReport(id, reported_message, reported_author, reported_content, report_type, disinfo_type, disinfo_subtype, imminent, message_guild_id, priority)
             self.report_queue.enqueue(submitted_report)
 
             await mod_channel.send(report_info_msg)
@@ -232,9 +232,9 @@ class ModBot(discord.Client):
             review.reported_author_metadata = f"User: {next_report.author}"
             review.reported_content_metadata = f"Msg: \"{next_report.content}\""
             review.message_guild_id = next_report.message_guild_id
-            review.message = next_report.message
+            review.reported_message = next_report.reported_message
             self.moderations[author_id] = review
-            preview = self.report_queue.display_one(next_report, showContent=True)
+            preview = self.report_queue.display_one(next_report, showContent=False)
             if preview:
                 await message.channel.send(f"```{preview}```")
 
@@ -254,8 +254,8 @@ class ModBot(discord.Client):
                 mod_info_msg += "has been moderated.\n"
                 mod_info_msg += "Verdict: " + self.moderations[author_id].action_taken + ".\n"
                 await mod_channel.send(mod_info_msg)
-                if self[author_id].action_taken == "Removed":
-                    await review.message.add_reaction("❌")
+                if self.moderations[author_id].action_taken == "Removed":
+                    await review.reported_message.add_reaction("❌")
 
             elif self.moderations[author_id].action_taken in ["Skipped", "Escalated"]:
                 original_report = self.moderations[author_id].original_report
@@ -287,20 +287,6 @@ class ModBot(discord.Client):
         # scores = self.eval_text(message.content)
         # await mod_channel.send(self.code_format(scores))
         #------------------------------------------------------------------------------------------------
-        return
-
-    async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
-        # see https://discordpy.readthedocs.io/en/latest/api.html?highlight=on_reaction_add#discord.RawReactionActionEvent
-        mod_channel = self.mod_channels[message.guild.id]
-
-        message = await mod_channel.fetch_message(payload.message_id)
-
-        # Ignore messages that are not the bot's moderator to-do messages 
-        if message.author.id != self.user.id or (not message.content.startswith(MOD_TODO_START)):
-            return
-        
-        # TODO IMPLEMENT MODERATOR FLOW HERE
-        
         return
     
     def eval_text(self, message):
