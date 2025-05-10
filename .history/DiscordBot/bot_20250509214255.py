@@ -177,7 +177,7 @@ class ModBot(discord.Client):
             priority = self.reports[author_id].get_priority()
             id = self.report_id_counter
             self.report_id_counter += 1
-            message = self.reports[author_id].get_message()
+            message_url = self.reports[author_id].get_message_url()
 
             for r in responses:
                 await message.channel.send(r)
@@ -255,7 +255,7 @@ class ModBot(discord.Client):
                 mod_info_msg += "Verdict: " + self.moderations[author_id].action_taken + ".\n"
                 await mod_channel.send(mod_info_msg)
                 if self[author_id].action_taken == "Removed":
-                    await review.message.add_reaction("❌")
+                    await message.add_reaction("")
 
             original_report = self.moderations[author_id].original_report
             if NUM_QUEUE_LEVELS - 1 > original_report.priority:

@@ -419,8 +419,8 @@ class Report:
             return 2
     def get_filter(self):
         return self.filter
-    def get_message(self):
-        return self.message
+    def get_message_url(self):
+        return self.message_url
     
     def is_report_start(self):
         return self.state == State.REPORT_START

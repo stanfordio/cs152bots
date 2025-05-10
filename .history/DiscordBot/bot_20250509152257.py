@@ -6,11 +6,9 @@ import json
 import logging
 import re
 import requests
-from enum import Enum
 from report import Report
 from report_queue import SubmittedReport, PriorityReportQueue
 import pdb
-from moderate import ModeratorReview
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -32,13 +30,6 @@ with open(token_path) as f:
 MOD_TODO_START = "---------------------------\nTODO"
 MODERATE_KEYWORD = "moderate"
 
-NUM_QUEUE_LEVELS = 3
-
-class ConversationState(Enum):
-    NOFLOW = 0
-    REPORTING = 1
-    MODERATING = 2
-    
 
 class ModBot(discord.Client):
     def __init__(self): 
@@ -48,11 +39,9 @@ class ModBot(discord.Client):
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
-        self.moderations = {}
         self.report_id_counter = 0
         # should equal the number of distinct priorities defined in Report.get_priority
-        self.report_queue = PriorityReportQueue(NUM_QUEUE_LEVELS, ["Imminent physical/mental harm", "Imminent financial/property harm", "Non-imminent"])
-        self.conversationState = 0
+        self.report_queue = PriorityReportQueue(3, ["Imminent physical/mental harm", "Imminent financial/property harm", "Non-imminent"])
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -98,12 +87,10 @@ class ModBot(discord.Client):
             reply += "Use the `moderate` command to begin the moderation process.\n"
             await message.channel.send(reply)
             return
-        
-        if message.content.startswith(Report.START_KEYWORD) or self.conversationState == ConversationState.REPORTING:
-            self.conversationState = ConversationState.REPORTING
+
+        if message.content.startswith(Report.START_KEYWORD) or message.author.id in self.reports:
             await self.handle_report(message)
-        elif message.content.startswith(MODERATE_KEYWORD) or self.conversationState == ConversationState.MODERATING: 
-            self.conversationState = ConversationState.MODERATING
+        elif message.content.startswith(MODERATE_KEYWORD):
             await self.handle_moderation(message)
 
     async def handle_report(self, message):
@@ -119,7 +106,6 @@ class ModBot(discord.Client):
         responses = await self.reports[author_id].handle_message(message)
 
         ## report.py updates state, and below, we route our response based on that state
-        
 
         if self.reports[author_id].is_awaiting_message():
             for r in responses:
@@ -177,14 +163,12 @@ class ModBot(discord.Client):
             priority = self.reports[author_id].get_priority()
             id = self.report_id_counter
             self.report_id_counter += 1
-            message = self.reports[author_id].get_message()
 
             for r in responses:
                 await message.channel.send(r)
 
             # Put the report in the mod channel
-            message_guild_id = self.reports[author_id].get_message_guild_id()
-            mod_channel = self.mod_channels[message_guild_id]
+            mod_channel = self.mod_channels[self.reports[author_id].get_message_guild_id()]
             # todo are we worried about code injection via author name or content? 
             report_info_msg = "Report ID: " + str(id) + "\n"
             report_info_msg += "User " + message.author.name + " reported user " + str(reported_author) + "'s message.\n"
@@ -192,14 +176,13 @@ class ModBot(discord.Client):
             report_info_msg += "Category: " + str(report_type) + " > " + str(disinfo_type) + " > " + str(disinfo_subtype) + "\n"
             if imminent:
                 report_info_msg += "URGENT: Imminent " + imminent + " harm reported."
-            submitted_report = SubmittedReport(id, message_url, reported_author, reported_content, report_type, disinfo_type, disinfo_subtype, imminent, message_guild_id, priority)
-            self.report_queue.enqueue(submitted_report)
+            submitted_report = SubmittedReport(id, reported_author, reported_content, report_type, disinfo_type, disinfo_subtype, imminent)
+            self.report_queue.enqueue(submitted_report, priority)
 
             await mod_channel.send(report_info_msg)
 
             # remove
             self.reports.pop(author_id)
-            self.conversationState = ConversationState.NOFLOW
 
             # ------ starter code relevant to MILESTONE 3:  --------------
             # scores = self.eval_text(message.content)
@@ -209,60 +192,12 @@ class ModBot(discord.Client):
     async def handle_moderation(self, message):
 
         author_id = message.author.id
+        responses = []
 
-        if author_id not in self.moderations and self.report_queue.is_empty():
-            await message.channel.send("No pending reports.")
-            self.conversationState = ConversationState.NOFLOW
-            return
         
-        if author_id not in self.moderations:
-            try:
-                next_report = self.report_queue.dequeue()
-            except IndexError:
-                await message.channel.send("No pending reports.")
-                self.conversationState = ConversationState.NOFLOW
-                return
-            review = ModeratorReview()
-            review.original_report = next_report
-            review.original_priority = next_report.priority
-            review.report_type = next_report.report_type
-            review.disinfo_type = next_report.disinfo_type
-            review.disinfo_subtype = next_report.subtype
-            review.imminent = next_report.imminent
-            review.reported_author_metadata = f"User: {next_report.author}"
-            review.reported_content_metadata = f"Msg: \"{next_report.content}\""
-            review.message_guild_id = next_report.message_guild_id
-            review.message = next_report.message
-            self.moderations[author_id] = review
-            preview = self.report_queue.display_one(next_report, showContent=True)
-            if preview:
-                await message.channel.send(f"```{preview}```")
 
-        review = self.moderations[author_id]
 
-        responses = await review.handle_message(message)
-        for r in responses:
-            await message.channel.send(r)
 
-        if review.is_review_complete():
-
-            if not self.moderations[author_id].action_taken == "Skipped":
-                # Put the verdict in the mod channel
-                mod_channel = self.mod_channels[self.moderations[author_id].message_guild_id]
-                # todo are we worried about code injection via author name or content? 
-                mod_info_msg = "Report ID: " + str(id) + "\n"
-                mod_info_msg += "has been moderated.\n"
-                mod_info_msg += "Verdict: " + self.moderations[author_id].action_taken + ".\n"
-                await mod_channel.send(mod_info_msg)
-                if self[author_id].action_taken == "Removed":
-                    await review.message.add_reaction("❌")
-
-            original_report = self.moderations[author_id].original_report
-            if NUM_QUEUE_LEVELS - 1 > original_report.priority:
-                original_report.priority += 1
-            self.report_queue.enqueue(original_report)
-            self.moderations.pop(author_id, None)
-            self.conversationState = ConversationState.NOFLOW
 
     async def handle_channel_message(self, message):
         if not message.channel.name in [f'group-{self.group_num}', f'group-{self.group_num}-mod']:

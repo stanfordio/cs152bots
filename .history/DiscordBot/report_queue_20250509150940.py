@@ -1,17 +1,14 @@
 from collections import deque
 
 class SubmittedReport:
-    def __init__(self, id, message, author, content, report_type, disinfo_type, disinfo_subtype, imminent, message_guild_id, priority):
+    def __init__(self, id, author, content, report_type, disinfo_type, disinfo_subtype, imminent):
         self.author = author
         self.id = id
-        self.message = message
         self.content = content
         self.report_type = report_type
         self.disinfo_type = disinfo_type
         self.subtype = disinfo_subtype
         self.imminent = imminent
-        self.message_guild_id = message_guild_id
-        self.priority = priority
 
 class PriorityReportQueue:
     def __init__(self, num_levels, queue_names):
@@ -19,10 +16,10 @@ class PriorityReportQueue:
         self.queue_names = queue_names
         self.queues = [deque() for _ in range(num_levels)]
     
-    def enqueue(self, report):
-        if not (0 <= report.priority < len(self.queues)):
+    def enqueue(self, report, priority):
+        if not (0 <= priority < len(self.queues)):
             raise ValueError("Invalid priority level")
-        self.queues[report.priority].append(report)
+        self.queues[priority].append(report)
     
     def dequeue(self):
         for queue in self.queues:

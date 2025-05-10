@@ -24,7 +24,7 @@ class ModeratorReview:
 
         self.reported_author_metadata = None
         self.reported_content_metadata = None
-        self.message = None
+        self.message_url = None
 
         self.skip_reason = None
         self.action_taken = None

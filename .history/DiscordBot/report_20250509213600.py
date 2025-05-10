@@ -61,7 +61,6 @@ class Report:
         
         if self.state == State.AWAITING_MESSAGE:
             # Parse out the three ID strings from the message link
-            self.message = message
             m = re.search('/(\d+)/(\d+)/(\d+)', message.content)
             if not m:
                 return ["I'm sorry, I couldn't read that link. Please try again or say `cancel` to cancel."]
@@ -419,8 +418,8 @@ class Report:
             return 2
     def get_filter(self):
         return self.filter
-    def get_message(self):
-        return self.message
+    def get_message_url(self):
+        return self.message_url
     
     def is_report_start(self):
         return self.state == State.REPORT_START
