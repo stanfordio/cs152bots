@@ -28,6 +28,7 @@ class State(Enum):
     MESSAGE_IDENTIFIED = auto()
     # New states for review_v2
     AWAITING_THREAT_JUDGEMENT = auto()
+    AWAITING_OTHER_ABUSE_JUDGEMENT = auto()
     AWAITING_DISALLOWED_INFO = auto()
     AWAITING_CONTENT_CHECK = auto()
     AWAITING_INTENTION = auto()
@@ -62,6 +63,7 @@ class Review:
         # Stored Discord objects for performing moderation actions- these are fetched based on information in the report_details embed
         self.original_reported_message = None 
         self.original_message_author = None
+        self.abuse_type = None
 
     async def handle_message(self, message: discord.Message):
         '''
@@ -115,6 +117,8 @@ class Review:
                     elif field.name == "**Author of Reported Message**": 
                         match = re.search(r'ID: `(\d+)`', field.value)
                         if match: original_author_id_str = match.group(1)
+                    if field.name == "**Specific Reason Provided by Reporter**":
+                        self.abuse_type = field.value
                 
                 if not original_message_link_str and self.report_details.description:
                     match = re.search(r'https?://discord\.com/channels/(\d+)/(\d+)/(\d+)', self.report_details.description)
@@ -157,7 +161,7 @@ class Review:
 
             except (discord.errors.NotFound, IndexError) as e:
                 return ["Error: Could not process linked report. Deleted or invalid format?"]
-            
+
             self.state = State.AWAITING_THREAT_JUDGEMENT
             
             reply = f"I found this report:\n"
@@ -166,7 +170,7 @@ class Review:
             reply += "Does this message contain a threat of violence? Selecting yes will result in the post being removed.\n"
             reply += "1. Yes\n"
             reply += "2. No"
-            
+                
             return [reply]
         
         elif self.state == State.AWAITING_THREAT_JUDGEMENT:
@@ -178,9 +182,40 @@ class Review:
                 self.threat_identified_by_reviewer = False
             else:
                 return ["Invalid input. Please type 1 for Yes or 2 for No."]
-            self.state = State.AWAITING_DISALLOWED_INFO
-            reply = ("Does the post contain **disallowed information** (Gov ID, Financial Details)?\n1. Yes\n2. No")
+            
+            if self.abuse_type == "Doxxing":
+                self.state = State.AWAITING_DISALLOWED_INFO
+                reply = ("Does the post contain **disallowed information** (Gov ID, Financial Details)?\n1. Yes\n2. No")
+                return [reply]
+            else:
+                self.state = State.AWAITING_OTHER_ABUSE_JUDGEMENT
+                reply = f"I found this report:\n"
+                for field in self.report_details.fields:
+                    reply += f"{field.name}: {field.value}\n"
+                reply += f"This message was flagged for {self.abuse_type}. Should this message be removed on the basis of that content?\n"
+                reply += "1. Yes\n"
+                reply += "2. No"
+                return [reply]
+            
+        elif self.state == State.AWAITING_OTHER_ABUSE_JUDGEMENT:
+            if message.content == "1": 
+                self.remove = True
+            self.state = State.CONFIRMING_REVIEW
+            if self.threat_identified_by_reviewer:
+                    self.state = State.CONFIRMING_REVIEW
+                    reply = ("Threat identified. Policy: Message removal & 1-day user suspension.\n\n" 
+                            "Confirm review and actions?\n1. Yes (Proceed)\n2. No (Cancel Review)")
+            else: 
+                reply = ("Review assessment (no direct threat ID'd by you):\n")
+                if self.remove:
+                    reply += f"- {self.report_details['**Specific Reason Provided by Reporter**']} content was identified.\n"
+                    reply += "- This will be logged. The post will be removed.\n"
+                else: 
+                    reply += "- No direct threat or other significant problematic content was flagged by you.\n"
+                reply += "No suspension will occur (policy requires reviewer to ID direct threat).\n\n"
+                reply += "Finalize and log assessment?\n1. Yes (Finalize)\n2. No (Cancel Review)"
             return [reply]
+                
         
         elif self.state == State.AWAITING_DISALLOWED_INFO:
             if message.content == "1":
@@ -212,7 +247,7 @@ class Review:
                      reply += "- This will be logged. Manual moderator follow-up may be appropriate.\n"
                  else: 
                      reply += "- No direct threat or other significant problematic content was flagged by you.\n"
-                 reply += "No automated deletion or suspension will occur (policy requires reviewer to ID direct threat).\n\n"
+                 reply += "No suspension will occur (policy requires reviewer to ID direct threat).\n\n"
                  reply += "Finalize and log assessment?\n1. Yes (Finalize)\n2. No (Cancel Review)"
             return [reply]
         
@@ -291,12 +326,13 @@ class Review:
         # Reviewer's assessment
         summary_lines.append("\n**Moderator's Assessment:**")
         summary_lines.append(f"- Threat of Violence: `{'Yes' if self.threat_identified_by_reviewer else 'No'}`")
-        summary_lines.append(f"- Disallowed Info: `{'Yes' if self.disallowed_info_identified else 'No'}`")
+        if self.abuse_type == "Doxxing":
+            summary_lines.append(f"- Disallowed Info: `{'Yes' if self.disallowed_info_identified else 'No'}`")
         summary_lines.append(f"- Other Problematic Content: `{'Yes' if self.other_problematic_content_identified else 'No'}`")
 
         summary_lines.append("\n**Outcome:**")
         summary_lines.append("- Status: First-Level Review Completed.")
-        summary_lines.append("  **Automated Bot Actions:**")
+        summary_lines.append("\n  **Automated Bot Actions:**")
         if actions_performed_strings:
             for item in actions_performed_strings: summary_lines.append(f"    - {item}")
         else: 
@@ -344,6 +380,11 @@ class Review:
 
         elif self.state == State.AWAITING_THREAT_JUDGEMENT:
             help_msg += "Please identify whether the post in question contains a threat of violence. Posts labeled as a threat will be removed.\n\n"
+            help_msg += "1. Yes\n"
+            help_msg += "2. No\n"
+
+        elif self.state == State.AWAITING_OTHER_ABUSE_JUDGEMENT:
+            help_msg += f"The report was labeled as {self.abuse_type}. Does this content contain {self.abuse_type}?\n"
             help_msg += "1. Yes\n"
             help_msg += "2. No\n"
         
