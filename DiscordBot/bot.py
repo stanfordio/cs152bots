@@ -6,8 +6,8 @@ import json
 import logging
 import re
 import requests
-from report_v2 import Report
-from review_v2 import Review
+from report import Report
+from review import Review
 import pdb
 
 # Set up logging to the console
