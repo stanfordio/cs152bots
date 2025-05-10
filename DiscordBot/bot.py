@@ -168,34 +168,36 @@ class ModBot(discord.Client):
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].is_report_complete():
 
-            reported_author = self.reports[author_id].get_reported_author()
-            reported_content = self.reports[author_id].get_reported_content() 
-            report_type = self.reports[author_id].get_report_type() 
-            disinfo_type = self.reports[author_id].get_disinfo_type()
-            disinfo_subtype = self.reports[author_id].get_disinfo_subtype()
-            imminent = self.reports[author_id].get_imminent()
-            priority = self.reports[author_id].get_priority()
-            id = self.report_id_counter
-            self.report_id_counter += 1
-            reported_message = self.reports[author_id].get_reported_message()
-
             for r in responses:
                 await message.channel.send(r)
 
-            # Put the report in the mod channel
-            message_guild_id = self.reports[author_id].get_message_guild_id()
-            mod_channel = self.mod_channels[message_guild_id]
-            # todo are we worried about code injection via author name or content? 
-            report_info_msg = "Report ID: " + str(id) + "\n"
-            report_info_msg += "User " + message.author.name + " reported user " + str(reported_author) + "'s message.\n"
-            # report_info_msg += "Here is the message: \n```" + str(reported_content) + "\n```" 
-            report_info_msg += "Category: " + str(report_type) + " > " + str(disinfo_type) + " > " + str(disinfo_subtype) + "\n"
-            if imminent:
-                report_info_msg += "URGENT: Imminent " + imminent + " harm reported."
-            submitted_report = SubmittedReport(id, reported_message, reported_author, reported_content, report_type, disinfo_type, disinfo_subtype, imminent, message_guild_id, priority)
-            self.report_queue.enqueue(submitted_report)
+            if not self.reports[author_id].is_cancelled():
 
-            await mod_channel.send(report_info_msg)
+                reported_author = self.reports[author_id].get_reported_author()
+                reported_content = self.reports[author_id].get_reported_content() 
+                report_type = self.reports[author_id].get_report_type() 
+                disinfo_type = self.reports[author_id].get_disinfo_type()
+                disinfo_subtype = self.reports[author_id].get_disinfo_subtype()
+                imminent = self.reports[author_id].get_imminent()
+                priority = self.reports[author_id].get_priority()
+                id = self.report_id_counter
+                self.report_id_counter += 1
+                reported_message = self.reports[author_id].get_reported_message()
+
+                # Put the report in the mod channel
+                message_guild_id = self.reports[author_id].get_message_guild_id()
+                mod_channel = self.mod_channels[message_guild_id]
+                # todo are we worried about code injection via author name or content? 
+                report_info_msg = "Report ID: " + str(id) + "\n"
+                report_info_msg += "User " + message.author.name + " reported user " + str(reported_author) + "'s message.\n"
+                # report_info_msg += "Here is the message: \n```" + str(reported_content) + "\n```" 
+                report_info_msg += "Category: " + str(report_type) + " > " + str(disinfo_type) + " > " + str(disinfo_subtype) + "\n"
+                if imminent:
+                    report_info_msg += "URGENT: Imminent " + imminent + " harm reported."
+                submitted_report = SubmittedReport(id, reported_message, reported_author, reported_content, report_type, disinfo_type, disinfo_subtype, imminent, message_guild_id, priority)
+                self.report_queue.enqueue(submitted_report)
+
+                await mod_channel.send(report_info_msg)
 
             # remove
             self.reports.pop(author_id)

@@ -25,6 +25,8 @@ class Report:
         self.client = client
         self.reported_message = None
 
+        self.cancelled = False
+
         self.message_guild_id = None
         self.reported_author = None
         self.reported_content = None
@@ -43,7 +45,10 @@ class Report:
 
         if message.content == self.CANCEL_KEYWORD:
             self.state = State.REPORT_COMPLETE
+            self.cancelled = True
             return ["Report cancelled."]
+        else:
+            self.cancelled = False
         
         if self.state == State.REPORT_START:
             reply =  "Thank you for starting the reporting process. "
@@ -442,3 +447,5 @@ class Report:
     def is_report_complete(self):
         return self.state == State.REPORT_COMPLETE    
 
+    def is_cancelled(self):
+        return self.cancelled
