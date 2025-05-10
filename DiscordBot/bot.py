@@ -244,7 +244,7 @@ class ModBot(discord.Client):
 
         if review.is_review_complete():
 
-            if self.moderations[author_id].action_taken not in ["Skipped", "Escalated"]:
+            if self.moderations[author_id].action_taken in ["Allowed", "Removed"]:
                 # Put the verdict in the mod channel
                 mod_channel = self.mod_channels[self.moderations[author_id].message_guild_id]
                 # todo are we worried about code injection via author name or content? 
@@ -253,10 +253,11 @@ class ModBot(discord.Client):
                 mod_info_msg += "Verdict: " + self.moderations[author_id].action_taken + ".\n"
                 await mod_channel.send(mod_info_msg)
 
-            original_report = self.moderations[author_id].original_report
-            if NUM_QUEUE_LEVELS - 1 > original_report.priority:
-                original_report.priority += 1
-            self.report_queue.enqueue(original_report)
+            elif self.moderations[author_id].action_taken in ["Skipped", "Escalated"]:
+                original_report = self.moderations[author_id].original_report
+                self.report_queue.enqueue(original_report)
+
+                
             self.moderations.pop(author_id, None)
             self.conversationState = ConversationState.NOFLOW
 
