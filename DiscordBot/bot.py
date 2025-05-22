@@ -8,8 +8,9 @@ import requests
 import random
 from review import Review, ReviewState 
 from report import Report, State 
-
+from openai import OpenAI
 import pdb
+import base64
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -214,10 +215,10 @@ class ModBot(discord.Client):
         # AUTO FLAGGING CODE
         elif channel_name == group_name:
         # forward raw text to mods
-            await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-            scores = self.eval_text(message.content)
+            #await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
+            scores = self.eval_text(message)
 
-            if scores > 0:
+            if scores == 1:
                 # build jump link
                 jump_url = f"https://discord.com/channels/{message.guild.id}/{message.channel.id}/{message.id}"
                 auto_report = Report(self)
@@ -255,9 +256,58 @@ class ModBot(discord.Client):
             else:
                 await mod_channel.send(self.code_format(scores))
 
+
+    def is_AI_generated(self, image_url ):
+        # use openai to check if the image is AI generated ask if it's ai generated or not
+        api_key = os.getenv("OPENAI_API_KEY")
+        client = OpenAI(api_key=api_key)
+        
+        # Make the API call
+        response = client.responses.create(
+            model="gpt-4.1-mini",
+            input=[{
+                "role": "user",
+                "content": [
+                    {"type": "input_text", "text": "Is this image AI-generated? Please respond with just 'yes' or 'no'. Consider telltale signs like unusual artifacts, perfect symmetry, unnatural patterns, or inconsistencies in details."},
+                    {
+                        "type": "input_image",
+                        "image_url": image_url,
+                    },
+                ],
+            }],
+        )
+        
+        # Get the response text
+        result = response.output_text
+        
+        # Return 1 if the response indicates AI-generated, 0 otherwise
+        return True if 'yes' in result else False
+
     def eval_text(self, message):
-        # Returns 0 or 1 for now for demo
-        return random.getrandbits(1)
+        # print msg image if it exists
+        if message.attachments:
+            for attachment in message.attachments:
+                # Get content type and convert to lowercase for case-insensitive comparison
+                content_type = attachment.content_type.lower() if attachment.content_type else ""
+                
+                # Check for all common image formats
+                valid_types = [
+                    "image/png",
+                    "image/jpeg",
+                    "image/jpg",
+                    "image/gif",
+                    "image/webp",
+                    "image/tiff",
+                    "image/bmp"
+                ]
+                
+                if content_type in valid_types:
+                    try:    
+                        return self.is_AI_generated(attachment.url)
+                    except Exception as e:
+                        logger.error(f"Error checking if image is AI-generated: {str(e)}")
+                
+        return 0
 
     
     def code_format(self, text):
