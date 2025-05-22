@@ -39,6 +39,8 @@ class Report:
         self.q1_response = None
         self.q2_response = None
         self.block_response = None
+        self.author_id = None
+        self.guild_id = None
 
     async def handle_message(self, message):
         '''
@@ -75,6 +77,7 @@ class Report:
                 fetched_message = await channel.fetch_message(int(m.group(3)))
                 self.message = fetched_message
                 self.reported_message = fetched_message
+                self.guild_id = guild.id
                 print(self.reported_message)
                 print(type(self.reported_message))
                

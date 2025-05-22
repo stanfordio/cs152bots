@@ -85,14 +85,6 @@ class ModBot(discord.Client):
         channel_id = msg.channel.id
         message_id = msg.id
         jump_url = f"https://discord.com/channels/{guild_id}/{channel_id}/{message_id}"
- 
-        embed.add_field("Flagged Message",f"{msg.author.name}: {msg.content}",inline=False)
-        # add the jump link
-        embed.add_field(
-            "Jump to Message",
-            f"[Click here to view original message]({jump_url})",
-            inline=False
-        )
         if not mod_ch:
             return
         embed = discord.Embed(
@@ -100,18 +92,23 @@ class ModBot(discord.Client):
             description=f"User <@{report.author_id}> completed a report.",
             color=discord.Color.red()
         )
-        embed.add_field("Category",     report.type_selected or "N/A", inline=True)
-        embed.add_field("Subtype",      report.subtype_selected or "N/A", inline=True)
+        embed.add_field(name="Flagged Message",value=f"{msg.author.name}: {msg.content}",inline=False)
+        # add the jump link
+        embed.add_field(
+            name="Jump to Message",
+            value=f"[Click here to view original message]({jump_url})",
+            inline=False
+        )
+        embed.add_field(name="Category",     value=report.type_selected or "N/A", inline=True)
+        embed.add_field(name="Subtype",      value=report.subtype_selected or "N/A", inline=True)
         if msg:
-            embed.add_field("Flagged Message", f"{msg.author.name}: {msg.content}", inline=False)
-        embed.add_field("AI Suspected?", report.q1_response or "N/A", inline=True)
-        embed.add_field("User Blocked?",  report.block_response or "N/A", inline=True)
+            embed.add_field(name="Flagged Message", value=f"{msg.author.name}: {msg.content}", inline=False)
+        embed.add_field(name="AI Suspected?", value=report.q1_response or "N/A", inline=True)
+        embed.add_field(name="User Blocked?",  value=report.block_response or "N/A", inline=True)
+        mod_msg = await mod_ch.send(embed=embed)
         embed.set_footer(text=f"Report ID: {mod_msg.id}")
         self.flagged[mod_msg.id] = report
-        mod_msg = await mod_ch.send(embed=embed)
-        
 
-    # 
     async def handle_dm(self, message):
         '''
         This function is called whenever a message is sent in the DMs 
@@ -133,10 +130,12 @@ class ModBot(discord.Client):
         # Always reset report if user says "report"
         if message.content.strip().lower() == Report.START_KEYWORD: 
             self.reports[author_id] = Report(self)
+            self.reports[author_id].author_id = author_id
 
         # If no current report, create one
         if author_id not in self.reports:
             self.reports[author_id] = Report(self)
+            self.reports[author_id].author_id = author_id
 
         # Handle message VIA SENDING TO REPORT.PY
         responses = await self.reports[author_id].handle_message(message)
