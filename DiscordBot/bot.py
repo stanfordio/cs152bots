@@ -144,7 +144,8 @@ class ModBot(discord.Client):
             await message.channel.send(r)
 
         # ****** Once a user submits their report, it's submitted as an embed to the mod channel ******
-        if self.reports[author_id].state == State.REPORT_COMPLETE:
+        # check if the author_id is in the reports dictionary once again because of the await it might have been removed
+        if author_id in self.reports and self.reports[author_id].state == State.REPORT_COMPLETE:
             report = self.reports.pop(author_id)
             await self.send_report_embed(report)
             
