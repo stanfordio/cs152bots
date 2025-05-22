@@ -107,6 +107,7 @@ class ModBot(discord.Client):
         embed.add_field(name="User Blocked?",  value=report.block_response or "N/A", inline=True)
         mod_msg = await mod_ch.send(embed=embed)
         embed.set_footer(text=f"Report ID: {mod_msg.id}")
+        await mod_msg.edit(embed=embed)
         self.flagged[mod_msg.id] = report
 
     async def handle_dm(self, message):
@@ -246,6 +247,8 @@ class ModBot(discord.Client):
                     )
                 
                 mod_msg = await mod_channel.send(embed=embed)
+                embed.set_footer(text=f"Report ID: {mod_msg.id}")
+                await mod_msg.edit(embed=embed)
                 self.flagged[mod_msg.id] = auto_report
 
             else:
