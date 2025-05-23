@@ -6,6 +6,8 @@ import json
 import logging
 import re
 import requests
+from google.oauth2 import service_account
+from google.auth.transport.requests import Request
 from enum import Enum
 from report import Report
 from report_queue import SubmittedReport, PriorityReportQueue
@@ -33,6 +35,13 @@ MOD_TODO_START = "---------------------------\nTODO"
 MODERATE_KEYWORD = "moderate"
 
 NUM_QUEUE_LEVELS = 3
+
+CLASSIFIER_URL = "placeholder/classify"
+GCP_SERVICE_ACCOUNT_TOKEN_FILE = "gcp_key.json" # key that allows our discord bot to run the classifier
+credentials = service_account.IDTokenCredentials.from_service_account_file(
+    GCP_SERVICE_ACCOUNT_TOKEN_FILE,
+    target_audience=CLASSIFIER_URL
+)
 
 class ConversationState(Enum):
     NOFLOW = 0
@@ -282,13 +291,31 @@ class ModBot(discord.Client):
                     await message.channel.send(self.report_queue.display())
 
 
-        # ----- teddy: commented out to reduce clutter for milestone 2 since we are not doing auto flagging ------------
-        # # Forward the message to the mod channel
-        # mod_channel = self.mod_channels[message.guild.id]
-        # await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-        # scores = self.eval_text(message.content)
-        # await mod_channel.send(self.code_format(scores))
-        #------------------------------------------------------------------------------------------------
+        # ----- teddy: for milestone 3, send every msg to classifier/llm -----------------------
+        # TODO figure out api call for our classifier (in gcp) and send it and wait for a response
+        # TODO uncomment and edit this code below
+        # credentials.refresh(Request())
+        # token = credentials.token
+        # headers = {
+        #     "Authorization": f"Bearer {token}"
+        # }
+        # payload = {"message": message.content}
+        # try:
+        #     response = requests.post(CLASSIFIER_URL, headers=headers, json=payload)
+        #     result = response.json()
+
+        #     classification = result.get("classification")
+        #     confidence = result.get("confidence_score")
+
+        #     TODO replace this line with sending to LLM to fill out report info
+        #     await message.channel.send(
+        #         f"Classification: {classification}, Confidence: {confidence:.2f}"
+        #     )
+
+        # except Exception as e:
+        #     await message.channel.send("Error classifying message.")
+        #     print(e)
+
         return
     
     def eval_text(self, message):

@@ -4,3 +4,4 @@ TABot/tokens.json
 venv/
 .DS_Store
 .history
+gcp_key.json
