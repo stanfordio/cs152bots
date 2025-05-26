@@ -4,6 +4,8 @@ import discord
 import re
 import asyncio
 from datetime import datetime
+from count import increment_harassment_count
+from supabase_helper import insert_victim_log
 
 class ReportType(Enum):
     FRAUD = "Fraud"
@@ -35,6 +37,7 @@ class State(Enum):
     AWAITING_PRIVACY_DETAILS = auto()
     AWAITING_THREAT = auto()
     AWAITING_INFO_TYPE = auto()
+    AWAITING_VICTIM_NAME = auto()
     AWAITING_SIGNATURE = auto()
     AWAITING_CONFIRMATION = auto()
     REPORT_COMPLETE = auto()
@@ -57,6 +60,7 @@ class Report:
         self.severity = 0
         self.reporter_id = None
         self.timestamp = None
+        self.victim_name = None
         
     async def handle_message(self, message):
         '''
@@ -159,9 +163,9 @@ class Report:
                 }
                 if selection in fraud_reasons_map:
                     self.report_sub_type, self.severity = fraud_reasons_map[selection]
-                    self.state = State.AWAITING_SIGNATURE
+                    self.state = State.AWAITING_VICTIM_NAME
                     response = f"You selected Fraud Reason: {self.report_sub_type}.\n\n"
-                    response += "Please provide your signature to confirm the authenticity of this report.\n"
+                    response += "(Optional) If there is a specific victim, please type their name now or type `skip` to continue."
                     return [response]
                 else:
                     return [f"Please enter a valid number between 1 and {len(fraud_reasons_map)} for the fraud reason."]
@@ -179,9 +183,9 @@ class Report:
                 }
                 if selection in ic_reasons_map:
                     self.report_sub_type, self.severity = ic_reasons_map[selection]
-                    self.state = State.AWAITING_SIGNATURE
+                    self.state = State.AWAITING_VICTIM_NAME
                     response = f"You selected Inappropriate Content Reason: {self.report_sub_type}.\n\n"
-                    response += "Please provide your signature to confirm the authenticity of this report.\n"
+                    response += "(Optional) If there is a specific victim, please type their name now or type `skip` to continue."
                     return [response]
                 else:
                     return [f"Please enter a valid number between 1 and {len(ic_reasons_map)} for the inappropriate content reason."]
@@ -203,9 +207,9 @@ class Report:
                         self.threat = True
                         print("Report Log: Credible Threat of Violence identified, self.threat=True, severity=URGENT.")
                     
-                    self.state = State.AWAITING_SIGNATURE
+                    self.state = State.AWAITING_VICTIM_NAME
                     response = f"You selected Harassment Reason: {self.report_sub_type}.\n\n"
-                    response += "Please provide your signature to confirm the authenticity of this report.\n"
+                    response += "(Optional) If there is a specific victim, please type their name now or type `skip` to continue."
                     return [response]
                 else:
                     return [f"Please enter a valid number between 1 and {len(harassment_reasons_map)} for the harassment reason."]
@@ -230,9 +234,9 @@ class Report:
                         response += "1. Yes\n2. No"
                         return [response]
                     else: 
-                        self.state = State.AWAITING_SIGNATURE
+                        self.state = State.AWAITING_VICTIM_NAME
                         response = f"You selected Privacy Reason: {self.report_sub_type}.\n\n"
-                        response += "Please provide your signature to confirm the authenticity of this report.\n"
+                        response += "(Optional) If there is a specific victim, please type their name now or type `skip` to continue."
                         return [response]
                 else:
                     return [f"Please enter a valid number between 1 and {len(privacy_reasons_map)} for the privacy reason."]
@@ -277,14 +281,24 @@ class Report:
                     return ["You must select at least one type of information. Please try again, or type `cancel`."]
 
                 self.info_types = valid_info_objects
+                self.state = State.AWAITING_VICTIM_NAME
 
-                self.state = State.AWAITING_SIGNATURE
-                selected_types_str = ", ".join([it.value for it in self.info_types])
-                response = f"You specified the following information types for Doxxing: {selected_types_str}.\n\n"
-                response += "Please provide your signature to confirm the authenticity of this report.\n"
+                # state will move to victim name collection next
+                response = f"You specified the following information types for Doxxing: {', '.join([it.value for it in self.info_types])}.\n\n"
+                response += "(Optional) If there is a specific victim, please type their name now or type `skip` to continue."
                 return [response]
             except ValueError:
                 return ["Invalid input. Please enter numbers separated by commas (e.g., 1,2,3). Example: 1,3"]
+        
+        # State: AWAITING_VICTIM_NAME - Optional victim name
+        elif self.state == State.AWAITING_VICTIM_NAME:
+            if message.content.lower() == "skip":
+                self.victim_name = None
+            else:
+                self.victim_name = message.content.strip()
+
+            self.state = State.AWAITING_SIGNATURE
+            return ["Please provide your signature to confirm the authenticity of this report."]
         
         # State: AWAITING_SIGNATURE - User provides their signature
         elif self.state == State.AWAITING_SIGNATURE:
@@ -296,6 +310,10 @@ class Report:
             if self.report_sub_type:
                 summary += f"**Specific Reason:** {self.report_sub_type}\n"
             
+            # If a victim name was provided
+            if self.victim_name:
+                summary += f"**Victim Name (if provided):** {self.victim_name}\n"
+
             # If Doxxing info types were collected, list them
             if self.info_types: 
                 info_types_str = ", ".join([it.value for it in self.info_types])
@@ -359,6 +377,10 @@ class Report:
         if self.report_sub_type:
             embed.add_field(name="**Specific Reason Provided by Reporter**", value=self.report_sub_type, inline=False)
         
+        # Victim name if provided
+        if self.victim_name:
+            embed.add_field(name="**Victim (if provided)**", value=self.victim_name, inline=False)
+
         # If Doxxing info types were collected, add them to the embed
         if self.info_types:
             info_types_display_str = "\n".join([f"- {it.value}" for it in self.info_types])
@@ -372,6 +394,15 @@ class Report:
         embed.add_field(name="**Direct Link to Reported Message**", value=f"[Click to View Message]({self.message.jump_url})", inline=False)
         
         embed.set_footer(text=f"Report ID (Timestamp): {self.timestamp.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+
+        # Increment harassment count if this report is of type HARASSMENT
+        if self.report_type == ReportType.HARASSMENT:
+            offender_id = self.message.author.id
+            increment_harassment_count(guild_id, offender_id)
+
+        # Insert victim log into Supabase (if victim name provided)
+        if self.victim_name:
+            insert_victim_log(self.victim_name, self.timestamp)
 
         try:
             await mod_channel.send(embed=embed)
@@ -448,6 +479,9 @@ class Report:
             help_msg += "5. Explicit Content\n"
             help_msg += "\nType `cancel` to cancel the report."
 
+        elif self.state == State.AWAITING_VICTIM_NAME:
+            help_msg += "Please provide the name of the victim if known, or type `skip` if not provided."
+        
         elif self.state == State.AWAITING_SIGNATURE:
             help_msg += "Please provide your signature to confirm the authenticity of this report.\n"
             help_msg += "This can be your full name or your Discord username."

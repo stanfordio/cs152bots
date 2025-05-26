@@ -9,6 +9,7 @@ import requests
 from report import Report
 from review import Review
 import pdb
+import count
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -126,6 +127,21 @@ class ModBot(discord.Client):
             if message.content == Review.HELP_KEYWORD:
                 reply =  "Use the `review` command to begin the reviewing process.\n"
                 await message.channel.send(reply)
+                return
+
+            # /count command under -mod channel
+            if message.content.strip() == "/count":
+                counts = count.get_counts(message.guild.id)
+                if not counts:
+                    await message.channel.send("No harassment reports have been logged yet.")
+                else:
+                    # Build a readable report of counts
+                    lines = ["**Harassment Report Counts:**"]
+                    for user_id, num in counts.items():
+                        member = message.guild.get_member(user_id)
+                        name_display = member.display_name if member else f"User ID {user_id}"
+                        lines.append(f"- {name_display} (`{user_id}`): {num}")
+                    await message.channel.send("\n".join(lines))
                 return
 
             # Only respond to messages if they're part of a reviewing flow
