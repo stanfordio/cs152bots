@@ -1,16 +1,17 @@
 from google import genai
-from ../report import Report
 
-client = genai.Client(api_key="YOUR_API_KEY")
+# Load API key from a text file
+try:
+    with open("api_key.txt", "r") as f:
+        api_key = f.read().strip()
+    client = genai.Client(api_key=api_key)
+except FileNotFoundError:
+    print("Error: API key file not found. Create 'api_key.txt' with your API key.")
+    exit(1)
+except Exception as e:
+    print(f"Error loading API key: {e}")
+    exit(1)
 
-# response = client.models.generate_content(
-#     model="gemini-2.0-flash",
-#     config=types.GenerateContentConfig(
-#         system_instruction="You are a content moderation assistant for a Discord bot. Analyze the reported message and classify it into one of the specified categories. Respond with ONLY the category number."),
-#     contents="Hello there"
-# )
-
-# print(response.text)
 
 def call_gemini(system_instruction, content):
     response = client.models.generate_content(
@@ -19,7 +20,7 @@ def call_gemini(system_instruction, content):
         system_instruction= system_instruction,
         contents= content)
     )
-
+    
     return response.text
     
 
@@ -39,6 +40,23 @@ def LLM_report(message_content, classifier_label, confidence_score,metadata, rep
         'imminent' : None
     }
 
+    # Perform initial Classification 
+    classification_reponse = initial_classification()
+    
+    # Update misinfo_type in report details
+    if classification_reponse in ["1", "2"] :
+        report_details['misinfo_type'] = "Misinformation" if classification_reponse == "1" else "other"
+
+        # Initiate userflow for misiniformation
+        if classification_reponse == "1" :
+            misinfo_type_response = call_misinfo_type(message_content)
+    
+    # Think about logic for instances where LLM returns non option value
+
+
+
+
+def initial_classification(message_content, classifier_label, confidence_score,metadata):
     # Step 1: Initial classification - Misinformation or Other
     print("====Step 1: Initial classification - Misinformation or Other===")
     print(f"Message: {message_content}")
@@ -60,9 +78,6 @@ def LLM_report(message_content, classifier_label, confidence_score,metadata, rep
     - Hashtags : {metadata.get('hashtags', 'Unkown')},
     - Previous Violation Count : {metadata.get('violation count', '0')}
 
-    Reporter Info :
-    - Reporter's Name : {reporter_info}
-
     Validate the classifier's decision by selecting a category:
     1. Misinformation
     2. Other inappropriate content
@@ -71,8 +86,28 @@ def LLM_report(message_content, classifier_label, confidence_score,metadata, rep
     """
 
     
-    report_type = call_gemini (system_instruction, content)
+    return  call_gemini (system_instruction, content)
 
+def call_misinfo_type (message_content):
+    # Step 2: Initial classification - Misinformation or Other
+    print("====Step 2: Misinformation type ===")
+    
+    system_instruction = f"""
+    You are an expert content moderator for a social media platform who has been assigned to analyze content reported
+    as misinformation.
+                        """
+    
+    content = f"""
+     Mesaage Content: {message_content}
+     Please select the type of misinformation:
+        1. Political Misinformation
+        2. Health Misinformation
+        3. Other Misinformation
+        
+    Respond with ONLY the number (1-3).
+                """
+    
+    return call_gemini(system_instruction, content)
 
 
 
