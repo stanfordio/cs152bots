@@ -13,14 +13,14 @@ except Exception as e:
     exit(1)
 
 
-def call_gemini(system_instruction, content):
+def call_gemini(sys_instruction, content):
     response = client.models.generate_content(
         model= "gemini-2.0-flash",
         config=types.GenerateContentConfig(
-        system_instruction= system_instruction,
+        system_instruction= sys_instruction,
         contents= content)
     )
-    
+
     return response.text
     
 
@@ -45,13 +45,64 @@ def LLM_report(message_content, classifier_label, confidence_score,metadata, rep
     
     # Update misinfo_type in report details
     if classification_reponse in ["1", "2"] :
-        report_details['misinfo_type'] = "Misinformation" if classification_reponse == "1" else "other"
+        report_details['report_type'] = "Misinformation" if classification_reponse == "1" else "other"
 
         # Initiate userflow for misiniformation
         if classification_reponse == "1" :
+
+            # Call to classify type of misinformation
             misinfo_type_response = call_misinfo_type(message_content)
-    
+
+             #================== Decision logic for Misinformation Type Response ==================
+            
+            # Political Misinfo
+            if misinfo_type_response ==  "1" :
+                report_details ['misinfo_type'] = "Political Misinformation"
+
+                # Call to classify political misinfo subtype
+                pol_misinfo_subtype_response  =  call_pol_misinfo_subtype(message_content)
+
+                #=============== Decision logic for Political misinfo subtye response ===============
+                if pol_misinfo_subtype_response == "1":
+                    report_details['misinfo_subtype'] = 'Election/Campaign Misinformation'
+                
+                elif pol_misinfo_subtype_response == "2":
+                    report_details['misinfo_subtype'] = 'Government/Civic Services'
+                
+                elif pol_misinfo_subtype_response == "3":
+                    report_details['misinfo_subtype'] = 'Manipulated Photos/Video'
+
+                elif pol_misinfo_subtype_response == "4":
+                    report_details['misinfo_subtype'] = 'Other'
+            
+            # Health Misinfo
+            elif misinfo_type_response == "2" :
+                report_details ['misinfo_type'] = "Health Misinformation"
+
+                 # Call to classify health misinfo subtype
+                health_misinfo_subtype_response = call_health_misinfo_subtype(message_content)
+
+                #=============== Decision logic for Health misinfo subtye response ===============
+                if health_misinfo_subtype_response == "1":
+                    report_details['misinfo_subtype'] = 'Vaccines'
+                
+                elif health_misinfo_subtype_response == "2":
+                    report_details['misinfo_subtype'] = 'Cures and Treatments'
+                    
+                elif health_misinfo_subtype_response == "3":
+                    report_details['misinfo_subtype'] = 'Mental Health'
+
+                elif health_misinfo_subtype_response == "4":
+                    report_details['misinfo_subtype'] = 'Oher'
+
+            
+            elif misinfo_type_response == "3" :
+                report_details ['misinfo_type'] = "Other Misinformation"
+
+
     # Think about logic for instances where LLM returns non option value
+
+  
 
 
 
@@ -89,11 +140,11 @@ def initial_classification(message_content, classifier_label, confidence_score,m
     return  call_gemini (system_instruction, content)
 
 def call_misinfo_type (message_content):
-    # Step 2: Initial classification - Misinformation or Other
+    # Step 2: Type of Misinformation
     print("====Step 2: Misinformation type ===")
     
     system_instruction = f"""
-    You are an expert content moderator for a social media platform who has been assigned to analyze content reported
+    You are a misinformation expert content moderator for a social media platform who has been assigned to analyze content reported
     as misinformation.
                         """
     
@@ -111,7 +162,48 @@ def call_misinfo_type (message_content):
 
 
 
+def call_pol_misinfo_subtype(message_content):
+    # Step 3a. Type of Political Misinformation
+    print("====Step 3a. Type of Political Misinformation ===")
+
+    system_instruction = f"""
+    You are a political expert content moderator for a social media platform who has been assigned to analyze content reported
+    as political misinformation.
+                         """
+    
+    content = f"""
+    Mesaage Content: {message_content}
+    Classify the type of political  misinformation which the message falls under :
+        1. Election/Campaign Misinformation
+        2. Government/Civic Services
+        3. Manipulated Photos/Video
+        4. Other political misinformation
+    
+    Respond with ONLY the number (1-4).
+              """
+
+    return call_gemini(system_instruction, content)
 
 
 
+def call_health_misinfo_subtype(message_content):
+    # Step 3b. Type of Health Misinformation
+    print("====Step 3b. Type of Health Misinformation ===")
 
+    system_instruction = f"""
+    You are a health expert content moderator for a social media platform who has been assigned to analyze content reported
+    as health misinformation.
+                         """
+    
+    content = f"""
+    Mesaage Content: {message_content}
+    Classify the type of health  misinformation which the message falls under :
+        1. Vaccines
+        2. Cures and Treatments
+        3. Mental Health
+        4. Other health misinformation
+            
+    Respond with ONLY the number (1-4).
+               """
+    
+    return call_gemini(system_instruction,content)
