@@ -219,7 +219,7 @@ class ModBot(discord.Client):
         guild = mod_channel.guild if hasattr(mod_channel, 'guild') else None
 
         if step == 'appeal_review':
-            if content == 'accept':
+            if content == '1':
                 await mod_channel.send("The appeal has been accepted. The original decision has been overturned.")
                 user = discord.utils.get(guild.members, name=self.active_mod_flow['message_author'])
                 if user:
@@ -227,7 +227,7 @@ class ModBot(discord.Client):
                 self.active_mod_flow = None
                 return
 
-            elif content == 'uphold':
+            elif content == '2':
                 await mod_channel.send("The appeal has been reviewed and the original decision is upheld.")
                 user = discord.utils.get(guild.members, name=self.active_mod_flow['message_author'])
                 if user:
