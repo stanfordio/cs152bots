@@ -41,14 +41,14 @@ def LLM_report(message_content, classifier_label, confidence_score,metadata, rep
     }
 
     # Perform initial Classification 
-    classification_reponse = initial_classification()
+    report_type_reponse = call_report_type(message_content, classifier_label, confidence_score,metadata)
     
     # Update misinfo_type in report details
-    if classification_reponse in ["1", "2"] :
-        report_details['report_type'] = "Misinformation" if classification_reponse == "1" else "other"
+    if report_type_reponse in ["1", "2"] :
+        report_details['report_type'] = "Misinformation" if report_type_reponse == "1" else "other"
 
         # Initiate userflow for misiniformation
-        if classification_reponse == "1" :
+        if report_type_reponse == "1" :
 
             # Call to classify type of misinformation
             misinfo_type_response = call_misinfo_type(message_content)
@@ -98,7 +98,23 @@ def LLM_report(message_content, classifier_label, confidence_score,metadata, rep
             
             elif misinfo_type_response == "3" :
                 report_details ['misinfo_type'] = "Other Misinformation"
+                report_details['misinfo_subtype'] = 'Other'
 
+
+        # Initiate userfflow for Harmful content
+        imminent_response = call_imminent(message_content)
+
+        #================== Decision logic for Imminent Harm Response ==================
+
+        if imminent_response == "2":
+            report_details['imminent'] = 'physical'
+
+        elif imminent_response == "3":
+            report_details['imminent'] = 'mental'
+        
+        elif imminent_response == "4":
+            report_details['imminent'] = 'financial or property'
+            
 
     # Think about logic for instances where LLM returns non option value
 
@@ -107,13 +123,13 @@ def LLM_report(message_content, classifier_label, confidence_score,metadata, rep
 
 
 
-def initial_classification(message_content, classifier_label, confidence_score,metadata):
+def call_report_type(message_content, classifier_label, confidence_score,metadata):
     # Step 1: Initial classification - Misinformation or Other
     print("====Step 1: Initial classification - Misinformation or Other===")
     print(f"Message: {message_content}")
 
     system_instruction = f"""
-     You are an expert content moderator for a social media platform who has been assigned to generate a user
+     You are a trust & safety expert content moderator for a social media platform who has been assigned to generate a user
      report for a post that has been flagged by the platform's classifier.
                          """
 
@@ -144,7 +160,7 @@ def call_misinfo_type (message_content):
     print("====Step 2: Misinformation type ===")
     
     system_instruction = f"""
-    You are a misinformation expert content moderator for a social media platform who has been assigned to analyze content reported
+    You are a misinformation trust & safety expert content moderator for a social media platform who has been assigned to analyze content reported
     as misinformation.
                         """
     
@@ -167,7 +183,7 @@ def call_pol_misinfo_subtype(message_content):
     print("====Step 3a. Type of Political Misinformation ===")
 
     system_instruction = f"""
-    You are a political expert content moderator for a social media platform who has been assigned to analyze content reported
+    You are a political trust & safety expert content moderator for a social media platform who has been assigned to analyze content reported
     as political misinformation.
                          """
     
@@ -191,7 +207,7 @@ def call_health_misinfo_subtype(message_content):
     print("====Step 3b. Type of Health Misinformation ===")
 
     system_instruction = f"""
-    You are a health expert content moderator for a social media platform who has been assigned to analyze content reported
+    You are a health trust & safety expert content moderator for a social media platform who has been assigned to analyze content reported
     as health misinformation.
                          """
     
@@ -207,3 +223,27 @@ def call_health_misinfo_subtype(message_content):
                """
     
     return call_gemini(system_instruction,content)
+
+
+def call_imminent(message_content):
+    # Step 4: Imminent Harm 
+    print("====Step 4: Imminent Harm===")
+
+    system_instruction = f"""
+    You are a trust & safety expert content moderator for a social media platform who has been assigned to analyze content reported
+    and assess potential harm of the reported content.
+                         """
+    
+    content = f"""
+    Mesaage Content: {message_content}
+    Could this content likely cause imminent harm to people or public safety?
+        1. No
+        2. Yes, physical harm
+        3. Yes, mental harm
+        4. Yes, financial or property harm
+        
+    Respond with ONLY the number (1-4).
+              """
+    
+    return call_gemini(system_instruction, content)
+
