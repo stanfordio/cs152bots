@@ -111,7 +111,7 @@ class ModBot(discord.Client):
                 'context': {},
                 'guild_id': info['guild_id']
             }
-            await mod_chan.send("Moderators, please respond with:\n• ACCEPT\n• UPHOLD")
+            await mod_chan.send("Moderators, please respond with:\n1. ACCEPT\n2. UPHOLD")
 
             # Acknowledge to user
             await message.channel.send("Your appeal has been submitted and is under review.")
@@ -236,7 +236,7 @@ class ModBot(discord.Client):
                 return
 
             else:
-                await mod_channel.send("Invalid response. Please respond with:\n• ACCEPT\n• UPHOLD")
+                await mod_channel.send("Invalid response. Please respond with:\n1. ACCEPT\n2. UPHOLD")
                 return
 
         ctx = self.active_mod_flow['context']
@@ -358,7 +358,7 @@ class ModBot(discord.Client):
             await mod_channel.send(
                 f"Explanation recorded: {explanation}\n"
                 "What action should be taken on the creator of the post?\n"
-                "• RECORD INCIDENT\n• TEMPORARILY MUTE\n• REMOVE USER"
+                "1. RECORD INCIDENT\n2. TEMPORARILY MUTE\n3. REMOVE USER"
             )
             self.active_mod_flow['step'] = 'action_on_user'
             return
@@ -385,6 +385,7 @@ class ModBot(discord.Client):
                     report_content,
                     "Post removed and user temporarily muted",
                     ctx.get('remove_explanation', '')
+                )
                 await self.notify_reported_user(
                     reported_user_name,
                     guild,
