@@ -6,7 +6,7 @@ import json
 import logging
 import re
 import requests
-from report import Report, AbuseType, MisinfoCategory, HealthCategory, NewsCategory
+from report import Report, AbuseType, MisinfoCategory, HealthCategory, NewsCategory, State
 from user_stats import UserStats
 import pdb
 
@@ -31,11 +31,12 @@ class ModBot(discord.Client):
     def __init__(self): 
         intents = discord.Intents.default()
         intents.message_content = True
-        intents.members = True  # Add members intent
+        intents.members = True
         super().__init__(command_prefix='.', intents=intents)
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
+        self.pending_appeals = {} 
         self.active_mod_flow = None # State for the current moderation flow
         self.user_stats = UserStats() # Initialize user statistics tracking
 
@@ -75,6 +76,47 @@ class ModBot(discord.Client):
             await self.handle_dm(message)
 
     async def handle_dm(self, message):
+        if message.author.id in self.pending_appeals:
+            # Retrieve all pending appeals for the user
+            user_appeals = self.pending_appeals[message.author.id]
+            if not user_appeals:
+                return
+
+            # Process the first pending appeal
+            info = user_appeals.pop(0)
+            if not user_appeals:
+                # Remove the user from pending_appeals if no appeals remain
+                del self.pending_appeals[message.author.id]
+
+            mod_chan = self.mod_channels[info['guild_id']]
+
+            # Build the appeal notice
+            text = (
+                f"APPEAL RECEIVED:\n"
+                f"User: {info['reported_name']}\n"
+                f"Outcome: {info['outcome']}\n\n"
+                f"Original Message:\n{info['original_message']}"
+            )
+            if info.get('explanation'):
+                text += f"\n\nReason: {info['explanation']}"
+            text += f"\n\nAppeal Reason:\n{message.content}"
+
+            # Send to mod channel
+            await mod_chan.send(text)
+
+            # Prompt mods for ACCEPT/UPHOLD
+            self.active_mod_flow = {
+                'step': 'appeal_review',
+                'message_author': info['reported_name'],
+                'context': {},
+                'guild_id': info['guild_id']
+            }
+            await mod_chan.send("Moderators, please respond with:\n• ACCEPT\n• UPHOLD")
+
+            # Acknowledge to user
+            await message.channel.send("Your appeal has been submitted and is under review.")
+            return
+
         # Handle a help message
         if message.content == Report.HELP_KEYWORD:
             reply =  "Use the `report` command to begin the reporting process.\n"
@@ -93,7 +135,7 @@ class ModBot(discord.Client):
         if author_id not in self.reports:
             self.reports[author_id] = Report(self)
 
-        # Let the report class handle this message; forward all the messages it returns to uss
+        # Let the report class handle this message; forward all the messages it returns to us
         responses = await self.reports[author_id].handle_message(message)
         for r in responses:
             await message.channel.send(r)
@@ -142,30 +184,65 @@ class ModBot(discord.Client):
             else:
                 await self.prompt_next_moderation_step(mod_channel)
 
-    async def notify_reported_user(self, user_name, guild, outcome, explanation=None):
-        # Find the user object by name in the guild
+    async def notify_reported_user(self, user_name, guild, outcome, explanation=None, original_message=None):
+        """Notify the user about the outcome and provide an appeal option."""
         user = discord.utils.get(guild.members, name=user_name)
         if user:
             try:
                 msg = f"Your message was reviewed by moderators. Outcome: {outcome}."
+                if original_message:
+                    msg += f"\n\n**Original Message:**\n{original_message}"
                 if explanation:
-                    msg += f"\nReason: {explanation}"
-                msg += "\nIf you believe this was a mistake, you may reply to this message to appeal."
+                    msg += f"\n\n**Reason:** {explanation}"
+                msg += "\n\nIf you believe this was a mistake, you may reply to this message to appeal."
                 await user.send(msg)
             except Exception as e:
                 print(f"Failed to DM user {user_name}: {e}")
+
+    async def notify_user_of_appeal_option(self, user_name, guild, explanation):
+        """Notify the user about the appeal process after their post is removed."""
+        user = discord.utils.get(guild.members, name=user_name)
+        if user:
+            try:
+                msg = f"Your post was removed for the following reason: {explanation}.\n"
+                msg += "If you believe this was a mistake, you can appeal by replying with your reason."
+                await user.send(msg)
+            except Exception as e:
+                print(f"Failed to notify user {user_name}: {e}")
 
     async def handle_mod_channel_message(self, message):
         if not self.active_mod_flow:
             return
         step = self.active_mod_flow['step']
-        ctx = self.active_mod_flow['context']
         content = message.content.strip().lower()
         mod_channel = message.channel
+        guild = mod_channel.guild if hasattr(mod_channel, 'guild') else None
+
+        if step == 'appeal_review':
+            if content == 'accept':
+                await mod_channel.send("The appeal has been accepted. The original decision has been overturned.")
+                user = discord.utils.get(guild.members, name=self.active_mod_flow['message_author'])
+                if user:
+                    await user.send("Your appeal has been accepted. The original decision has been overturned.")
+                self.active_mod_flow = None
+                return
+
+            elif content == 'uphold':
+                await mod_channel.send("The appeal has been reviewed and the original decision is upheld.")
+                user = discord.utils.get(guild.members, name=self.active_mod_flow['message_author'])
+                if user:
+                    await user.send("Your appeal has been reviewed, and the original decision is upheld.")
+                self.active_mod_flow = None
+                return
+
+            else:
+                await mod_channel.send("Invalid response. Please respond with:\n• ACCEPT\n• UPHOLD")
+                return
+
+        ctx = self.active_mod_flow['context']
         report_type = self.active_mod_flow['report_type']
         report_content = self.active_mod_flow['report_content']
         reported_user_name = self.active_mod_flow['message_author']
-        guild = mod_channel.guild if hasattr(mod_channel, 'guild') else None
 
         # Get the user ID from the reported user's name
         reported_user = discord.utils.get(guild.members, name=reported_user_name)
@@ -256,13 +333,32 @@ class ModBot(discord.Client):
                 self.active_mod_flow = None
                 return
         if step == 'remove_explanation':
-            await mod_channel.send(f"Explanation recorded: {message.content}\nPost removed. What action should be taken on the creator of the post?\n1. RECORD INCIDENT\n2. TEMPORARILY MUTE\n3. REMOVE USER")
-            ctx['remove_explanation'] = message.content
+            explanation = message.content
+            ctx['remove_explanation'] = explanation
             await self.notify_reported_user(
                 reported_user_name,
                 guild,
                 outcome="Post removed.",
-                explanation=ctx.get('remove_explanation', '')
+                explanation=ctx.get('remove_explanation', ''),
+                original_message=report_content
+            )
+            # Send only the appeal prompt
+            user = discord.utils.get(guild.members, name=reported_user_name)
+            if user:
+                # Track for incoming DM in pending_appeals
+                if user.id not in self.pending_appeals:
+                    self.pending_appeals[user.id] = []
+                self.pending_appeals[user.id].append({
+                    'guild_id': guild.id,
+                    'reported_name': reported_user_name,
+                    'outcome': "Post removed.",
+                    'original_message': report_content,
+                    'explanation': explanation
+                })
+            await mod_channel.send(
+                f"Explanation recorded: {explanation}\n"
+                "What action should be taken on the creator of the post?\n"
+                "• RECORD INCIDENT\n• TEMPORARILY MUTE\n• REMOVE USER"
             )
             self.active_mod_flow['step'] = 'action_on_user'
             return
@@ -289,6 +385,12 @@ class ModBot(discord.Client):
                     report_content,
                     "Post removed and user temporarily muted",
                     ctx.get('remove_explanation', '')
+                await self.notify_reported_user(
+                    reported_user_name,
+                    guild,
+                    outcome="You have been temporarily muted.",
+                    explanation="You violated the community guidelines.",
+                    original_message=report_content
                 )
                 self.active_mod_flow = None
                 return
@@ -301,6 +403,25 @@ class ModBot(discord.Client):
                     "Post removed and user removed",
                     ctx.get('remove_explanation', '')
                 )
+                await self.notify_reported_user(
+                    reported_user_name,
+                    guild,
+                    outcome="You have been removed from the server.",
+                    explanation="You violated the community guidelines.",
+                    original_message=report_content
+                )
+                user = discord.utils.get(guild.members, name=reported_user_name)
+                if user:
+                    # Track for incoming DM in pending_appeals
+                    if user.id not in self.pending_appeals:
+                        self.pending_appeals[user.id] = []
+                    self.pending_appeals[user.id].append({
+                        'guild_id': guild.id,
+                        'reported_name': reported_user_name,
+                        'outcome': "You have been removed from the server.",
+                        'original_message': report_content,
+                        'explanation': "You violated the community guidelines."
+                    })
                 self.active_mod_flow = None
                 return
 
