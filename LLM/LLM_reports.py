@@ -14,15 +14,22 @@ except Exception as e:
 
 
 def call_gemini(sys_instruction, content):
-    response = client.models.generate_content(
-        model= "gemini-2.0-flash",
-        config=types.GenerateContentConfig(
-        system_instruction= sys_instruction,
-        contents= content)
-    )
+    try : 
+        response = client.models.generate_content(
+            model= "gemini-2.0-flash",
+            config=types.GenerateContentConfig(
+            system_instruction= sys_instruction,
+            contents= content)
+        )
 
-    return response.text
+        return response.text
     
+    except Exception as e :
+        print(f"Error connecting to LLM: {e}")
+        return None
+
+
+
 
 
 #  Function to invoke report generation
@@ -31,13 +38,16 @@ def LLM_report(message_content, classifier_label, confidence_score,metadata, rep
     #  Dictionary for keeping track of report details
     report_details = {
         'message_guild_id' : f"{metadata.get('message_guild_id')}",
+        'classifier_label' : classifier_label,
+        'confidence_score' : confidence_score,
         'reported_author' : f"{metadata.get('message_author')}",
         'reported_content' : message_content,
         'report_type' : None,
         'misinfo_type' : None,
         'misinfo_subtype': None,
+        'imminent' : None,
         'filter' : False,
-        'imminent' : None
+        'LLM_recommendation' : None
     }
 
     # Perform initial Classification 
@@ -101,7 +111,7 @@ def LLM_report(message_content, classifier_label, confidence_score,metadata, rep
                 report_details['misinfo_subtype'] = 'Other'
 
 
-        # Initiate userfflow for Harmful content
+        # Initiate userflow for Harmful content
         imminent_response = call_imminent(message_content)
 
         #================== Decision logic for Imminent Harm Response ==================
@@ -114,11 +124,19 @@ def LLM_report(message_content, classifier_label, confidence_score,metadata, rep
         
         elif imminent_response == "4":
             report_details['imminent'] = 'financial or property'
-            
+
+        """
+        Discussion : Not sure if to factor in the filter flag since this is detected automatically and  
+        not specific to a particular user's feed
+        """
+        
+        # Initiate userflow for LLM Recommendation 
+        recommendation_response = call_recommedation(message_content, report_details['imminent'], report_details['confidence_score'])
+        report_details['LLM_recommendation'] = recommendation_response
 
     # Think about logic for instances where LLM returns non option value
 
-  
+    return report_details
 
 
 
@@ -165,7 +183,7 @@ def call_misinfo_type (message_content):
                         """
     
     content = f"""
-     Mesaage Content: {message_content}
+     Message Content: {message_content}
      Please select the type of misinformation:
         1. Political Misinformation
         2. Health Misinformation
@@ -188,7 +206,7 @@ def call_pol_misinfo_subtype(message_content):
                          """
     
     content = f"""
-    Mesaage Content: {message_content}
+    Message Content: {message_content}
     Classify the type of political  misinformation which the message falls under :
         1. Election/Campaign Misinformation
         2. Government/Civic Services
@@ -212,7 +230,7 @@ def call_health_misinfo_subtype(message_content):
                          """
     
     content = f"""
-    Mesaage Content: {message_content}
+    Message Content: {message_content}
     Classify the type of health  misinformation which the message falls under :
         1. Vaccines
         2. Cures and Treatments
@@ -235,7 +253,7 @@ def call_imminent(message_content):
                          """
     
     content = f"""
-    Mesaage Content: {message_content}
+    Message Content: {message_content}
     Could this content likely cause imminent harm to people or public safety?
         1. No
         2. Yes, physical harm
@@ -246,4 +264,35 @@ def call_imminent(message_content):
               """
     
     return call_gemini(system_instruction, content)
+
+
+
+def call_recommedation(message_content, harm, score):
+    # Step 5: Recommendation
+    print("====Step 5: Recommendation===")
+
+    system_instruction = f"""
+    You are a trust & safety expert content moderator for a social media platform who has been assigned to analyze content reported
+    and assess based on its potential harm, message content and confidence score, recommend an action which should be limited to the 
+    options provided .
+                         """
+    
+    content = f"""
+    Message Content: {message_content}
+    Potential Harm Label : {harm}
+    Confidence Score : {score}
+
+    Based on the message content, potential harm label and confidence score, which of the following do you recommend :
+        1. Allow Content
+        2. Remove Content 
+        3. Escalate to a human moderator
+
+        Respond with ONLY one of these phrases: 'Allow Content', 'Remove Content', or 'Escalate to a human moderator' and in less than 80 words, 
+        justify your recommendation. Adhere strictly to the word limit of 80. 
+              """
+
+    return call_gemini(system_instruction,content)
+# Recommendation based on filter, imminent harm, 
+
+
 
