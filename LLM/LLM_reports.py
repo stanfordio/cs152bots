@@ -1,4 +1,6 @@
 from google import genai
+from google.genai import types
+import re
 
 # Load API key from a text file
 try:
@@ -18,10 +20,11 @@ def call_gemini(sys_instruction, content):
         response = client.models.generate_content(
             model= "gemini-2.0-flash",
             config=types.GenerateContentConfig(
-            system_instruction= sys_instruction,
-            contents= content)
+            system_instruction= sys_instruction),
+            contents= content
         )
 
+        # print(f"LLM output is: {response.text}")
         return response.text
     
     except Exception as e :
@@ -51,17 +54,21 @@ def LLM_report(message_content, classifier_label, confidence_score,metadata, rep
     }
 
     # Perform initial Classification 
-    report_type_reponse = call_report_type(message_content, classifier_label, confidence_score,metadata)
-    
+    report_type_response = call_report_type(message_content, classifier_label, confidence_score,metadata)
+    report_type_response = report_type_response[0]
+    # report_type_response = re.search(r'(\d+)',report_type_response)
+    print(f"Report type response is: {report_type_response}")
     # Update misinfo_type in report details
-    if report_type_reponse in ["1", "2"] :
-        report_details['report_type'] = "Misinformation" if report_type_reponse == "1" else "other"
+    if report_type_response in ["1", "2"] :
+        report_details['report_type'] = "Misinformation" if report_type_response == "1" else "other"
 
         # Initiate userflow for misiniformation
-        if report_type_reponse == "1" :
+        if report_type_response == "1" :
 
             # Call to classify type of misinformation
             misinfo_type_response = call_misinfo_type(message_content)
+            misinfo_type_response = misinfo_type_response[0]
+                
 
              #================== Decision logic for Misinformation Type Response ==================
             
@@ -71,6 +78,7 @@ def LLM_report(message_content, classifier_label, confidence_score,metadata, rep
 
                 # Call to classify political misinfo subtype
                 pol_misinfo_subtype_response  =  call_pol_misinfo_subtype(message_content)
+                pol_misinfo_subtype_response = pol_misinfo_subtype_response[0]
 
                 #=============== Decision logic for Political misinfo subtye response ===============
                 if pol_misinfo_subtype_response == "1":
@@ -91,6 +99,7 @@ def LLM_report(message_content, classifier_label, confidence_score,metadata, rep
 
                  # Call to classify health misinfo subtype
                 health_misinfo_subtype_response = call_health_misinfo_subtype(message_content)
+                health_misinfo_subtype_response = health_misinfo_subtype_response[0]
 
                 #=============== Decision logic for Health misinfo subtye response ===============
                 if health_misinfo_subtype_response == "1":
@@ -113,6 +122,7 @@ def LLM_report(message_content, classifier_label, confidence_score,metadata, rep
 
         # Initiate userflow for Harmful content
         imminent_response = call_imminent(message_content)
+        imminent_response = imminent_response[0]
 
         #================== Decision logic for Imminent Harm Response ==================
 
