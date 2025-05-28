@@ -7,7 +7,7 @@ from sklearn.model_selection import train_test_split
 
 # === Paths ===
 MODEL_PATH = "model.pkl"
-DATA_PATH = "pb_detailed_100.csv"
+DATA_PATH = "kevin_data.csv"
 
 # === Load Model and Data ===
 df = pd.read_csv(DATA_PATH)

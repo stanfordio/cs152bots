@@ -11,7 +11,7 @@ RANDOM_STATE = 42
 TEST_SIZE = 0.2
 MAX_FEATURES = 5000
 MODEL_OUTPUT_PATH = "model.pkl"
-DATA_PATH = "pb_detailed_100.csv"
+DATA_PATH = "kevin_data.csv"
 
 # === Load and Prepare Data ===
 df = pd.read_csv(DATA_PATH)
