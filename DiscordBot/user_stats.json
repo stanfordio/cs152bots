@@ -1,0 +1,21 @@
+{
+  "1364364429797363722": {
+    "total_reports": 2,
+    "reports": [
+      {
+        "timestamp": "2025-05-27T19:16:54.138877",
+        "report_type": "HEALTH MISINFO - TREATMENTS",
+        "report_content": "this is health misinformation",
+        "outcome": "Report raised to higher level moderator",
+        "explanation": null
+      },
+      {
+        "timestamp": "2025-05-27T19:17:33.416435",
+        "report_type": "HEALTH MISINFO - TREATMENTS",
+        "report_content": "this is health misinformation",
+        "outcome": "Post removed and user temporarily muted",
+        "explanation": "not true"
+      }
+    ]
+  }
+}
