@@ -22,25 +22,6 @@ class AbuseType(Enum):
     HATE = "hate speech"
     DANGER = "danger"
 
-SUICIDE_VARIANTS = {
-    "suicide", 
-    "self harm", 
-    "self-harm",
-    "selfharm",
-    "suicide/self harm",
-    "suicide/selfharm",
-    "suicide/self-harm",
-}
-
-EXPLICIT_VARIANTS = {
-    "explicit",
-    "sexually explicit",
-    "sexual",
-    "nudity",
-    "nude",
-    "sexually explicit/nudity",
-}
-
 class MisinfoCategory(Enum):
     HEALTH = "health"
     ADVERTISEMENT = "advertisement"
