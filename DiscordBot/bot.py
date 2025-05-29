@@ -8,6 +8,10 @@ import re
 import requests
 from report import Report
 import pdb
+from google import genai
+import asyncio
+from datetime import datetime
+
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -24,6 +28,7 @@ with open(token_path) as f:
     # If you get an error here, it means your token is formatted incorrectly. Did you put it in quotes?
     tokens = json.load(f)
     discord_token = tokens['discord']
+    gemini_api_key = tokens['gemini']
 
 
 class ModBot(discord.Client):
@@ -37,6 +42,9 @@ class ModBot(discord.Client):
         self.reports = {} # Map from user IDs to the state of their report
         self.report_status = {}
         self.report_data = {}
+        self.gemini_client = genai.Client(api_key=gemini_api_key)
+        self.batch_messages = []  # Store messages for batch processing
+        self.batch_interval = 60  # seconds (1 minute for testing, change to 3600 for 1 hour)
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -57,6 +65,49 @@ class ModBot(discord.Client):
                 if channel.name == f'group-{self.group_num}-mod':
                     self.mod_channels[guild.id] = channel
         
+        # Start batch processing
+        self.loop.create_task(self.batch_process_messages())
+
+    async def batch_process_messages(self):
+        """Process messages in batches every interval"""
+        while True:
+            await asyncio.sleep(self.batch_interval)
+            
+            if not self.batch_messages:
+                continue
+            
+            print(f"[BATCH] Processing {len(self.batch_messages)} messages")
+            
+            # Create batch text
+            batch_text = "\n".join([f"{msg['user']}: {msg['content']}" for msg in self.batch_messages])
+            
+            # Analyze with Gemini
+            prompt = f"""
+            Analyze these Discord messages for scams:
+            
+            {batch_text}
+            
+            If any message contains scams, respond with: 
+            "SCAM DETECTED: [username]
+            MESSAGE: [the scam message]
+            REASON: [brief reason why it's a scam]"
+            
+            If no scams, respond with: "NO SCAMS"
+            """
+            
+            response = self.gemini_client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt
+            )
+            
+            # Check for scam detection
+            if "SCAM DETECTED:" in response.text:
+                # Send alert to mod channel
+                for guild_id, mod_channel in self.mod_channels.items():
+                    await mod_channel.send(f"{response.text}")
+            
+            # Clear batch
+            self.batch_messages = []
 
     async def on_message(self, message):
         '''
@@ -128,8 +179,13 @@ class ModBot(discord.Client):
         # Forward the message to the mod channel
         mod_channel = self.mod_channels[message.guild.id]
         await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-        # scores = self.eval_text(message.content)
-        # await mod_channel.send(self.code_format(scores))
+        
+        # Add to batch for processing
+        self.batch_messages.append({
+            'user': message.author.name,
+            'content': message.content,
+            'timestamp': datetime.now()
+        })
 
     async def handle_mod_channel(self, message):
         content = message.content.strip().lower()
