@@ -9,6 +9,7 @@ import requests
 from report import Report, AbuseType, MisinfoCategory, HealthCategory, NewsCategory, State
 from user_stats import UserStats
 import pdb
+import openai
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -25,6 +26,10 @@ with open(token_path) as f:
     # If you get an error here, it means your token is formatted incorrectly. Did you put it in quotes?
     tokens = json.load(f)
     discord_token = tokens['discord']
+    openai_api_key = tokens['openai']
+
+openai.api_key = openai_api_key
+client = openai.OpenAI(api_key=openai_api_key)
 
 
 class ModBot(discord.Client):
@@ -39,6 +44,10 @@ class ModBot(discord.Client):
         self.pending_appeals = {} 
         self.active_mod_flow = None # State for the current moderation flow
         self.user_stats = UserStats() # Initialize user statistics tracking
+        self.awaiting_appeal_confirmation = {}
+        self.awaiting_appeal_reason = {}
+        self.openai_client = openai.OpenAI(api_key=openai_api_key)
+
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -82,40 +91,60 @@ class ModBot(discord.Client):
             if not user_appeals:
                 return
 
-            # Process the first pending appeal
-            info = user_appeals.pop(0)
-            if not user_appeals:
-                # Remove the user from pending_appeals if no appeals remain
-                del self.pending_appeals[message.author.id]
+            # Check if the user is in the middle of an appeal confirmation
+            if self.awaiting_appeal_confirmation.get(message.author.id):
+                if message.content.strip() == '1':  # User wants to appeal
+                    await message.channel.send("Please provide your reasoning for appealing:")
+                    self.awaiting_appeal_confirmation[message.author.id] = False
+                    self.awaiting_appeal_reason[message.author.id] = True
+                    return
+                elif message.content.strip() == '2':  # User does not want to appeal
+                    await message.channel.send("Thank you.")
+                    self.awaiting_appeal_confirmation[message.author.id] = False
+                    # Reset the appeal state for the user
+                    del self.pending_appeals[message.author.id]
+                    return
+                else:
+                    await message.channel.send("Invalid response. Please reply with 1 for Yes or 2 for No.")
+                    return
 
-            mod_chan = self.mod_channels[info['guild_id']]
+            # Check if the user is providing their appeal reasoning
+            if self.awaiting_appeal_reason.get(message.author.id):
+                # Process the appeal reasoning
+                info = user_appeals.pop(0)
+                if not user_appeals:
+                    # Remove the user from pending_appeals if no appeals remain
+                    del self.pending_appeals[message.author.id]
 
-            # Build the appeal notice
-            text = (
-                f"APPEAL RECEIVED:\n"
-                f"User: {info['reported_name']}\n"
-                f"Outcome: {info['outcome']}\n\n"
-                f"Original Message:\n{info['original_message']}"
-            )
-            if info.get('explanation'):
-                text += f"\n\nReason: {info['explanation']}"
-            text += f"\n\nAppeal Reason:\n{message.content}"
+                mod_chan = self.mod_channels[info['guild_id']]
 
-            # Send to mod channel
-            await mod_chan.send(text)
+                # Build the appeal notice
+                text = (
+                    f"APPEAL RECEIVED:\n"
+                    f"User: {info['reported_name']}\n"
+                    f"Outcome: {info['outcome']}\n\n"
+                    f"Original Message:\n{info['original_message']}"
+                )
+                if info.get('explanation'):
+                    text += f"\n\nReason: {info['explanation']}"
+                text += f"\n\nAppeal Reason:\n{message.content}"
 
-            # Prompt mods for ACCEPT/UPHOLD
-            self.active_mod_flow = {
-                'step': 'appeal_review',
-                'message_author': info['reported_name'],
-                'context': {},
-                'guild_id': info['guild_id']
-            }
-            await mod_chan.send("Moderators, please respond with:\n1. ACCEPT\n2. UPHOLD")
+                # Send to mod channel
+                await mod_chan.send(text)
 
-            # Acknowledge to user
-            await message.channel.send("Your appeal has been submitted and is under review.")
-            return
+                # Prompt mods for ACCEPT/UPHOLD
+                self.active_mod_flow = {
+                    'step': 'appeal_review',
+                    'message_author': info['reported_name'],
+                    'context': {},
+                    'guild_id': info['guild_id']
+                }
+                await mod_chan.send("Moderators, please respond with:\n1. ACCEPT\n2. UPHOLD")
+
+                # Acknowledge to user
+                await message.channel.send("Your appeal has been submitted and is under review.")
+                self.awaiting_appeal_reason[message.author.id] = False
+                return
 
         # Handle a help message
         if message.content == Report.HELP_KEYWORD:
@@ -189,13 +218,31 @@ class ModBot(discord.Client):
         user = discord.utils.get(guild.members, name=user_name)
         if user:
             try:
-                msg = f"Your message was reviewed by moderators. Outcome: {outcome}."
-                if original_message:
-                    msg += f"\n\n**Original Message:**\n{original_message}"
-                if explanation:
-                    msg += f"\n\n**Reason:** {explanation}"
-                msg += "\n\nIf you believe this was a mistake, you may reply to this message to appeal."
+                msg = (
+                    f"Your message was reviewed by moderators. Outcome: {outcome}.\n\n"
+                    f"Original Message:\n{original_message}\n\n"
+                    f"Reason: {explanation}\n\n"
+                    "If you believe this was a mistake, you may reply to this message to appeal. "
+                    "Would you like to appeal this decision?\n1. Yes\n2. No"
+                )
                 await user.send(msg)
+
+                # Track pending appeal
+                if user.id not in self.pending_appeals:
+                    self.pending_appeals[user.id] = []
+                self.pending_appeals[user.id].append({
+                    'guild_id': guild.id,
+                    'reported_name': user_name,
+                    'outcome': outcome,
+                    'original_message': original_message,
+                    'explanation': explanation
+                })
+
+                # Initialize appeal confirmation state
+                if not hasattr(self, 'awaiting_appeal_confirmation'):
+                    self.awaiting_appeal_confirmation = {}
+                self.awaiting_appeal_confirmation[user.id] = True
+
             except Exception as e:
                 print(f"Failed to DM user {user_name}: {e}")
 
@@ -425,6 +472,63 @@ class ModBot(discord.Client):
                     })
                 self.active_mod_flow = None
                 return
+    
+    async def classify_abuse_type(self, message_content):
+        system_prompt = (
+            "You are a content moderation assistant. Your job is to classify messages into one of the following top-level abuse types: "
+            "BULLYING, SUICIDE/SELF-HARM, SEXUALLY EXPLICIT/NUDITY, MISINFORMATION, HATE SPEECH, or DANGER.\n\n"
+            "If the abuse type is MISINFORMATION, you must specify the misinformation category as:\n"
+            "- HEALTH (with one of these subcategories: EMERGENCY, MEDICAL RESEARCH, REPRODUCTIVE HEALTH, TREATMENTS, ALTERNATIVE MEDICINE)\n"
+            "- ADVERTISEMENT\n"
+            "- NEWS (with one of these subcategories: HISTORICAL, POLITICAL, SCIENTIFIC)\n\n"
+            "Respond in this format exactly:\n"
+            "- For general types: `BULLYING`, `HATE SPEECH`, etc.\n"
+            "- For misinformation types: `HEALTH (EMERGENCY) MISINFORMATION`, `NEWS (POLITICAL) MISINFORMATION`, `ADVERTISEMENT MISINFORMATION`, etc.\n"
+            "- If the message does not fit any of these categories, respond with: `UNKNOWN`\n\n"
+            "Only return the final category label."
+        )
+        user_prompt = f"Message: {message_content}\n\nClassify the abuse type:"
+        try:
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ]
+            )
+            print("LLM Response:", response)
+            abuse_type = response.choices[0].message.content.strip().upper()
+            return abuse_type
+        except Exception as e:
+            print(f"Error classifying abuse type: {e}")
+            return "UNKNOWN"
+        
+    def normalize_abuse_type(self, label):
+        label = label.upper()
+        if "MISINFORMATION" in label:
+            # Handle misinformation categories
+            if "HEALTH" in label:
+                subcategory = re.search(r"\((.*?)\)", label)
+                if subcategory:
+                    return f"HEALTH MISINFO - {subcategory.group(1).upper()}"
+                return "HEALTH MISINFO"
+            if "ADVERTISEMENT" in label:
+                return "ADVERTISING MISINFO"
+            if "NEWS" in label:
+                subcategory = re.search(r"\((.*?)\)", label)
+                if subcategory:
+                    return f"NEWS MISINFO - {subcategory.group(1).upper()}"
+                return "NEWS MISINFO"
+        # Handle general abuse types
+        valid_labels = {
+            "BULLYING": "BULLYING",
+            "SUICIDE/SELF-HARM": "SUICIDE/SELF-HARM",
+            "SEXUALLY EXPLICIT/NUDITY": "SEXUALLY EXPLICIT/NUDITY",
+            "HATE SPEECH": "HATE SPEECH",
+            "DANGER": "DANGER"
+        }
+        return valid_labels.get(label, None)
+
 
     async def prompt_next_moderation_step(self, mod_channel):
         await mod_channel.send("Moderator, please review the report and respond with your decision.")
