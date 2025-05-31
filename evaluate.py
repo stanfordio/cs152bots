@@ -6,83 +6,67 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics import confusion_matrix, classification_report
-from sklearn.model_selection import train_test_split
 
-# === Required functions for pipeline ===
+# Apparently these functions are needed for the pipeline
+def extract_features(df):
+    df = df.copy()
+    df["cash_count"] = df["Conversation"].apply(lambda x: len(re.findall(r"\$\d+", x)))
+    df["urgency_words"] = df["Conversation"].apply(count_urgency_words)
+    df["url_count"] = df["Conversation"].apply(lambda x: len(re.findall(r"http[s]?://|www\.|\[.*?\]\(.*?\)|[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", x)))
+    return df[["cash_count", "urgency_words", "url_count"]]
+
 def count_urgency_words(text):
     return len(re.findall(r"\b(now|urgent|immediately|soon|timer|profit|deadline|tonight|risk|guarantee|double)\b", text.lower()))
 
-def extract_features(df):
-    df = df.copy()
-    df["char_count"] = df["Conversation"].str.len()
-    df["word_count"] = df["Conversation"].apply(lambda x: len(x.split()))
-    df["money_mentions"] = df["Conversation"].apply(lambda x: len(re.findall(r"\$\d+", x)))
-    df["urgency_words"] = df["Conversation"].apply(count_urgency_words)
-    df["punctuation_ratio"] = df["Conversation"].apply(lambda x: sum(c in "!?.;" for c in x) / (len(x) + 1))
-    df["turns_ratio"] = df["Conversation"].apply(lambda x: x.count('\n') / (len(x) + 1))
-    return df[["char_count", "word_count", "money_mentions", "urgency_words", "punctuation_ratio", "turns_ratio"]]
-
-def select_bert_features(df):
+def get_bert_features(df):
     return df[[str(i) for i in range(768)]]
 
-# === Paths ===
-MODEL_PATH = "0.9_model.pkl"
-DATA_PATH = "all_data.csv"
-UNCERTAINTY_THRESHOLD = 0.6
+EVAL_INPUT_PATH = "human_eval.csv"
+UNCERTAINTY_THRESHOLD = 0.7
 
-# === Load Data and Model ===
-df = pd.read_csv(DATA_PATH)
-pipeline = joblib.load(MODEL_PATH)
-
-# === Prepare Data ===
-X = df[["Conversation"]]
+pl = joblib.load("0.9_model.pkl")
+df = pd.read_csv(EVAL_INPUT_PATH)
+X_dialogue = df[["Conversation"]]
 y = df["Severity"].astype(int)
-_, X_test_df, _, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 
-# === Compute BERT embeddings ===
-bert_model = SentenceTransformer("all-mpnet-base-v2")
-bert_embeddings = bert_model.encode(X_test_df["Conversation"].tolist(), show_progress_bar=True)
-bert_df = pd.DataFrame(bert_embeddings, index=X_test_df.index)
+bert_emb = SentenceTransformer("all-mpnet-base-v2").encode(X_dialogue["Conversation"].tolist())
+bert_df = pd.DataFrame(bert_emb, index = X_dialogue.index)
 bert_df.columns = bert_df.columns.astype(str)
+X_total = pd.concat([X_dialogue, bert_df], axis = 1)
 
-# === Concatenate embeddings with original data ===
-X_test_all = pd.concat([X_test_df, bert_df], axis=1)
+y_pred = pl.predict(X_total)
+y_probs = pl.predict_proba(X_total)
 
-# === Predict and Probabilities ===
-y_pred = pipeline.predict(X_test_all)
-y_proba = pipeline.predict_proba(X_test_all)
-
-# === Confusion Matrix ===
-cm = confusion_matrix(y_test, y_pred, labels=[1, 2, 3, 4])
-plt.figure(figsize=(8, 6))
-sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=[1, 2, 3, 4], yticklabels=[1, 2, 3, 4])
+# Confusion matrix
+cm = confusion_matrix(y, y_pred, labels = [1, 2, 3, 4])
+plt.figure(figsize = (8, 6))
+sns.heatmap(cm, annot = True, fmt = "d", cmap = "Blues", xticklabels = [1, 2, 3, 4], yticklabels = [1, 2, 3, 4])
 plt.xlabel("Predicted Label")
-plt.ylabel("True Label")
-plt.title("Confusion Matrix (Actual vs Predicted)")
+plt.ylabel("Ground Truth Label")
+plt.title("Confusion Matrix (Ground Truth vs Predicted) for Human Evaluation Data")
 plt.tight_layout()
-plt.savefig("confusion_matrix.png")
+plt.savefig("Human_eval_confusion_matrix.png")
 plt.close()
 
-# === Classification Report Heatmap ===
-report = classification_report(y_test, y_pred, output_dict=True)
-df_report = pd.DataFrame(report).transpose().drop(index=['accuracy', 'macro avg', 'weighted avg'])
+# Classification report
+rep = classification_report(y, y_pred, output_dict = True)
+df_rep = pd.DataFrame(rep).transpose().drop(index = ['accuracy', 'macro avg', 'weighted avg'])
 
-plt.figure(figsize=(8, 4))
-sns.heatmap(df_report.iloc[:, :-1], annot=True, cmap="YlGnBu", fmt=".2f")
-plt.title("Precision, Recall, F1-Score by Class")
+plt.figure(figsize = (8, 6))
+sns.heatmap(df_rep.iloc[:, :-1], annot = True, cmap = "YlGnBu", fmt = ".2f")
+plt.title("Precision, Recall, and F1-Score by Class for Human Evaluation Data")
 plt.tight_layout()
-plt.savefig("classification_report.png")
+plt.savefig("Human_eval_classification_report.png")
 plt.close()
 
-# === Uncertainty Flagging ===
-uncertain_indices = np.where(np.max(y_proba, axis=1) < UNCERTAINTY_THRESHOLD)[0]
-print(f"\nFlagged {len(uncertain_indices)} uncertain predictions (confidence < {UNCERTAINTY_THRESHOLD}):")
+# Uncertainty stats
+uncert_ids = np.where(np.max(y_probs, axis = 1) < UNCERTAINTY_THRESHOLD)[0]
+print(f"\nPrediction uncertainties:")
+for idx in uncert_ids:
+    conf = np.max(y_probs[idx])
+    pred = y_pred[idx]
+    truth = y.iloc[idx]
+    text = X_dialogue.iloc[idx]["Conversation"]
+    print(f"[{conf:.2f}] Pred: {pred}, Truth: {truth} | {text[:100]}...")
 
-for idx in uncertain_indices[:10]:
-    confidence = np.max(y_proba[idx])
-    predicted = y_pred[idx]
-    actual = y_test.iloc[idx]
-    text = X_test_df.iloc[idx]["Conversation"]
-    print(f"[{confidence:.2f}] Pred: {predicted}, True: {actual} | {text[:100]}...")
-
-print("\nSaved confusion_matrix.png and classification_report.png")
+print("\nSaved confusion matrix and classification report.")
