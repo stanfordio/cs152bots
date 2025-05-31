@@ -39,6 +39,8 @@ class ModBot(discord.Client):
         self.pending_appeals = {} 
         self.active_mod_flow = None # State for the current moderation flow
         self.user_stats = UserStats() # Initialize user statistics tracking
+        self.awaiting_appeal_confirmation = {}
+        self.awaiting_appeal_reason = {}
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -82,39 +84,62 @@ class ModBot(discord.Client):
             if not user_appeals:
                 return
 
-            # Process the first pending appeal
-            info = user_appeals.pop(0)
-            if not user_appeals:
-                # Remove the user from pending_appeals if no appeals remain
-                del self.pending_appeals[message.author.id]
+            # Check if the user is in the middle of an appeal confirmation
+            if hasattr(self, 'awaiting_appeal_confirmation') and self.awaiting_appeal_confirmation.get(message.author.id):
+                if message.content.strip() == '1':  # User wants to appeal
+                    await message.channel.send("Please provide your reasoning for appealing:")
+                    self.awaiting_appeal_confirmation[message.author.id] = False
+                    self.awaiting_appeal_reason[message.author.id] = True
+                    return
+                elif message.content.strip() == '2':  # User does not want to appeal
+                    await message.channel.send("Thank you.")
+                    self.awaiting_appeal_confirmation[message.author.id] = False
+                    return
+                else:
+                    await message.channel.send("Invalid response. Please reply with 1 for Yes or 2 for No.")
+                    return
 
-            mod_chan = self.mod_channels[info['guild_id']]
+            # Check if the user is providing their appeal reasoning
+            if hasattr(self, 'awaiting_appeal_reason') and self.awaiting_appeal_reason.get(message.author.id):
+                # Process the appeal reasoning
+                info = user_appeals.pop(0)
+                if not user_appeals:
+                    # Remove the user from pending_appeals if no appeals remain
+                    del self.pending_appeals[message.author.id]
 
-            # Build the appeal notice
-            text = (
-                f"APPEAL RECEIVED:\n"
-                f"User: {info['reported_name']}\n"
-                f"Outcome: {info['outcome']}\n\n"
-                f"Original Message:\n{info['original_message']}"
-            )
-            if info.get('explanation'):
-                text += f"\n\nReason: {info['explanation']}"
-            text += f"\n\nAppeal Reason:\n{message.content}"
+                mod_chan = self.mod_channels[info['guild_id']]
 
-            # Send to mod channel
-            await mod_chan.send(text)
+                # Build the appeal notice
+                text = (
+                    f"APPEAL RECEIVED:\n"
+                    f"User: {info['reported_name']}\n"
+                    f"Outcome: {info['outcome']}\n\n"
+                    f"Original Message:\n{info['original_message']}"
+                )
+                if info.get('explanation'):
+                    text += f"\n\nReason: {info['explanation']}"
+                text += f"\n\nAppeal Reason:\n{message.content}"
 
-            # Prompt mods for ACCEPT/UPHOLD
-            self.active_mod_flow = {
-                'step': 'appeal_review',
-                'message_author': info['reported_name'],
-                'context': {},
-                'guild_id': info['guild_id']
-            }
-            await mod_chan.send("Moderators, please respond with:\n1. ACCEPT\n2. UPHOLD")
+                # Send to mod channel
+                await mod_chan.send(text)
 
-            # Acknowledge to user
-            await message.channel.send("Your appeal has been submitted and is under review.")
+                # Prompt mods for ACCEPT/UPHOLD
+                self.active_mod_flow = {
+                    'step': 'appeal_review',
+                    'message_author': info['reported_name'],
+                    'context': {},
+                    'guild_id': info['guild_id']
+                }
+                await mod_chan.send("Moderators, please respond with:\n1. ACCEPT\n2. UPHOLD")
+
+                # Acknowledge to user
+                await message.channel.send("Your appeal has been submitted and is under review.")
+                self.awaiting_appeal_reason[message.author.id] = False
+                return
+
+            if not hasattr(self, 'awaiting_appeal_confirmation'):
+                self.awaiting_appeal_confirmation = {}
+            self.awaiting_appeal_confirmation[message.author.id] = True
             return
 
         # Handle a help message
@@ -189,13 +214,31 @@ class ModBot(discord.Client):
         user = discord.utils.get(guild.members, name=user_name)
         if user:
             try:
-                msg = f"Your message was reviewed by moderators. Outcome: {outcome}."
-                if original_message:
-                    msg += f"\n\n**Original Message:**\n{original_message}"
-                if explanation:
-                    msg += f"\n\n**Reason:** {explanation}"
-                msg += "\n\nIf you believe this was a mistake, you may reply to this message to appeal."
+                msg = (
+                    f"Your message was reviewed by moderators. Outcome: {outcome}.\n\n"
+                    f"Original Message:\n{original_message}\n\n"
+                    f"Reason: {explanation}\n\n"
+                    "If you believe this was a mistake, you may reply to this message to appeal. "
+                    "Would you like to appeal this decision?\n1. Yes\n2. No"
+                )
                 await user.send(msg)
+
+                # Track pending appeal
+                if user.id not in self.pending_appeals:
+                    self.pending_appeals[user.id] = []
+                self.pending_appeals[user.id].append({
+                    'guild_id': guild.id,
+                    'reported_name': user_name,
+                    'outcome': outcome,
+                    'original_message': original_message,
+                    'explanation': explanation
+                })
+
+                # Initialize appeal confirmation state
+                if not hasattr(self, 'awaiting_appeal_confirmation'):
+                    self.awaiting_appeal_confirmation = {}
+                self.awaiting_appeal_confirmation[user.id] = True
+
             except Exception as e:
                 print(f"Failed to DM user {user_name}: {e}")
 
