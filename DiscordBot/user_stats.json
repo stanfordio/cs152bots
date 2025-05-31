@@ -1,14 +1,1 @@
-{
-  "1364684437752647793": {
-    "total_reports": 1,
-    "reports": [
-      {
-        "timestamp": "2025-05-31T11:41:56.916052",
-        "report_type": "NEWS MISINFO - POLITICAL",
-        "report_content": "this is health misinformation (emergency)",
-        "outcome": "Post removed and user temporarily muted",
-        "explanation": "false"
-      }
-    ]
-  }
-}
+{}
