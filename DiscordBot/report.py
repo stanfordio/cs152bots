@@ -11,7 +11,7 @@ class ReportType(Enum):
     FRAUD = "Fraud"
     INAPPROPRIATE_CONTENT = "Inappropriate Content"
     HARASSMENT = "Harassment"
-    PRIVACY = "Privacy"
+    PRIVACY = "Privacy Violation"
 
 class InfoType(Enum):
     CONTACT = "Contact Information"
@@ -38,7 +38,6 @@ class State(Enum):
     AWAITING_THREAT = auto()
     AWAITING_INFO_TYPE = auto()
     AWAITING_VICTIM_NAME = auto()
-    AWAITING_SIGNATURE = auto()
     AWAITING_CONFIRMATION = auto()
     REPORT_COMPLETE = auto()
 
@@ -56,7 +55,6 @@ class Report:
         self.info_types = []
         self.threat = False
         self.reporter_email = None
-        self.signature = None
         self.severity = 0
         self.reporter_id = None
         self.timestamp = None
@@ -112,7 +110,7 @@ class Report:
             reply += "1. Fraud\n"
             reply += "2. Inappropriate Content\n"
             reply += "3. Harrasment\n"
-            reply += "4. Privacy\n"
+            reply += "4. Privacy Violation\n"
             return [reply]
         
         # State: AWAITING_REPORT_TYPE - User chooses a main report category
@@ -143,7 +141,7 @@ class Report:
                     elif self.report_type == ReportType.PRIVACY:
                         self.state = State.AWAITING_PRIVACY_DETAILS
                         response = f"You selected: {self.report_type.value}\n\n"
-                        response += "Please select your reason for reporting Privacy:\n\n"
+                        response += "Please select your reason for reporting Privacy Violation:\n\n"
                         response += "1. Hacking\n2. Identity Impersonation\n3. Doxxing\n"
                         return [response]
                 else:
@@ -297,12 +295,6 @@ class Report:
             else:
                 self.victim_name = message.content.strip()
 
-            self.state = State.AWAITING_SIGNATURE
-            return ["Please provide your signature to confirm the authenticity of this report."]
-        
-        # State: AWAITING_SIGNATURE - User provides their signature
-        elif self.state == State.AWAITING_SIGNATURE:
-            self.signature = message.content
             self.state = State.AWAITING_CONFIRMATION
             
             summary = "**Report Summary:**\n\n"
@@ -324,8 +316,7 @@ class Report:
             
             summary += f"\n**Reported Message Author:** {self.message.author.name}\n"
             summary += f"**Reported Message Content:** ```{self.message.content}```\n"
-            summary += f"\n**Your Signature:** {self.signature}\n\n"
-            summary += "Is this information correct? Type `yes` to submit the report or `no` to cancel."
+            summary += "Is this information correct? Type `yes` to submit the report or `no` to cancel. Please note that if you type `yes`, your account will be associated with this report."
             return [summary]
         
         # State: AWAITING_CONFIRMATION - User confirms the report details
@@ -372,7 +363,7 @@ class Report:
         
         embed.add_field(name="**Content of Reported Message**", value=f"```{self.message.content[:1000]}```" + ("... (truncated)" if len(self.message.content) > 1000 else ""), inline=False)
         embed.add_field(name="**Author of Reported Message**", value=f"{self.message.author.mention} (`{self.message.author.name}`, ID: `{self.message.author.id}`)", inline=True)
-        embed.add_field(name="**Filed By (Reporter)**", value=f"<@{self.reporter_id}> (Signature: `{self.signature}`)", inline=True)
+        embed.add_field(name="**Filed By (Reporter)**", value=f"<@{self.reporter_id}>", inline=True)
 
         if self.report_sub_type:
             embed.add_field(name="**Specific Reason Provided by Reporter**", value=self.report_sub_type, inline=False)
@@ -481,10 +472,6 @@ class Report:
 
         elif self.state == State.AWAITING_VICTIM_NAME:
             help_msg += "Please provide the name of the victim if known, or type `skip` if not provided."
-        
-        elif self.state == State.AWAITING_SIGNATURE:
-            help_msg += "Please provide your signature to confirm the authenticity of this report.\n"
-            help_msg += "This can be your full name or your Discord username."
         
         elif self.state == State.AWAITING_CONFIRMATION:
             help_msg += "Please review the report summary I provided.\n"
