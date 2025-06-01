@@ -1,0 +1,10 @@
+transformers
+datasets
+torch
+pandas
+Flask
+joblib
+scikit-learn
+pytorch_pretrained_bert
+requests
+numpy
