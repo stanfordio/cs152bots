@@ -1,1 +1,14 @@
-{}
+{
+  "1364684437752647793": {
+    "total_reports": 1,
+    "reports": [
+      {
+        "timestamp": "2025-06-01T12:53:15.987346",
+        "report_type": "NEWS MISINFO - POLITICAL",
+        "report_content": "The recent election was rigged using a secret satellite controlled by a foreign government.",
+        "outcome": "Post removed and user temporarily muted",
+        "explanation": "false info"
+      }
+    ]
+  }
+}
