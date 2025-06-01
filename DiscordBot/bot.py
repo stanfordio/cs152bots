@@ -201,9 +201,34 @@ class ModBot(discord.Client):
             mod_channel = channel
             break
         if mod_channel:
-            await mod_channel.send(f"A new report has been submitted:\nType: {report_type}\nContent: {report_content}\nReported user: {message_author}")
             if initial_step == 'danger_level':
-                await mod_channel.send("What is the level of danger for this report?\n1. LOW\n2. MEDIUM\n3. HIGH")
+                self.active_mod_flow = {
+                    'step': 'confirm_danger_level',
+                    'report_type': report_type,
+                    'report_content': report_content,
+                    'message_author': message_author,
+                    'message_link': message_link,
+                    'context': {}
+                }
+                # pick any one mod‐channel
+                mod_channel = next(iter(self.mod_channels.values()), None)
+                if not mod_channel:
+                    return
+
+                # Let LLM guess LOW/MEDIUM/HIGH
+                predicted = await self.classify_danger_level(report_content)
+                self.active_mod_flow['context']['predicted_danger'] = predicted
+
+                await mod_channel.send(
+                    f"A new report has been submitted:\n"
+                    f"Type: {report_type}\n"
+                    f"Content: {report_content}\n"
+                    f"Reported user: {message_author}\n\n"
+                    f"System suggests danger level: {predicted.upper()}. Do you agree?\n"
+                    "1. Yes\n"
+                    "2. No"
+                )
+                return
             elif initial_step == 'advertising_done':
                 await mod_channel.send("Report sent to advertising team. No further action required.")
                 self.active_mod_flow = None
@@ -265,6 +290,305 @@ class ModBot(discord.Client):
         mod_channel = message.channel
         guild = mod_channel.guild if hasattr(mod_channel, 'guild') else None
 
+        ctx = self.active_mod_flow.get('context', {})
+        report_type = self.active_mod_flow['report_type']
+        report_content = self.active_mod_flow['report_content']
+        reported_user_name = self.active_mod_flow['message_author']
+
+        if step == 'confirm_danger_level':
+            if content == '1':  # Moderator agrees with LLM
+                predicted = ctx.get('predicted_danger', 'medium')
+                ctx['danger_level'] = predicted
+
+                # Now ask LLM to recommend a post‐action
+                post_action = await self.classify_post_action(report_content, predicted)
+                ctx['predicted_post_action'] = post_action  # e.g. "remove", etc.
+
+                label_map = {
+                    "do_not_recommend":     "DO NOT RECOMMEND",
+                    "flag_as_unproven":      "FLAG AS UNPROVEN",
+                    "remove":               "REMOVE",
+                    "raise":                "RAISE",
+                    "report_to_authorities": "REPORT TO AUTHORITIES"
+                }
+                action_label = label_map.get(post_action, None)
+
+                if action_label:
+                    await mod_channel.send(
+                        f"System suggests post action: {action_label}. Do you agree?\n"
+                        "1. Yes\n"
+                        "2. No"
+                    )
+                    self.active_mod_flow['step'] = 'confirm_post_action'
+                    return
+                else:
+                    # If LLM failed to return a valid post‐action, fall back to manual
+                    if predicted == 'low':
+                        await mod_channel.send(
+                            "Predicted LOW danger. After claim is investigated, what action should be taken on post?\n"
+                            "1. DO NOT RECOMMEND\n"
+                            "2. FLAG AS UNPROVEN"
+                        )
+                        self.active_mod_flow['step'] = 'low_action_on_post'
+                        return
+                    else:
+                        await mod_channel.send(
+                            f"Predicted {predicted.upper()} danger. After claim is investigated, what action should be taken on post?\n"
+                            "1. REMOVE\n"
+                            "2. RAISE\n"
+                            "3. REPORT TO AUTHORITIES"
+                        )
+                        self.active_mod_flow['step'] = ('medium_action_on_post'
+                            if predicted == 'medium' else 'high_action_on_post')
+                        return
+
+            if content == '2':  # Moderator disagrees with LLM’s danger‐level
+                await mod_channel.send(
+                    "What is the level of danger for this report?\n"
+                    "1. LOW\n"
+                    "2. MEDIUM\n"
+                    "3. HIGH"
+                )
+                self.active_mod_flow['step'] = 'danger_level_manual'
+                return
+
+            await mod_channel.send("Invalid response. Please reply with:\n1. Yes\n2. No")
+            return
+
+        if step == 'danger_level_manual':
+            if content not in ['1','2','3']:
+                await mod_channel.send("Invalid option. Please choose:\n1. LOW\n2. MEDIUM\n3. HIGH")
+                return
+
+            levels = {'1':'low','2':'medium','3':'high'}
+            chosen = levels[content]
+            ctx['danger_level'] = chosen
+
+            if chosen == 'low':
+                await mod_channel.send(
+                    "Flag post as LOW danger. After claim is investigated, what action should be taken on post?\n"
+                    "1. DO NOT RECOMMEND\n"
+                    "2. FLAG AS UNPROVEN"
+                )
+                self.active_mod_flow['step'] = 'low_action_on_post'
+            else:
+                await mod_channel.send(
+                    f"Flag post as {chosen.upper()} danger. After claim is investigated, what action should be taken on post?\n"
+                    "1. REMOVE\n"
+                    "2. RAISE\n"
+                    "3. REPORT TO AUTHORITIES"
+                )
+                self.active_mod_flow['step'] = ('medium_action_on_post'
+                    if chosen == 'medium' else 'high_action_on_post')
+            return
+
+        if step == 'confirm_post_action':
+            if content == '1':  # Mod agrees with LLM’s post‐action
+                post_action = ctx.get('predicted_post_action')
+                danger = ctx.get('danger_level')
+                # Retrieve the reported User object
+                reported_user = discord.utils.get(guild.members, name=reported_user_name)
+
+                # LOW‐danger branches
+                if danger == 'low':
+                    if post_action == 'do_not_recommend':
+                        await mod_channel.send(
+                            "Post will not be recommended. Action recorded. "
+                            "(Update algorithm so post is not recommended.)"
+                        )
+                        self.user_stats.add_report(
+                            reported_user.id,
+                            report_type,
+                            report_content,
+                            "Post not recommended"
+                        )
+                        await self.notify_reported_user(
+                            reported_user_name, guild,
+                            outcome="Post not recommended."
+                        )
+                        self.active_mod_flow = None
+                        return
+
+                    elif post_action == 'flag_as_unproven':
+                        await mod_channel.send(
+                            "System suggests FLAG AS UNPROVEN. "
+                            "Please add explanation for why post is being flagged."
+                        )
+                        self.active_mod_flow['step'] = 'flag_explanation'
+                        return
+
+                # MEDIUM/HIGH‐danger branches
+                else:
+                    if post_action == 'remove':
+                        await mod_channel.send(
+                            "System suggests REMOVE. Please add explanation for why post is being removed."
+                        )
+                        self.active_mod_flow['step'] = 'remove_explanation'
+                        return
+
+                    elif post_action == 'raise':
+                        await mod_channel.send(
+                            "System suggests RAISE to higher level moderator. "
+                            "Report sent to higher level moderators."
+                        )
+                        self.user_stats.add_report(
+                            reported_user.id,
+                            report_type,
+                            report_content,
+                            "Report raised to higher level moderator"
+                        )
+                        self.active_mod_flow = None
+                        return
+
+                    elif post_action == 'report_to_authorities':
+                        await mod_channel.send(
+                            "System suggests REPORT TO AUTHORITIES. Report sent to authorities."
+                        )
+                        self.user_stats.add_report(
+                            reported_user.id,
+                            report_type,
+                            report_content,
+                            "Reported to authorities"
+                        )
+                        self.active_mod_flow = None
+                        return
+
+                # Fallback if LLM recommendation is invalid
+                await mod_channel.send("Could not interpret recommended post action. Please choose manually.")
+                danger = ctx.get('danger_level')
+                if danger == 'low':
+                    await mod_channel.send(
+                        "After claim is investigated, what action should be taken on post?\n"
+                        "1. DO NOT RECOMMEND\n"
+                        "2. FLAG AS UNPROVEN"
+                    )
+                    self.active_mod_flow['step'] = 'low_action_on_post'
+                else:
+                    await mod_channel.send(
+                        "After claim is investigated, what action should be taken on post?\n"
+                        "1. REMOVE\n"
+                        "2. RAISE\n"
+                        "3. REPORT TO AUTHORITIES"
+                    )
+                    self.active_mod_flow['step'] = (
+                        'medium_action_on_post' if danger == 'medium' else 'high_action_on_post'
+                    )
+                return
+
+            if content == '2':  # Mod overrides–go manual
+                danger = ctx.get('danger_level')
+                if danger == 'low':
+                    await mod_channel.send(
+                        "What action should be taken on post?\n"
+                        "1. DO NOT RECOMMEND\n"
+                        "2. FLAG AS UNPROVEN"
+                    )
+                    self.active_mod_flow['step'] = 'low_action_on_post'
+                else:
+                    await mod_channel.send(
+                        "What action should be taken on post?\n"
+                        "1. REMOVE\n"
+                        "2. RAISE\n"
+                        "3. REPORT TO AUTHORITIES"
+                    )
+                    self.active_mod_flow['step'] = (
+                        'medium_action_on_post' if danger == 'medium' else 'high_action_on_post'
+                    )
+                return
+
+            await mod_channel.send("Invalid response. Please reply with:\n1. Yes\n2. No")
+            return
+
+        if step == 'confirm_user_action':
+            if content == '1':  # Mod agrees with LLM’s user‐action
+                user_action = ctx.get('predicted_user_action')
+                reported_user = discord.utils.get(guild.members, name=reported_user_name)
+
+                if user_action == 'record_incident':
+                    await mod_channel.send("Incident recorded for internal use. (Add to internal incident count for user.)")
+                    self.user_stats.add_report(
+                        reported_user.id,
+                        report_type,
+                        report_content,
+                        "Post removed and incident recorded",
+                        ctx.get('remove_explanation', '')
+                    )
+                    self.active_mod_flow = None
+                    return
+
+                elif user_action == 'temporarily_mute':
+                    await mod_channel.send("User will be muted for 24 hours.")
+                    self.user_stats.add_report(
+                        reported_user.id,
+                        report_type,
+                        report_content,
+                        "Post removed and user temporarily muted",
+                        ctx.get('remove_explanation', '')
+                    )
+                    await self.notify_reported_user(
+                        reported_user_name,
+                        guild,
+                        outcome="You have been temporarily muted.",
+                        explanation="You violated the community guidelines.",
+                        original_message=report_content
+                    )
+                    self.active_mod_flow = None
+                    return
+
+                elif user_action == 'remove_user':
+                    await mod_channel.send("User will be removed.")
+                    self.user_stats.add_report(
+                        reported_user.id,
+                        report_type,
+                        report_content,
+                        "Post removed and user removed",
+                        ctx.get('remove_explanation', '')
+                    )
+                    await self.notify_reported_user(
+                        reported_user_name,
+                        guild,
+                        outcome="You have been removed from the server.",
+                        explanation="You violated the community guidelines.",
+                        original_message=report_content
+                    )
+                    # Track for appeal if removed
+                    user_obj = reported_user
+                    if user_obj:
+                        if user_obj.id not in self.pending_appeals:
+                            self.pending_appeals[user_obj.id] = []
+                        self.pending_appeals[user_obj.id].append({
+                            'guild_id': guild.id,
+                            'reported_name': reported_user_name,
+                            'outcome': "You have been removed from the server.",
+                            'original_message': report_content,
+                            'explanation': "You violated the community guidelines."
+                        })
+                    self.active_mod_flow = None
+                    return
+
+                # Fallback to manual if LLM output was unexpected
+                await mod_channel.send(
+                    "Could not interpret recommended user action. Please choose manually:\n"
+                    "1. RECORD INCIDENT\n"
+                    "2. TEMPORARILY MUTE\n"
+                    "3. REMOVE USER"
+                )
+                self.active_mod_flow['step'] = 'action_on_user'
+                return
+
+            if content == '2':  # Mod overrides → manual user‐action
+                await mod_channel.send(
+                    "What action should be taken on the creator of the post?\n"
+                    "1. RECORD INCIDENT\n"
+                    "2. TEMPORARILY MUTE\n"
+                    "3. REMOVE USER"
+                )
+                self.active_mod_flow['step'] = 'action_on_user'
+                return
+
+            await mod_channel.send("Invalid response. Please reply with:\n1. Yes\n2. No")
+            return
+
         if step == 'appeal_review':
             if content == '1':
                 await mod_channel.send("The appeal has been accepted. The original decision has been overturned.")
@@ -302,24 +626,6 @@ class ModBot(discord.Client):
             # Already handled
             self.active_mod_flow = None
             return
-        if step == 'danger_level':
-            if content not in ['1', '2', '3']:
-                await mod_channel.send("Invalid option. Please choose:\n1. LOW\n2. MEDIUM\n3. HIGH")
-                return
-            danger_levels = {'1': 'low', '2': 'medium', '3': 'high'}
-            ctx['danger_level'] = danger_levels[content]
-            if content == '1':  # LOW
-                await mod_channel.send("Flag post as low danger. After claim is investigated, what action should be taken on post?\n1. DO NOT RECOMMEND\n2. FLAG AS UNPROVEN")
-                self.active_mod_flow['step'] = 'low_action_on_post'
-                return
-            elif content == '2':  # MEDIUM
-                await mod_channel.send("Flag post as medium danger. After claim is investigated, what action should be taken on post?\n1. REMOVE\n2. RAISE\n3. REPORT TO AUTHORITIES")
-                self.active_mod_flow['step'] = 'medium_action_on_post'
-                return
-            elif content == '3':  # HIGH
-                await mod_channel.send("Flag post as high danger. What emergency action should be taken based on post?\n1. REMOVE\n2. RAISE\n3. REPORT TO AUTHORITIES")
-                self.active_mod_flow['step'] = 'high_action_on_post'
-                return
         if step == 'low_action_on_post':
             if content not in ['1', '2']:
                 await mod_channel.send("Invalid option. Please choose:\n1. DO NOT RECOMMEND\n2. FLAG AS UNPROVEN")
@@ -382,33 +688,47 @@ class ModBot(discord.Client):
         if step == 'remove_explanation':
             explanation = message.content
             ctx['remove_explanation'] = explanation
+
+            # Notify user that their post was removed
             await self.notify_reported_user(
                 reported_user_name,
                 guild,
                 outcome="Post removed.",
-                explanation=ctx.get('remove_explanation', ''),
+                explanation=explanation,
                 original_message=report_content
             )
-            # Send only the appeal prompt
-            user = discord.utils.get(guild.members, name=reported_user_name)
-            if user:
-                # Track for incoming DM in pending_appeals
-                if user.id not in self.pending_appeals:
-                    self.pending_appeals[user.id] = []
-                self.pending_appeals[user.id].append({
-                    'guild_id': guild.id,
-                    'reported_name': reported_user_name,
-                    'outcome': "Post removed.",
-                    'original_message': report_content,
-                    'explanation': explanation
-                })
-            await mod_channel.send(
-                f"Explanation recorded: {explanation}\n"
-                "What action should be taken on the creator of the post?\n"
-                "1. RECORD INCIDENT\n2. TEMPORARILY MUTE\n3. REMOVE USER"
-            )
-            self.active_mod_flow['step'] = 'action_on_user'
-            return
+
+            # 1) Let LLM recommend a user‐action now that post is removed
+            recommended = await self.classify_user_action(report_content,
+                                                          ctx.get('danger_level', 'medium'),
+                                                          'remove')
+            ctx['predicted_user_action'] = recommended
+
+            label_map = {
+                "record_incident":   "RECORD INCIDENT",
+                "temporarily_mute":  "TEMPORARILY MUTE",
+                "remove_user":       "REMOVE USER"
+            }
+            action_label = label_map.get(recommended, None)
+
+            if action_label:
+                await mod_channel.send(
+                    f"System suggests user action: {action_label}. Do you agree?\n"
+                    "1. Yes\n"
+                    "2. No"
+                )
+                self.active_mod_flow['step'] = 'confirm_user_action'
+                return
+            else:
+                # If LLM failed, fall back to manual:
+                await mod_channel.send(
+                    "What action should be taken on the creator of the post?\n"
+                    "1. RECORD INCIDENT\n"
+                    "2. TEMPORARILY MUTE\n"
+                    "3. REMOVE USER"
+                )
+                self.active_mod_flow['step'] = 'action_on_user'
+                return
         if step == 'action_on_user':
             if content not in ['1', '2', '3']:
                 await mod_channel.send("Invalid option. Please choose:\n1. RECORD INCIDENT\n2. TEMPORARILY MUTE\n3. REMOVE USER")
@@ -496,7 +816,6 @@ class ModBot(discord.Client):
                     {"role": "user", "content": user_prompt}
                 ]
             )
-            print("LLM Response:", response)
             abuse_type = response.choices[0].message.content.strip().upper()
             return abuse_type
         except Exception as e:
@@ -528,7 +847,97 @@ class ModBot(discord.Client):
             "DANGER": "DANGER"
         }
         return valid_labels.get(label, None)
+    
+    async def classify_danger_level(self, report_content):
+        system_prompt = (
+            "You are a content moderation assistant. "
+            "Given a single user post, classify how dangerous its misinformation is to real-world safety. "
+            "Choose exactly one of: LOW, MEDIUM, or HIGH."
+        )
+        user_prompt = f"Post: {report_content}\n\nClassify danger level:"
+        try:
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ]
+            )
+            lvl = response.choices[0].message.content.strip().upper()
+            if lvl in ("LOW", "MEDIUM", "HIGH"):
+                return lvl.lower()
+            return "medium"
+        except Exception:
+            return "medium"
+        
+    async def classify_post_action(self, report_content, danger_level):
+        system_prompt = (
+            "You are a content moderation assistant. "
+            "Given a user post and its danger level (LOW, MEDIUM, or HIGH), "
+            "recommend exactly one action to take on the post.\n"
+            "- If danger is LOW, choose ONE of: DO NOT RECOMMEND or FLAG AS UNPROVEN.\n"
+            "- If danger is MEDIUM or HIGH, choose ONE of: REMOVE, RAISE, or REPORT TO AUTHORITIES.\n"
+            "Respond with exactly one of those labels."
+        )
+        user_prompt = (
+            f"Post: {report_content}\n"
+            f"Danger level: {danger_level.upper()}\n\n"
+            "Recommended post action:"
+        )
+        try:
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user",   "content": user_prompt}
+                ]
+            )
+            action = response.choices[0].message.content.strip().upper()
+            mapping = {
+                "DO NOT RECOMMEND":      "do_not_recommend",
+                "FLAG AS UNPROVEN":       "flag_as_unproven",
+                "REMOVE":                 "remove",
+                "RAISE":                  "raise",
+                "REPORT TO AUTHORITIES":  "report_to_authorities"
+            }
+            return mapping.get(action, None)
+        except Exception:
+            return None
 
+    async def classify_user_action(self, report_content, danger_level, post_action):
+        if post_action != "remove":
+            return None
+
+        system_prompt = (
+            "You are a content moderation assistant. A post has been determined to be REMOVED. "
+            "Recommend exactly one follow‐up action on the user:\n"
+            "- RECORD INCIDENT\n"
+            "- TEMPORARILY MUTE\n"
+            "- REMOVE USER\n"
+            "Respond with exactly one label."
+        )
+        user_prompt = (
+            f"Post: {report_content}\n"
+            f"Danger level: {danger_level.upper()}\n\n"
+            "Recommended user action:"
+        )
+        try:
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user",   "content": user_prompt}
+                ]
+            )
+            action = response.choices[0].message.content.strip().upper()
+            mapping = {
+                "RECORD INCIDENT":   "record_incident",
+                "TEMPORARILY MUTE":  "temporarily_mute",
+                "REMOVE USER":       "remove_user"
+            }
+            return mapping.get(action, None)
+        except Exception:
+            return None
 
     async def prompt_next_moderation_step(self, mod_channel):
         await mod_channel.send("Moderator, please review the report and respond with your decision.")
