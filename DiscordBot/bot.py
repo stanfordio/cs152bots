@@ -9,7 +9,9 @@ import requests
 from report import Report
 from review import Review
 import pdb
-import count
+import count as count_tool
+from queue import PriorityQueue
+from itertools import count
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -36,6 +38,8 @@ class ModBot(discord.Client):
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
         self.reviews = {}
+        self.reviewing_queue = PriorityQueue()
+        self.unique = count()
 
 
     async def on_ready(self):
@@ -89,14 +93,14 @@ class ModBot(discord.Client):
         author_id = message.author.id
         responses = []
 
-        # If the report is complete or cancelled, remove it from our map
+        # If the user's previous report is complete or cancelled, remove it from our map
         if author_id in self.reports and self.reports[author_id].report_complete():
             self.reports.pop(author_id)
 
         if author_id in self.reviews and self.reviews[author_id].review_complete():
             self.reviews.pop(author_id)
 
-        if message.content.startswith(Review.PASSWORD):
+        if author_id not in self.reviews and message.content.startswith(Review.PASSWORD):
             self.reviews[author_id] = Review(self)
 
         if author_id in self.reviews:
@@ -118,7 +122,13 @@ class ModBot(discord.Client):
         responses = await self.reports[author_id].handle_message(message)
         for r in responses:
             await message.channel.send(r)
-    
+
+        # Add finalized report to queue to remove
+        if author_id in self.reports and self.reports[author_id].report_complete():
+            finalized_report = self.reports[author_id]
+            if not finalized_report.cancelled:
+                self.reviewing_queue.put((1 / finalized_report.get_report_score(), next(self.unique), finalized_report.full_report))
+            self.reports.pop(author_id)
 
     async def handle_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel or "group-#-mod" channel
@@ -130,7 +140,7 @@ class ModBot(discord.Client):
 
             # /count command under -mod channel
             if message.content.strip() == "/count":
-                counts = count.get_counts(message.guild.id)
+                counts = count_tool.get_counts(message.guild.id)
                 if not counts:
                     await message.channel.send("No harassment reports have been logged yet.")
                 else:

@@ -59,3 +59,4 @@ def victim_score(victim_name: str):
         return score
     except Exception as e:
         print(f"victim_score error: query failed")
+        return 0

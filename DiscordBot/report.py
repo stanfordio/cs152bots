@@ -59,7 +59,9 @@ class Report:
         self.reporter_id = None
         self.timestamp = None
         self.victim_name = None
-        self.doxxing_score = None
+        self.doxxing_score = 0
+        self.full_report = None
+        self.cancelled = False
         
     async def handle_message(self, message):
         '''
@@ -69,6 +71,7 @@ class Report:
         
         if message.content.lower() == self.CANCEL_KEYWORD:
             self.state = State.REPORT_COMPLETE
+            self.cancelled = True
             return ["Report cancelled."]
         
         if message.content.lower() == self.HELP_KEYWORD:
@@ -107,7 +110,7 @@ class Report:
             self.state = State.AWAITING_REPORT_TYPE
             reply = f"I found this message from {self.message.author.name}:\n"
             reply += f"```{self.message.content}```\n"
-            reply += "What type of report would you like to file? Please select one of the following by typing the number:\n\n"
+            reply += "What type of report would you like to file? Please select one of the following by typing the number:\n"
             reply += "1. Fraud\n"
             reply += "2. Inappropriate Content\n"
             reply += "3. Harrasment\n"
@@ -124,25 +127,25 @@ class Report:
                     if self.report_type == ReportType.FRAUD:
                         self.state = State.AWAITING_FRAUD_DETAILS
                         response = f"You selected: {self.report_type.value}\n\n"
-                        response += "Please select your reason for reporting Fraud:\n\n"
+                        response += "Please select your reason for reporting Fraud:\n"
                         response += "1. Scam\n2. Misleading Content\n3. Phishing\n"
                         return [response]
                     elif self.report_type == ReportType.INAPPROPRIATE_CONTENT:
                         self.state = State.AWAITING_INAPPROPRIATE_CONTENT_DETAILS
                         response = f"You selected: {self.report_type.value}\n\n"
-                        response += "Please select your reason for reporting Inappropriate Content:\n\n"
+                        response += "Please select your reason for reporting Inappropriate Content:\n"
                         response += "1. Suicidal Intention/Self-Harm\n2. Graphic Violence\n3. Terrorism\n"
                         return [response]
                     elif self.report_type == ReportType.HARASSMENT:
                         self.state = State.AWAITING_HARASSMENT_DETAILS
                         response = f"You selected: {self.report_type.value}\n\n"
-                        response += "Please select your reason for reporting Harassment:\n\n"
+                        response += "Please select your reason for reporting Harassment:\n"
                         response += "1. Credible Threat of Violence\n2. Bullying\n3. Hate Speech\n"
                         return [response]
                     elif self.report_type == ReportType.PRIVACY:
                         self.state = State.AWAITING_PRIVACY_DETAILS
                         response = f"You selected: {self.report_type.value}\n\n"
-                        response += "Please select your reason for reporting Privacy Violation:\n\n"
+                        response += "Please select your reason for reporting Privacy Violation:\n"
                         response += "1. Hacking\n2. Identity Impersonation\n3. Doxxing\n"
                         return [response]
                 else:
@@ -250,7 +253,7 @@ class Report:
 
             self.state = State.AWAITING_INFO_TYPE
             response = f"You selected Privacy Reason: Doxxing.\n\n"
-            response += "What type(s) of confidential information was shared? Please select one or more of the following by typing the number(s), separated by commas (e.g., 1,3,5):\n\n"
+            response += "What type(s) of confidential information was shared? Please select one or more of the following by typing the number(s), separated by commas (e.g., 1,3,5):\n"
             response += "1. Contact Information\n"
             response += "2. Location Information\n"
             response += "3. Financial Information\n"
@@ -393,13 +396,19 @@ class Report:
             offender_id = self.message.author.id
             increment_harassment_count(guild_id, offender_id)
 
-        try:
-            await mod_channel.send(embed=embed)
-            print(f"Report Log: Successfully sent report embed to mod channel '{mod_channel.name}' in guild '{mod_channel.guild.name}'.")
-        except discord.Forbidden:
-            print(f"Report Log Error: Failed to send report to '{mod_channel.name}' (Forbidden - check bot permissions).")
-        except discord.HTTPException as e:
-            print(f"Report Log Error: Failed to send report to '{mod_channel.name}' (HTTP Error: {e.status} - {e.text}).")
+        self.full_report = embed
+
+        # try:
+        #     await mod_channel.send(embed=embed)
+        #     if self.client.reviewing_queue.empty():
+        #         await mod_channel.send(f"There is currently {self.client.reviewing_queue.qsize() + 1} report to review.")
+        #     else:
+        #         await mod_channel.send(f"There are currently {self.client.reviewing_queue.qsize() + 1} reports to review.")
+        #     print(f"Report Log: Successfully sent report embed to mod channel '{mod_channel.name}' in guild '{mod_channel.guild.name}'.")
+        # except discord.Forbidden:
+        #     print(f"Report Log Error: Failed to send report to '{mod_channel.name}' (Forbidden - check bot permissions).")
+        # except discord.HTTPException as e:
+        #     print(f"Report Log Error: Failed to send report to '{mod_channel.name}' (HTTP Error: {e.status} - {e.text}).")
     
     def _get_severity_color(self):
         """Return a color based on the self.severity level (which is an int)."""
@@ -482,3 +491,8 @@ class Report:
     
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
+
+    def get_report_score(self):
+        if self.doxxing_score == 0 or self.severity == 0:
+            return self.doxxing_score + self.severity
+        return self.doxxing_score * self.severity
