@@ -50,8 +50,8 @@ class ModBot(discord.Client):
         self.awaiting_appeal_confirmation = {}
         self.awaiting_appeal_reason = {}
         self.openai_client = openai.OpenAI(api_key=openai_api_key)
-        # self.model = load_model()
-
+        # Initialize the report queue
+        self.report_queue = asyncio.Queue()
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -71,7 +71,10 @@ class ModBot(discord.Client):
             for channel in guild.text_channels:
                 if channel.name == f'group-{self.group_num}-mod':
                     self.mod_channels[guild.id] = channel
-        
+
+        # Start the report queue processor
+        asyncio.create_task(self.process_report_queue())
+        print("Report queue processor started.")
 
     async def on_message(self, message):
         '''
@@ -183,6 +186,48 @@ class ModBot(discord.Client):
             # Create a task for message classification that runs independently
             asyncio.create_task(self.process_message(message))
 
+    async def process_report_queue(self):
+        """
+        Continuously process reports from the queue.
+        This ensures reports are handled one at a time.
+        """
+        while True:
+            try:
+                # Get the next report from the queue
+                report_data = await self.report_queue.get()
+                
+                print("\n=== Processing Report from Queue ===")
+                print(f"Queue size before processing: {self.report_queue.qsize()}")
+                print(f"Processing report for: {report_data['message_author']}")
+                print(f"Report type: {report_data['report_type']}")
+                print("================================\n")
+                
+                # Wait for any active moderation flow to complete
+                while self.active_mod_flow is not None:
+                    print("Waiting for active moderation flow to complete...")
+                    await asyncio.sleep(1)  # Check every second
+                
+                # Process the report
+                await self.start_moderation_flow(
+                    report_type=report_data['report_type'],
+                    report_content=report_data['report_content'],
+                    message_author=report_data['message_author'],
+                    message_link=report_data.get('message_link'),
+                    user_context=report_data.get('user_context')
+                )
+                
+                # Mark the task as done
+                self.report_queue.task_done()
+                
+                print("\n=== Report Processing Complete ===")
+                print(f"Queue size after processing: {self.report_queue.qsize()}")
+                print("================================\n")
+                
+            except Exception as e:
+                print(f"Error processing report from queue: {e}")
+                # Continue processing the queue even if one report fails
+                continue
+
     async def process_message(self, message):
         """
         Process a message for misinformation detection independently of the moderation flow.
@@ -197,14 +242,19 @@ class ModBot(discord.Client):
             abuse_type = self.normalize_abuse_type(abuse_type_raw)
             
             if abuse_type:
-                # Start moderation flow for the detected misinformation
-                # This will run independently of other message processing
-                await self.start_moderation_flow(
-                    report_type=abuse_type,
-                    report_content=message.content,
-                    message_author=message.author.name,
-                    message_link=message.jump_url
-                )
+                # Add the report to the queue instead of processing it directly
+                report_data = {
+                    'report_type': abuse_type,
+                    'report_content': message.content,
+                    'message_author': message.author.name,
+                    'message_link': message.jump_url
+                }
+                await self.report_queue.put(report_data)
+                print("\n=== Report Added to Queue ===")
+                print(f"Author: {message.author.name}")
+                print(f"Type: {abuse_type}")
+                print(f"Current queue size: {self.report_queue.qsize()}")
+                print("============================\n")
 
     async def start_moderation_flow(
             self,
