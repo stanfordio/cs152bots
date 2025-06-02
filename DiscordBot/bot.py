@@ -12,6 +12,7 @@ from user_stats import UserStats
 import pdb
 import openai
 import time
+import asyncio
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -179,22 +180,31 @@ class ModBot(discord.Client):
         if message.channel.name == f'group-{self.group_num}-mod':
             await self.handle_mod_channel_message(message)
         elif message.channel.name == f'group-{self.group_num}':
-            # Check for misinformation in all messages
-            has_misinfo = await self.detect_misinformation(message.content)
+            # Create a task for message classification that runs independently
+            asyncio.create_task(self.process_message(message))
+
+    async def process_message(self, message):
+        """
+        Process a message for misinformation detection independently of the moderation flow.
+        This runs in parallel with other message processing and moderation tasks.
+        """
+        # Check for misinformation in the message
+        has_misinfo = await self.detect_misinformation(message.content)
+        
+        if has_misinfo:
+            # If misinformation is detected, classify the type for the report
+            abuse_type_raw = await self.classify_abuse_type(message.content)
+            abuse_type = self.normalize_abuse_type(abuse_type_raw)
             
-            if has_misinfo:
-                # If misinformation is detected, classify the type for the report
-                abuse_type_raw = await self.classify_abuse_type(message.content)
-                abuse_type = self.normalize_abuse_type(abuse_type_raw)
-                
-                if abuse_type:
-                    # Start moderation flow for the detected misinformation
-                    await self.start_moderation_flow(
-                        report_type=abuse_type,
-                        report_content=message.content,
-                        message_author=message.author.name,
-                        message_link=message.jump_url
-                    )
+            if abuse_type:
+                # Start moderation flow for the detected misinformation
+                # This will run independently of other message processing
+                await self.start_moderation_flow(
+                    report_type=abuse_type,
+                    report_content=message.content,
+                    message_author=message.author.name,
+                    message_link=message.jump_url
+                )
 
     async def start_moderation_flow(
             self,
