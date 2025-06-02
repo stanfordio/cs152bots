@@ -7,6 +7,38 @@ import re
 from report import Report
 from review import Review
 
+# --- ML model setup -------------------------------------------------
+import torch
+from transformers import AutoTokenizer
+from classifier import TextClassifier      #
+
+BASE_MODEL    = "Alibaba-NLP/gte-multilingual-base"
+WEIGHTS_PATH  = "Alibaba-NLP-gte-multilingual-base.pt"   # same folder as bot.py
+LABEL_MAP     = {0: "benign", 1: "lgbtq_hate"}
+
+TOKENIZER = AutoTokenizer.from_pretrained(BASE_MODEL, model_max_length=64)
+
+model = TextClassifier(base_model_name=BASE_MODEL, num_classes=len(LABEL_MAP))
+state_dict = torch.load(WEIGHTS_PATH, map_location="cpu")
+model.load_state_dict(state_dict, strict=False)
+model.eval()                               # inference mode
+# --------------------------------------------------------------------
+
+import asyncio
+
+async def classify_text(text: str) -> str:
+    """Return 'benign' or 'lgbtq_hate' for a given message."""
+    def _predict(t):
+        inputs = TOKENIZER(t, return_tensors="pt",
+                           truncation=True, padding=True)
+        with torch.no_grad():
+            logits = model(**inputs).logits
+        pred_id = int(torch.argmax(logits, dim=-1).item())
+        return LABEL_MAP[pred_id]
+
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _predict, text)
+
 # Set up logging to the console
 logger = logging.getLogger('discord')
 logger.setLevel(logging.DEBUG)
@@ -116,7 +148,7 @@ class ModBot(discord.Client):
             # Forward the message to the mod channel
             mod_channel = self.mod_channels[message.guild.id]
             await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-            scores = self.eval_text(message.content)
+            scores = await self.eval_text(message.content)
             await mod_channel.send(self.code_format(scores))
         
         elif message.channel.name == f'group-{self.group_num}-mod':
@@ -145,12 +177,14 @@ class ModBot(discord.Client):
 
 
     
-    def eval_text(self, message):
+    async def eval_text(self, message):
         ''''
         TODO: Once you know how you want to evaluate messages in your channel, 
         insert your code here! This will primarily be used in Milestone 3. 
         '''
-        return message
+
+        return await classify_text(message)
+        
 
     
     def code_format(self, text):
