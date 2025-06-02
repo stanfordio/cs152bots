@@ -14,6 +14,8 @@ class State(Enum):
     AWAITING_APPEAL = auto()
     APPEAL_REVIEW = auto()
     AWAITING_USER_CONFIRMATION = auto()
+    AWAITING_CONTEXT_CONFIRMATION = auto()
+    AWAITING_CONTEXT_TEXT = auto()
 
 class AbuseType(Enum):
     BULLYING = "bullying"
@@ -52,6 +54,7 @@ class Report:
         self.abuse_type = None
         self.misinfo_category = None
         self.specific_category = None
+        self.user_context = None
 
     async def handle_message(self, message):
         if message.content.lower() == self.CANCEL_KEYWORD:
@@ -109,15 +112,15 @@ class Report:
 
         if self.state == State.AWAITING_USER_CONFIRMATION:
             if message.content.strip() == '1':  # User agrees with classification
-                mod_channel = self.client.mod_channels[self.message.guild.id]
-                await mod_channel.send(f"{self.abuse_type} REPORT:\n{self.message.author.name}: {self.message.content}")
-                await self.client.start_moderation_flow(
-                    report_type=self.abuse_type,
-                    report_content=self.message.content,
-                    message_author=self.message.author.name
-                )
-                self.state = State.REPORT_COMPLETE
-                return ["Thank you for confirming. This has been sent to our moderation team for review."]
+                self.state = State.AWAITING_CONTEXT_CONFIRMATION
+                # stash everything needed:
+                self.pending_report = {
+                    'report_type': self.abuse_type,
+                    'report_content': self.message.content,
+                    'message_author': self.message.author.name
+                }
+                return ["Do you want to add additional context for why you are reporting this message?\n1. Yes\n2. No"]
+
             elif message.content.strip() == '2':  # User disagrees with classification
                 self.state = State.AWAITING_ABUSE_TYPE
                 reply = "What type of abuse would you like to report?\n"
@@ -151,15 +154,46 @@ class Report:
                 self.state = State.AWAITING_MISINFO_CATEGORY
                 return ["Please select the misinformation category:\n1. HEALTH\n2. ADVERTISEMENT\n3. NEWS"]
             else:
-                mod_channel = self.client.mod_channels[self.message.guild.id]
-                await mod_channel.send(f"{self.abuse_type.value.upper()} REPORT:\n{self.message.author.name}: {self.message.content}")
-                await self.client.start_moderation_flow(
-                    report_type=self.abuse_type.value.upper(),
-                    report_content=self.message.content,
-                    message_author=self.message.author.name
-                )
+                self.state = State.AWAITING_CONTEXT_CONFIRMATION
+                self.pending_report = {
+                    'report_type': self.abuse_type.value.upper(),
+                    'report_content': self.message.content,
+                    'message_author': self.message.author.name
+                }
+                return ["Do you want to add additional context for why you are reporting this message?\n1. Yes\n2. No"]
+            
+        if self.state == State.AWAITING_CONTEXT_CONFIRMATION:
+            if message.content.strip() == '1':  # wants to add context
+                self.state = State.AWAITING_CONTEXT_TEXT
+                return ["Please enter additional context (why you are reporting):"]
+            elif message.content.strip() == '2':  # no context
+                # call start_moderation_flow without context
+                data = self.pending_report
+                self.pending_report = None
                 self.state = State.REPORT_COMPLETE
-                return ["Thank you for reporting. This has been sent to our moderation team for review."]
+                await self.client.start_moderation_flow(
+                    report_type=data['report_type'],
+                    report_content=data['report_content'],
+                    message_author=data['message_author'],
+                    user_context=None
+                )
+                return ["Thank you. Your report has been sent to the moderation team."]
+            else:
+                return ["Invalid choice. Reply with 1 (Yes) or 2 (No)."]
+
+        if self.state == State.AWAITING_CONTEXT_TEXT:
+            ctx_text = message.content.strip()
+            data = self.pending_report
+            self.pending_report = None
+            self.user_context = ctx_text
+            self.state = State.REPORT_COMPLETE
+            await self.client.start_moderation_flow(
+                report_type=data['report_type'],
+                report_content=data['report_content'],
+                message_author=data['message_author'],
+                user_context=ctx_text
+            )
+            return ["Thank you. Your report and context have been sent to the moderation team."]
 
         if self.state == State.AWAITING_MISINFO_CATEGORY:
             category = message.content.strip()

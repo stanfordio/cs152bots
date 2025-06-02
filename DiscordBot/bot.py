@@ -111,10 +111,7 @@ class ModBot(discord.Client):
             # Check if the user is providing their appeal reasoning
             if self.awaiting_appeal_reason.get(message.author.id):
                 # Process the appeal reasoning
-                info = user_appeals.pop(0)
-                if not user_appeals:
-                    # Remove the user from pending_appeals if no appeals remain
-                    del self.pending_appeals[message.author.id]
+                info = user_appeals[0]
 
                 mod_chan = self.mod_channels[info['guild_id']]
 
@@ -135,6 +132,7 @@ class ModBot(discord.Client):
                 # Prompt mods for ACCEPT/UPHOLD
                 self.active_mod_flow = {
                     'step': 'appeal_review',
+                    'info': info,
                     'message_author': info['reported_name'],
                     'context': {},
                     'guild_id': info['guild_id']
@@ -180,63 +178,95 @@ class ModBot(discord.Client):
         elif message.channel.name == f'group-{self.group_num}':
             return
 
-    async def start_moderation_flow(self, report_type, report_content, message_author, message_link=None):
-        # Determine the initial step based on report type
-        if report_type.startswith('ADVERTISING MISINFO'):
-            initial_step = 'advertising_done'
-        elif report_type.startswith('MISINFORMATION') or report_type.startswith('HEALTH MISINFO') or report_type.startswith('NEWS MISINFO'):
-            initial_step = 'danger_level'
-        else:
-            initial_step = 'default_done'
-        self.active_mod_flow = {
-            'step': initial_step,
-            'report_type': report_type,
-            'report_content': report_content,
-            'message_author': message_author,
-            'message_link': message_link,
-            'context': {}
-        }
-        mod_channel = None
-        for channel in self.mod_channels.values():
-            mod_channel = channel
-            break
-        if mod_channel:
-            if initial_step == 'danger_level':
-                self.active_mod_flow = {
-                    'step': 'confirm_danger_level',
-                    'report_type': report_type,
-                    'report_content': report_content,
-                    'message_author': message_author,
-                    'message_link': message_link,
-                    'context': {}
-                }
-                # pick any one mod‐channel
-                mod_channel = next(iter(self.mod_channels.values()), None)
-                if not mod_channel:
-                    return
+    async def start_moderation_flow(
+            self,
+            report_type,
+            report_content,
+            message_author,
+            user_context=None,
+            message_link=None
+        ):
+            # Determine the initial step based on report type
+            if report_type.startswith('ADVERTISING MISINFO'):
+                initial_step = 'advertising_done'
+            elif (
+                report_type.startswith('MISINFORMATION')
+                or report_type.startswith('HEALTH MISINFO')
+                or report_type.startswith('NEWS MISINFO')
+            ):
+                initial_step = 'danger_level'
+            else:
+                initial_step = 'default_done'
 
-                # Let LLM guess LOW/MEDIUM/HIGH
-                predicted = await self.classify_danger_level(report_content)
+            # Store everything (including user_context) up front
+            self.active_mod_flow = {
+                'step': initial_step,
+                'report_type': report_type,
+                'report_content': report_content,
+                'message_author': message_author,
+                'message_link': message_link,
+                'user_context': user_context,
+                'context': {}
+            }
+
+            # Pick any one moderator channel
+            mod_channel = None
+            for channel in self.mod_channels.values():
+                mod_channel = channel
+                break
+
+            if not mod_channel:
+                return
+
+            # If this is a misinformation‐type report, run the danger‐level flow
+            if initial_step == 'danger_level':
+                # Update the step
+                self.active_mod_flow['step'] = 'confirm_danger_level'
+
+                # Let LLM guess LOW/MEDIUM/HIGH, passing along user_context
+                predicted = await self.classify_danger_level(
+                    report_content,
+                    user_context
+                )
                 self.active_mod_flow['context']['predicted_danger'] = predicted
 
+                # Build "new report" message and include user_context if provided
+                base_msg = (
+                    f"A new report has been submitted:\n"
+                    f"Type: {report_type}\n"
+                    f"Content: {report_content}\n"
+                    f"Reported user: {message_author}\n"
+                )
+                if user_context:
+                    base_msg += f"User context: {user_context}\n"
+
+                base_msg += (
+                    f"\nSystem suggests danger level: {predicted.upper()}. Do you agree?\n"
+                    "1. Yes\n"
+                    "2. No"
+                )
+                await mod_channel.send(base_msg)
+                return
+
+            # Otherwise, handle the other two cases
+            if initial_step == 'advertising_done':
+                await mod_channel.send(
+                    "Report sent to advertising team. No further action required."
+                )
+                self.active_mod_flow = None
+                return
+
+            if initial_step == 'default_done':
+                # Just show the report, do not prompt for reply
                 await mod_channel.send(
                     f"A new report has been submitted:\n"
                     f"Type: {report_type}\n"
                     f"Content: {report_content}\n"
-                    f"Reported user: {message_author}\n\n"
-                    f"System suggests danger level: {predicted.upper()}. Do you agree?\n"
-                    "1. Yes\n"
-                    "2. No"
+                    f"Reported user: {message_author}"
                 )
+                self.active_mod_flow = None
                 return
-            elif initial_step == 'advertising_done':
-                await mod_channel.send("Report sent to advertising team. No further action required.")
-                self.active_mod_flow = None
-            elif initial_step == 'default_done':
-                # Just show the report, do not prompt for reply
-                self.active_mod_flow = None
-            else:
-                await self.prompt_next_moderation_step(mod_channel)
+            await self.prompt_next_moderation_step(mod_channel)
 
     async def notify_reported_user(self, user_name, guild, outcome, explanation=None, original_message=None):
         """Notify the user about the outcome and provide an appeal option."""
@@ -290,6 +320,63 @@ class ModBot(discord.Client):
         mod_channel = message.channel
         guild = mod_channel.guild if hasattr(mod_channel, 'guild') else None
 
+        if step == 'appeal_review':
+            # Pull the info dict that was stashed earlier
+            info = self.active_mod_flow.get('info', {})
+            reported_name = info.get('reported_name')
+
+            # Look up the User object in this guild
+            reported_user = discord.utils.get(guild.members, name=reported_name)
+            user_id = reported_user.id if reported_user else None
+
+            # 1) Pop this appeal out of the queue
+            if user_id in self.pending_appeals:
+                self.pending_appeals[user_id].pop(0)
+                if not self.pending_appeals[user_id]:
+                    del self.pending_appeals[user_id]
+
+            # 2) Send the DM back to the user with the moderator's decision
+            if content == '1':  # ACCEPT
+                await mod_channel.send("The appeal has been accepted. The original decision has been overturned.")
+                if reported_user:
+                    await reported_user.send(
+                        "Your appeal has been accepted. The original decision has been overturned."
+                    )
+
+            elif content == '2':  # UPHOLD
+                await mod_channel.send("The appeal has been reviewed and the original decision is upheld.")
+                if reported_user:
+                    await reported_user.send(
+                        "Your appeal has been reviewed, and the original decision is upheld."
+                    )
+
+            else:
+                await mod_channel.send("Invalid response. Please respond with:\n1. ACCEPT\n2. UPHOLD")
+                return
+
+            # Clear this flow
+            self.active_mod_flow = None
+
+            # 3) If that user still has more pending appeals, prompt them again
+            if user_id in self.pending_appeals and self.pending_appeals[user_id]:
+                next_info = self.pending_appeals[user_id][0]
+                try:
+                    prompt_text = (
+                        f"Your message was reviewed by moderators. Outcome: {next_info['outcome']}.\n\n"
+                        f"Original Message:\n{next_info['original_message']}\n\n"
+                    )
+                    if next_info.get('explanation'):
+                        prompt_text += f"Reason: {next_info['explanation']}\n\n"
+                    prompt_text += (
+                       "If you believe this was a mistake, you may reply to this message to appeal. "
+                        "Would you like to appeal this decision?\n1. Yes\n2. No"
+                    )
+                    await reported_user.send(prompt_text)
+                    self.awaiting_appeal_confirmation[user_id] = True
+                except Exception:
+                    pass
+            return
+
         ctx = self.active_mod_flow.get('context', {})
         report_type = self.active_mod_flow['report_type']
         report_content = self.active_mod_flow['report_content']
@@ -301,7 +388,11 @@ class ModBot(discord.Client):
                 ctx['danger_level'] = predicted
 
                 # Now ask LLM to recommend a post‐action
-                post_action = await self.classify_post_action(report_content, predicted)
+                post_action = await self.classify_post_action(
+                    report_content,
+                    predicted,
+                    self.active_mod_flow.get('user_context')
+                )
                 ctx['predicted_post_action'] = post_action  # e.g. "remove", etc.
 
                 label_map = {
@@ -364,22 +455,49 @@ class ModBot(discord.Client):
             chosen = levels[content]
             ctx['danger_level'] = chosen
 
-            if chosen == 'low':
+            # Ask LLM to recommend a post‐action given the manually chosen danger level:
+            predicted_action = await self.classify_post_action(
+                report_content,
+                chosen,
+                self.active_mod_flow.get('user_context')
+            )
+            ctx['predicted_post_action'] = predicted_action
+
+            label_map = {
+                "do_not_recommend":     "DO NOT RECOMMEND",
+                "flag_as_unproven":      "FLAG AS UNPROVEN",
+                "remove":               "REMOVE",
+                "raise":                "RAISE",
+                "report_to_authorities": "REPORT TO AUTHORITIES"
+            }
+            action_label = label_map.get(predicted_action, None)
+
+            if action_label:
                 await mod_channel.send(
-                    "Flag post as LOW danger. After claim is investigated, what action should be taken on post?\n"
-                    "1. DO NOT RECOMMEND\n"
-                    "2. FLAG AS UNPROVEN"
+                    f"System suggests post action: {action_label}. Do you agree?\n"
+                    "1. Yes\n"
+                    "2. No"
                 )
-                self.active_mod_flow['step'] = 'low_action_on_post'
+                self.active_mod_flow['step'] = 'confirm_post_action'
             else:
-                await mod_channel.send(
-                    f"Flag post as {chosen.upper()} danger. After claim is investigated, what action should be taken on post?\n"
-                    "1. REMOVE\n"
-                    "2. RAISE\n"
-                    "3. REPORT TO AUTHORITIES"
-                )
-                self.active_mod_flow['step'] = ('medium_action_on_post'
-                    if chosen == 'medium' else 'high_action_on_post')
+                # Fallback if LLM failed to return a valid post‐action:
+                if chosen == 'low':
+                    await mod_channel.send(
+                        "Predicted LOW danger. After claim is investigated, what action should be taken on post?\n"
+                        "1. DO NOT RECOMMEND\n"
+                        "2. FLAG AS UNPROVEN"
+                    )
+                    self.active_mod_flow['step'] = 'low_action_on_post'
+                else:
+                    await mod_channel.send(
+                        f"Predicted {chosen.upper()} danger. After claim is investigated, what action should be taken on post?\n"
+                        "1. REMOVE\n"
+                        "2. RAISE\n"
+                        "3. REPORT TO AUTHORITIES"
+                    )
+                    self.active_mod_flow['step'] = (
+                        'medium_action_on_post' if chosen == 'medium' else 'high_action_on_post'
+                    )
             return
 
         if step == 'confirm_post_action':
@@ -589,27 +707,6 @@ class ModBot(discord.Client):
             await mod_channel.send("Invalid response. Please reply with:\n1. Yes\n2. No")
             return
 
-        if step == 'appeal_review':
-            if content == '1':
-                await mod_channel.send("The appeal has been accepted. The original decision has been overturned.")
-                user = discord.utils.get(guild.members, name=self.active_mod_flow['message_author'])
-                if user:
-                    await user.send("Your appeal has been accepted. The original decision has been overturned.")
-                self.active_mod_flow = None
-                return
-
-            elif content == '2':
-                await mod_channel.send("The appeal has been reviewed and the original decision is upheld.")
-                user = discord.utils.get(guild.members, name=self.active_mod_flow['message_author'])
-                if user:
-                    await user.send("Your appeal has been reviewed, and the original decision is upheld.")
-                self.active_mod_flow = None
-                return
-
-            else:
-                await mod_channel.send("Invalid response. Please respond with:\n1. ACCEPT\n2. UPHOLD")
-                return
-
         ctx = self.active_mod_flow['context']
         report_type = self.active_mod_flow['report_type']
         report_content = self.active_mod_flow['report_content']
@@ -699,9 +796,12 @@ class ModBot(discord.Client):
             )
 
             # 1) Let LLM recommend a user‐action now that post is removed
-            recommended = await self.classify_user_action(report_content,
-                                                          ctx.get('danger_level', 'medium'),
-                                                          'remove')
+            recommended = await self.classify_user_action(
+                report_content,
+                ctx.get('danger_level', 'medium'),
+                'remove',
+                self.active_mod_flow.get('user_context')
+            )
             ctx['predicted_user_action'] = recommended
 
             label_map = {
@@ -793,7 +893,7 @@ class ModBot(discord.Client):
                 self.active_mod_flow = None
                 return
     
-    async def classify_abuse_type(self, message_content):
+    async def classify_abuse_type(self, message_content, user_context=None):
         system_prompt = (
             "You are a content moderation assistant. Your job is to classify messages into one of the following top-level abuse types: "
             "BULLYING, SUICIDE/SELF-HARM, SEXUALLY EXPLICIT/NUDITY, MISINFORMATION, HATE SPEECH, or DANGER.\n\n"
@@ -807,7 +907,10 @@ class ModBot(discord.Client):
             "- If the message does not fit any of these categories, respond with: `UNKNOWN`\n\n"
             "Only return the final category label."
         )
-        user_prompt = f"Message: {message_content}\n\nClassify the abuse type:"
+        if user_context:
+            user_prompt = f"User context: {user_context}\nMessage: {message_content}\n\nClassify the abuse type:"
+        else:
+            user_prompt = f"Message: {message_content}\n\nClassify the abuse type:"
         try:
             response = self.openai_client.chat.completions.create(
                 model="gpt-4o",
@@ -848,13 +951,16 @@ class ModBot(discord.Client):
         }
         return valid_labels.get(label, None)
     
-    async def classify_danger_level(self, report_content):
+    async def classify_danger_level(self, report_content, user_context=None):
         system_prompt = (
             "You are a content moderation assistant. "
             "Given a single user post, classify how dangerous its misinformation is to real-world safety. "
             "Choose exactly one of: LOW, MEDIUM, or HIGH."
         )
-        user_prompt = f"Post: {report_content}\n\nClassify danger level:"
+        if user_context:
+            user_prompt = f"User context: {user_context}\nPost: {report_content}\n\nClassify danger level:"
+        else:
+            user_prompt = f"Post: {report_content}\n\nClassify danger level:"
         try:
             response = self.openai_client.chat.completions.create(
                 model="gpt-4o",
@@ -870,7 +976,7 @@ class ModBot(discord.Client):
         except Exception:
             return "medium"
         
-    async def classify_post_action(self, report_content, danger_level):
+    async def classify_post_action(self, report_content, danger_level, user_context=None):
         system_prompt = (
             "You are a content moderation assistant. "
             "Given a user post and its danger level (LOW, MEDIUM, or HIGH), "
@@ -879,11 +985,19 @@ class ModBot(discord.Client):
             "- If danger is MEDIUM or HIGH, choose ONE of: REMOVE, RAISE, or REPORT TO AUTHORITIES.\n"
             "Respond with exactly one of those labels."
         )
-        user_prompt = (
-            f"Post: {report_content}\n"
-            f"Danger level: {danger_level.upper()}\n\n"
-            "Recommended post action:"
-        )
+        if user_context:
+            user_prompt = (
+                f"User context: {user_context}\n"
+                f"Post: {report_content}\n"
+                f"Danger level: {danger_level.upper()}\n\n"
+                "Recommended post action:"
+            )
+        else:
+            user_prompt = (
+                f"Post: {report_content}\n"
+                f"Danger level: {danger_level.upper()}\n\n"
+                "Recommended post action:"
+            )
         try:
             response = self.openai_client.chat.completions.create(
                 model="gpt-4o",
@@ -904,7 +1018,7 @@ class ModBot(discord.Client):
         except Exception:
             return None
 
-    async def classify_user_action(self, report_content, danger_level, post_action):
+    async def classify_user_action(self, report_content, danger_level, post_action, user_context=None):
         if post_action != "remove":
             return None
 
@@ -916,11 +1030,19 @@ class ModBot(discord.Client):
             "- REMOVE USER\n"
             "Respond with exactly one label."
         )
-        user_prompt = (
-            f"Post: {report_content}\n"
-            f"Danger level: {danger_level.upper()}\n\n"
-            "Recommended user action:"
-        )
+        if user_context:
+            user_prompt = (
+                f"User context: {user_context}\n"
+                f"Post: {report_content}\n"
+                f"Danger level: {danger_level.upper()}\n\n"
+                "Recommended user action:"
+            )
+        else:
+            user_prompt = (
+                f"Post: {report_content}\n"
+                f"Danger level: {danger_level.upper()}\n\n"
+                "Recommended user action:"
+            )
         try:
             response = self.openai_client.chat.completions.create(
                 model="gpt-4o",
