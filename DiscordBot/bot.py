@@ -27,7 +27,6 @@ with open(token_path) as f:
     tokens = json.load(f)
     discord_token = tokens['discord']
 
-
 class ModBot(discord.Client):
     def __init__(self): 
         intents = discord.Intents.default()
@@ -83,7 +82,7 @@ class ModBot(discord.Client):
             return
 
         # if message.content.startswith(Review.START_KEYWORD):
-        if message.content == Review.HELP_KEYWORD:
+        if message.content == Review.HELP_KEYWORD and message.author.id not in self.reviews:
             reply =  "Type in the moderator password to begin the reviewing process.\n"
             await message.channel.send(reply)
 
@@ -101,13 +100,13 @@ class ModBot(discord.Client):
             self.reviews[author_id] = Review(self)
 
         if author_id in self.reviews:
-            # Let the report class handle this message; forward all the messages it returns to uss
+            # Let the report class handle this message; forward all the messages it returns to us
             responses = await self.reviews[author_id].handle_message(message)
             for r in responses:
                 await message.channel.send(r)
             return
 
-        # Only respond to messages if they're part of a reporting flow
+        # Respond to messages if they're part of a reporting flow
         if author_id not in self.reports and not message.content.startswith(Report.START_KEYWORD):
             return
 

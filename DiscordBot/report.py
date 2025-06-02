@@ -5,7 +5,7 @@ import re
 import asyncio
 from datetime import datetime
 from count import increment_harassment_count
-from supabase_helper import insert_victim_log
+from supabase_helper import victim_score 
 
 class ReportType(Enum):
     FRAUD = "Fraud"
@@ -59,6 +59,7 @@ class Report:
         self.reporter_id = None
         self.timestamp = None
         self.victim_name = None
+        self.doxxing_score = None
         
     async def handle_message(self, message):
         '''
@@ -294,6 +295,7 @@ class Report:
                 self.victim_name = None
             else:
                 self.victim_name = message.content.strip()
+                self.doxxing_score = victim_score(self.victim_name)
 
             self.state = State.AWAITING_CONFIRMATION
             
@@ -390,10 +392,6 @@ class Report:
         if self.report_type == ReportType.HARASSMENT:
             offender_id = self.message.author.id
             increment_harassment_count(guild_id, offender_id)
-
-        # Insert victim log into Supabase (if victim name provided)
-        if self.victim_name:
-            insert_victim_log(self.victim_name, self.timestamp)
 
         try:
             await mod_channel.send(embed=embed)
