@@ -8,6 +8,7 @@ import re
 import requests
 from report import Report, AbuseType, MisinfoCategory, HealthCategory, NewsCategory, State
 from user_stats import UserStats
+from classifier.misinfo_classifier import predict_misinformation, load_model
 import pdb
 import openai
 
@@ -47,6 +48,7 @@ class ModBot(discord.Client):
         self.awaiting_appeal_confirmation = {}
         self.awaiting_appeal_reason = {}
         self.openai_client = openai.OpenAI(api_key=openai_api_key)
+        self.model = load_model()
 
 
     async def on_ready(self):
@@ -176,7 +178,9 @@ class ModBot(discord.Client):
         if message.channel.name == f'group-{self.group_num}-mod':
             await self.handle_mod_channel_message(message)
         elif message.channel.name == f'group-{self.group_num}':
-            return
+            pass
+            # prediction = predict_misinformation(message.content, self.model)
+            # print(prediction)
 
     async def start_moderation_flow(
             self,
