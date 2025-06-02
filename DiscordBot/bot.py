@@ -8,9 +8,10 @@ import re
 import requests
 from report import Report, AbuseType, MisinfoCategory, HealthCategory, NewsCategory, State
 from user_stats import UserStats
-from classifier.misinfo_classifier import predict_misinformation, load_model
+# from classifier.misinfo_classifier import predict_misinformation, load_model
 import pdb
 import openai
+import time
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -48,7 +49,7 @@ class ModBot(discord.Client):
         self.awaiting_appeal_confirmation = {}
         self.awaiting_appeal_reason = {}
         self.openai_client = openai.OpenAI(api_key=openai_api_key)
-        self.model = load_model()
+        # self.model = load_model()
 
 
     async def on_ready(self):
@@ -178,9 +179,22 @@ class ModBot(discord.Client):
         if message.channel.name == f'group-{self.group_num}-mod':
             await self.handle_mod_channel_message(message)
         elif message.channel.name == f'group-{self.group_num}':
-            pass
-            # prediction = predict_misinformation(message.content, self.model)
-            # print(prediction)
+            # Check for misinformation in all messages
+            has_misinfo = await self.detect_misinformation(message.content)
+            
+            if has_misinfo:
+                # If misinformation is detected, classify the type for the report
+                abuse_type_raw = await self.classify_abuse_type(message.content)
+                abuse_type = self.normalize_abuse_type(abuse_type_raw)
+                
+                if abuse_type:
+                    # Start moderation flow for the detected misinformation
+                    await self.start_moderation_flow(
+                        report_type=abuse_type,
+                        report_content=message.content,
+                        message_author=message.author.name,
+                        message_link=message.jump_url
+                    )
 
     async def start_moderation_flow(
             self,
@@ -437,7 +451,7 @@ class ModBot(discord.Client):
                             if predicted == 'medium' else 'high_action_on_post')
                         return
 
-            if content == '2':  # Moderator disagrees with LLM’s danger‐level
+            if content == '2':  # Moderator disagrees with LLM's danger‐level
                 await mod_channel.send(
                     "What is the level of danger for this report?\n"
                     "1. LOW\n"
@@ -505,7 +519,7 @@ class ModBot(discord.Client):
             return
 
         if step == 'confirm_post_action':
-            if content == '1':  # Mod agrees with LLM’s post‐action
+            if content == '1':  # Mod agrees with LLM's post‐action
                 post_action = ctx.get('predicted_post_action')
                 danger = ctx.get('danger_level')
                 # Retrieve the reported User object
@@ -622,7 +636,7 @@ class ModBot(discord.Client):
             return
 
         if step == 'confirm_user_action':
-            if content == '1':  # Mod agrees with LLM’s user‐action
+            if content == '1':  # Mod agrees with LLM's user‐action
                 user_action = ctx.get('predicted_user_action')
                 reported_user = discord.utils.get(guild.members, name=reported_user_name)
 
@@ -1067,6 +1081,61 @@ class ModBot(discord.Client):
 
     async def prompt_next_moderation_step(self, mod_channel):
         await mod_channel.send("Moderator, please review the report and respond with your decision.")
+
+    async def detect_misinformation(self, message_content):
+        """
+        Uses OpenAI API to detect if a message contains misinformation.
+        Returns 1 if misinformation is detected, 0 otherwise.
+        Prints classification outcome and timing.
+        """
+        import time
+        start_time = time.time()
+
+        system_prompt = (
+            "You are a content moderation assistant specialized in detecting misinformation. "
+            "Your task is to analyze if a message contains misinformation in any of these categories:\n"
+            "- Health misinformation (emergency, medical research, reproductive health, treatments, alternative medicine)\n"
+            "- News misinformation (historical, political, scientific)\n"
+            "- Advertising misinformation\n\n"
+            "Respond with ONLY a single digit:\n"
+            "1 - if the message contains misinformation\n"
+            "0 - if the message does not contain misinformation\n\n"
+            "Do not provide any explanation, just the number."
+        )
+
+        try:
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": message_content}
+                ]
+            )
+            result = response.choices[0].message.content.strip()
+            prediction = int(result) if result in ['0', '1'] else 0
+            end_time = time.time()
+            processing_time = end_time - start_time
+
+            # Print classification outcome
+            print(f"\nMessage Classification:")
+            print(f"Message: {message_content}")
+            print(f"Prediction: {prediction}")
+            print(f"Processing time: {processing_time:.2f} seconds")
+            print("-" * 50)
+
+            return prediction
+        except Exception as e:
+            end_time = time.time()
+            processing_time = end_time - start_time
+            
+            # Print error
+            print(f"\nClassification Error:")
+            print(f"Message: {message_content}")
+            print(f"Error: {str(e)}")
+            print(f"Processing time: {processing_time:.2f} seconds")
+            print("-" * 50)
+            
+            return 0
 
 client = ModBot()
 client.run(discord_token)

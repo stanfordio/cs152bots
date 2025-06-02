@@ -1,13 +1,13 @@
 {
-  "1364684437752647793": {
+  "484531188581793803": {
     "total_reports": 1,
     "reports": [
       {
-        "timestamp": "2025-06-01T23:12:48.395295",
+        "timestamp": "2025-06-02T15:13:04.847343",
         "report_type": "NEWS MISINFO - POLITICAL",
         "report_content": "The recent election was rigged using a secret satellite controlled by a foreign government.",
-        "outcome": "Post removed and user removed",
-        "explanation": "false info"
+        "outcome": "Post removed and incident recorded",
+        "explanation": "bad"
       }
     ]
   }
