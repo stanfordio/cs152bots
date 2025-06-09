@@ -984,6 +984,11 @@ class ModBot(discord.Client):
             "- For misinformation types: `HEALTH (EMERGENCY) MISINFORMATION`, `NEWS (POLITICAL) MISINFORMATION`, `ADVERTISEMENT MISINFORMATION`, etc.\n"
             "- If the message does not fit any of these categories, respond with: `UNKNOWN`\n\n"
             "Only return the final category label."
+            "Here is additional information about what is classified as misinformation to aid in your decision, however note that this is not complete and may miss some cases:\n"
+            "News and  Current Events: False representations of ongoing news events. Misrepresenting dangerous natural events.\n"
+            "Political Content: False information about voting processes. Content supporting voter suppression. Illegitimate questioning of candidate eligibility. Inaccurate political quotes or statements.Encouraging interference with democratic processes.\n"
+            "Health Information: Dangerous, unproven medical treatments. Content encouraging dangerous health activities. Alternative medicine that has potentially dangerous effects. False medical research."
+        
         )
         if user_context:
             user_prompt = f"User context: {user_context}\nMessage: {message_content}\n\nClassify the abuse type:"
@@ -1161,6 +1166,10 @@ class ModBot(discord.Client):
             "1 - if the message contains misinformation\n"
             "0 - if the message does not contain misinformation\n\n"
             "Do not provide any explanation, just the number."
+            "Here is additional information about what is classified as misinformation to aid in your decision, however note that this is not complete and may miss some cases\n"
+            "News and  Current Events: False representations of ongoing news events. Misrepresenting dangerous natural events.\n"
+            "Political Content: False information about voting processes. Content supporting voter suppression. Illegitimate questioning of candidate eligibility. Inaccurate political quotes or statements.Encouraging interference with democratic processes.\n"
+            "Health Information: Dangerous, unproven medical treatments. Content encouraging dangerous health activities. Alternative medicine that has potentially dangerous effects. False medical research."
         )
 
         try:
